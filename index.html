@@ -1,0 +1,548 @@
+
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>محلل الأسهم الذكي — AI Stock Analyzer</title>
+<style>
+  :root{
+    --bg:#0b1220; --bg2:#101a2e; --card:#111c33; --card2:#0e1729;
+    --border:#1e2c4a; --text:#e8eefc; --muted:#8fa3c8; --accent:#4f8cff;
+    --green:#2ecc8f; --red:#ff5c72; --amber:#ffb454; --violet:#9d7bff;
+    font-family:"Segoe UI",Tahoma,system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:radial-gradient(1200px 600px at 80% -10%,#16264a 0%,var(--bg) 60%);color:var(--text);min-height:100vh;padding:24px 16px 60px}
+  .wrap{max-width:1200px;margin:0 auto}
+  header{display:flex;align-items:center;gap:14px;margin-bottom:22px;flex-wrap:wrap}
+  .logo{width:46px;height:46px;border-radius:14px;background:linear-gradient(135deg,#4f8cff,#9d7bff);display:flex;align-items:center;justify-content:center;font-size:24px}
+  h1{font-size:26px}
+  .sub{color:var(--muted);font-size:13px;margin-top:4px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+  .chip{background:var(--card);border:1px solid var(--border);color:var(--muted);padding:8px 14px;border-radius:999px;cursor:pointer;font-size:14px;transition:.15s;font-family:inherit}
+  .chip:hover{border-color:var(--accent)}
+  .chip.active{background:linear-gradient(135deg,#1c3b6e,#274b8f);color:#fff;border-color:var(--accent)}
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+  .btn{background:var(--card);border:1px solid var(--border);color:var(--text);padding:9px 16px;border-radius:10px;cursor:pointer;font-size:14px;font-family:inherit;transition:.15s}
+  .btn:hover{border-color:var(--accent)}
+  .btn.primary{background:linear-gradient(135deg,#2f6bd8,#4f8cff);border:none;font-weight:600}
+  .btn.ai{background:linear-gradient(135deg,#6d3fd4,#9d7bff);border:none;font-weight:600}
+  .grid{display:grid;grid-template-columns:1.6fr 1fr;gap:16px}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px}
+  .price-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+  .sym{font-size:22px;font-weight:700}
+  .price{font-size:26px;font-weight:700;direction:ltr}
+  .chg{font-size:15px;font-weight:600;padding:3px 10px;border-radius:8px;direction:ltr}
+  .up{color:var(--green);background:rgba(46,204,143,.12)}
+  .down{color:var(--red);background:rgba(255,92,114,.12)}
+  .muted{color:var(--muted)}
+  svg{display:block;width:100%;height:auto}
+  .panel-title{font-size:13px;color:var(--muted);margin:10px 0 4px}
+  .rec-badge{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:12px;font-size:18px;font-weight:700}
+  .rec-buy{background:rgba(46,204,143,.15);color:var(--green);border:1px solid rgba(46,204,143,.4)}
+  .rec-strongbuy{background:rgba(46,204,143,.25);color:#5affc0;border:1px solid rgba(46,204,143,.6)}
+  .rec-hold{background:rgba(255,180,84,.12);color:var(--amber);border:1px solid rgba(255,180,84,.4)}
+  .rec-sell{background:rgba(255,92,114,.12);color:var(--red);border:1px solid rgba(255,92,114,.4)}
+  .rec-strongsell{background:rgba(255,92,114,.25);color:#ff8ea0;border:1px solid rgba(255,92,114,.6)}
+  .reasons{list-style:none;margin:14px 0}
+  .reasons li{padding:7px 0;border-bottom:1px dashed var(--border);font-size:14px;line-height:1.7}
+  .levels{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:8px}
+  .level{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+  .level .lbl{font-size:12px;color:var(--muted)}
+  .level .val{font-size:17px;font-weight:700;direction:ltr;text-align:right}
+  .conf{margin:14px 0}
+  .conf-bar{height:10px;border-radius:6px;background:#0a1122;overflow:hidden;border:1px solid var(--border)}
+  .conf-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,#4f8cff,#9d7bff)}
+  .ai-box{background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:14px;font-size:14px;line-height:1.9;white-space:pre-wrap;min-height:60px}
+  .modal{position:fixed;inset:0;background:rgba(3,8,18,.7);display:none;align-items:center;justify-content:center;padding:16px;z-index:50}
+  .modal.open{display:flex}
+  .modal .inner{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;width:100%;max-width:560px;max-height:90vh;overflow:auto}
+  .modal h3{margin-bottom:12px}
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+  .field input,.field textarea{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:10px 12px;font-size:14px;font-family:inherit;direction:ltr}
+  .field textarea{direction:ltr;min-height:140px;font-family:monospace;font-size:12px}
+  .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:16px}
+  .metric{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px}
+  .metric .lbl{font-size:12px;color:var(--muted);margin-bottom:6px}
+  .metric .val{font-size:20px;font-weight:700;direction:ltr;text-align:right}
+  .metric .hint{font-size:11px;color:var(--muted);margin-top:4px}
+  footer{margin-top:26px;text-align:center;color:var(--muted);font-size:12px;line-height:1.9;border-top:1px solid var(--border);padding-top:16px}
+  .spin{display:inline-block;width:16px;height:16px;border:2px solid #ffffff55;border-top-color:#fff;border-radius:50%;animation:r 1s linear infinite;vertical-align:-3px;margin-inline-end:6px}
+  @keyframes r{to{transform:rotate(360deg)}}
+  .tabs{display:flex;gap:8px;margin-bottom:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">📈</div>
+    <div>
+      <h1>محلل الأسهم الذكي</h1>
+      <div class="sub">تحليل فني بالذكاء الاصطناعي — RSI · MACD · Bollinger · متوسطات متحركة · مستويات دعم ومقاومة</div>
+    </div>
+  </header>
+
+  <div class="chips" id="chips"></div>
+
+  <div class="toolbar">
+    <button class="btn primary" id="btn-analyze">⚡ تحليل ذكي فوري</button>
+    <button class="btn ai" id="btn-open-ai">🤖 تحليل بالـ AI حقيقي</button>
+    <button class="btn" id="btn-csv">📥 استيراد بيانات CSV</button>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="price-head">
+        <span class="sym" id="hd-sym">—</span>
+        <span class="price" id="hd-price">—</span>
+        <span class="chg" id="hd-chg">—</span>
+        <span class="muted" id="hd-name" style="font-size:13px"></span>
+      </div>
+      <svg id="chart" viewBox="0 0 900 380"></svg>
+      <div class="panel-title">الإطار الزمني: 180 جلسة تداول — الشموع خضراء (ارتفاع) / حمراء (انخفاض)، الخط الأزرق SMA20 والبرتقالي SMA50</div>
+      <svg id="vol" viewBox="0 0 900 90"></svg>
+      <svg id="rsi" viewBox="0 0 900 110"></svg>
+      <svg id="macd" viewBox="0 0 900 110"></svg>
+    </div>
+
+    <div class="card">
+      <div id="offline-report"></div>
+      <div class="conf" id="conf-wrap"></div>
+      <ul class="reasons" id="reasons"></ul>
+      <div class="levels" id="levels"></div>
+      <div id="real-ai-slot"></div>
+    </div>
+  </div>
+
+  <div class="metrics" id="metrics"></div>
+
+  <footer>
+    ⚠️ <b>إخلاء مسؤولية:</b> هذا التطبيق لأغراض تعليمية وتوضيحية فقط، والبيانات الافتراضية بيانات محاكاة وليست أسعارًا حقيقية.
+    التحليلات والتوصيات ليست نصيحة استثمارية، ولا يتحمل المطور أي مسؤولية عن قراراتك المالية. اتخذ قراراتك تحت استشارتك المالية الخاصة.
+  </footer>
+</div>
+
+<!-- CSV Modal -->
+<div class="modal" id="csv-modal">
+  <div class="inner">
+    <h3>📥 استيراد بيانات CSV</h3>
+    <p class="muted" style="font-size:13px;line-height:1.8;margin-bottom:12px">
+      الصق بياناتك بالصيغة التالية (أعمدة: التاريخ، الإغلاق، الأعلى، الأدنى، الافتتاح، الحجم — بترتيب LibreOffice/Yahoo Finance):
+    </p>
+    <div class="field">
+      <textarea id="csv-text" placeholder="Date,Close,High,Low,Open,Volume
+2026-01-05,152.30,154.00,151.10,151.50,58230000
+2026-01-06,153.10,153.90,152.00,152.40,48120000"></textarea>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn primary" id="csv-load">تحميل وتحليل</button>
+      <button class="btn" id="csv-close">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- AI Settings Modal -->
+<div class="modal" id="ai-modal">
+  <div class="inner">
+    <h3>🤖 تحليل بالذكاء الاصطناعي الحقيقي</h3>
+    <p class="muted" style="font-size:13px;line-height:1.8;margin-bottom:12px">
+      اربط أي مزوّد متوافق مع OpenAI API (OpenAI، Mistral، Groq، OpenRouter، Ollama...) وسيقوم النموذج
+      بقراءة مؤشرات السهم المُحسوبة وكتابة تقرير احترافي. المفتاح يُخزَّن في متصفحك فقط.
+    </p>
+    <div class="field"><label>عنوان الـ API (Base URL)</label><input id="ai-url" placeholder="https://api.openai.com/v1" /></div>
+    <div class="field"><label>مفتاح الـ API</label><input id="ai-key" type="password" placeholder="sk-..." /></div>
+    <div class="field"><label>اسم الموديل</label><input id="ai-model" placeholder="gpt-4o-mini" /></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn primary" id="ai-save-run">حفظ وتشغيل التحليل</button>
+      <button class="btn" id="ai-run">تشغيل بدون حفظ</button>
+      <button class="btn" id="ai-close">إلغاء</button>
+    </div>
+    <p class="muted" style="font-size:11px;margin-top:10px">ملاحظة: بعض المتصفحات/المعايين قد تحجب طلبات الشبكة في وضع المعاينة — افتح التطبيق من GitHub Pages أو كملف محلي.</p>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ============ بيانات تجريبية (محاكاة حتمية) ============ */
+const STOCKS = [
+  {s:"AAPL", n:"أبل", sector:"تكنولوجيا", p:172, drift:0.0005, vol:0.016},
+  {s:"MSFT", n:"مايكروسوفت", sector:"تكنولوجيا", p:415, drift:0.0005, vol:0.015},
+  {s:"NVDA", n:"إنفيديا", sector:"أشباه موصلات", p:118, drift:0.0011, vol:0.030},
+  {s:"TSLA", n:"تسلا", sector:"سيارات كهربائية", p:238, drift:0.0002, vol:0.034},
+  {s:"GOOGL", n:"ألفابت (جوجل)", sector:"تكنولوجيا", p:168, drift:0.0006, vol:0.018},
+  {s:"AMZN", n:"أمازون", sector:"تجارة إلكترونية", p:185, drift:0.0004, vol:0.020},
+  {s:"COMI", n:"البنك التجاري الدولي", sector:"بنوك — مصر", p:72, drift:0.0009, vol:0.017, cur:"ج.م"},
+  {s:"TMGH", n:"طلعت مصطفى", sector:"عقارات — مصر", p:44, drift:0.0008, vol:0.021, cur:"ج.م"}
+];
+
+function hashSeed(str){let h=1779033703;for(let i=0;i<str.length;i++){h=Math.imul(h^str.charCodeAt(i),3432918353);h=h<<13|h>>>19}return h>>>0}
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+function genHistory(st){
+  const rnd = mulberry32(hashSeed(st.s));
+  const days=[], out=[];
+  let price = st.p * (0.72 + rnd()*0.2);
+  const today = new Date();
+  for(let i=0;i<420;i++){ // توليد تقويم أيام عمل
+    const d = new Date(today); d.setDate(d.getDate() - (420 - i));
+    if(d.getDay()===5 || d.getDay()===6) continue; // جمعة/سبت
+    days.push(d);
+  }
+  for(let i=0;i<days.length;i++){
+    const shock = (rnd()-0.5)*2;
+    const ret = st.drift + shock * st.vol * (rnd()<0.05?2.6:1);
+    const open = price;
+    const close = Math.max(1, open * (1+ret));
+    const high = Math.max(open,close) * (1 + rnd()*st.vol*0.8);
+    const low  = Math.min(open,close) * (1 - rnd()*st.vol*0.8);
+    const volm = Math.floor((0.6+rnd())* st.p * 9e5);
+    out.push({date:days[i],open,high,low,close,volume:volm});
+    price = close;
+  }
+  return out.slice(-250);
+}
+
+/* ============ المؤشرات الفنية ============ */
+const last = a => a[a.length-1];
+function sma(arr,n){const out=[];let s=0;for(let i=0;i<arr.length;i++){s+=arr[i];if(i>=n)s-=arr[i-n];out.push(i>=n-1?s/n:null)}return out}
+function ema(arr,n){const k=2/(n+1);const out=[];let e=arr[0];out.push(e);for(let i=1;i<arr.length;i++){e=arr[i]*k+e*(1-k);out.push(e)}return out}
+function rsi(closes,n=14){
+  const out=[];let g=0,l=0;
+  for(let i=1;i<closes.length;i++){
+    const d=closes[i]-closes[i-1];
+    if(i<=n){g+=Math.max(d,0);l+=Math.max(-d,0);out.push(null);if(i===n){g/=n;l/=n}}
+    else{
+      g=(g*(n-1)+Math.max(d,0))/n; l=(l*(n-1)+Math.max(-d,0))/n;
+      out.push(l===0?100:100-100/(1+g/l));
+    }
+  }
+  out.unshift(null);
+  return out;
+}
+function macd(closes){const f=ema(closes,12),s=ema(closes,26);const line=f.map((v,i)=>v-s[i]);const sig=ema(line,9);return{line,sig,hist:line.map((v,i)=>v-sig[i])}}
+function bollinger(closes,n=20,k=2){
+  const mid=sma(closes,n),up=[],lo=[];
+  for(let i=0;i<closes.length;i++){
+    if(i<n-1||mid[i]==null){up.push(null);lo.push(null);continue}
+    let m=0;for(let j=i-n+1;j<=i;j++){const d=closes[j]-mid[i];m+=d*d}
+    const sd=Math.sqrt(m/n);
+    up.push(mid[i]+k*sd);lo.push(mid[i]-k*sd);
+  }
+  return{mid,up,lo};
+}
+function atr(data,n=14){
+  const trs=[];
+  for(let i=1;i<data.length;i++)trs.push(Math.max(data[i].high-data[i].low,Math.abs(data[i].high-data[i-1].close),Math.abs(data[i].low-data[i-1].close)));
+  if(trs.length<n)return null;
+  return trs.slice(-n).reduce((a,b)=>a+b,0)/n;
+}
+function pctChange(a,b){return (a-b)/b*100}
+
+/* ============ محرك التحليل الذكي ============ */
+function analyze(data){
+  const closes = data.map(d=>d.close);
+  const sma20=sma(closes,20), sma50=sma(closes,50), r=rsi(closes), m=macd(closes), b=bollinger(closes);
+  const p=last(closes);
+  const rsiV=last(r.filter(x=>x!=null)), macdV=last(m.line), sigV=last(m.sig), histV=last(m.hist);
+  const bUp=last(b.up.filter(x=>x!=null)), bLo=last(b.lo.filter(x=>x!=null)), bMid=last(b.mid.filter(x=>x!=null));
+  const hi52=Math.max(...data.map(d=>d.high)), lo52=Math.min(...data.map(d=>d.low));
+  const atrV=atr(data);
+  const recent=data.slice(-20);
+  const sup=Math.min(...recent.map(d=>d.low), bLo||Infinity);
+  const res=Math.max(...recent.map(d=>d.high), bUp||-Infinity);
+  const vUp = data.slice(-10).filter(d=>d.close>=d.open).reduce((a,d)=>a+d.volume,0);
+  const vDn = data.slice(-10).filter(d=>d.close<d.open).reduce((a,d)=>a+d.volume,0);
+
+  let score=0; const reasons=[];
+  // 1) الاتجاه العام
+  const s20=last(sma20.filter(x=>x!=null)), s50=last(sma50.filter(x=>x!=null));
+  if(p>s20){score+=1.2;reasons.push(["✅","السعر أعلى من المتوسط المتحرك 20، مما يدل على زخم صاعد قصير المدى."])}
+  else{score-=1.2;reasons.push(["⚠️","السعر أدنى من المتوسط المتحرك 20 — ضغط بيعي قصير المدى."])}
+  if(s20>s50){score+=1.3;reasons.push(["✅","تقاطع ذهبي: SMA20 فوق SMA50 — الاتجاه المتوسط صاعد."])}
+  else{score-=1.3;reasons.push(["⚠️","SMA20 تحت SMA50 — الاتجاه المتوسط هابط."])}
+  // 2) الزخم RSI
+  if(rsiV<30){score+=2;reasons.push(["✅","مؤشر RSI في منطقة التشبع البيعي ("+rsiV.toFixed(1)+") — احتمال ارتداد صاعد."])}
+  else if(rsiV>70){score-=2;reasons.push(["⚠️","مؤشر RSI في منطقة التشبع الشرائي ("+rsiV.toFixed(1)+") — خطر تصحيح هابط."])}
+  else{score+=(rsiV-50)/25;reasons.push(["ℹ️","RSI عند "+rsiV.toFixed(1)+" — زخم "+(rsiV>55?"إيجابي نسبيًا":rsiV<45?"سلبي نسبيًا":"محايد")+"."])}
+  // 3) MACD
+  if(macdV>sigV){score+=1.5;reasons.push(["✅","MACD فوق خط الإشارة — إشارة شراء زخمية."])}
+  else{score-=1.5;reasons.push(["⚠️","MACD تحت خط الإشارة — فقدان الزخم الصاعد."])}
+  const hPrev=m.hist[m.hist.length-2];
+  if(histV>0&&histV>hPrev)reasons.push(["✅","الهيستوجرام الخاص بـ MACD يتزايد موجبًا — تسارع صاعد."]);
+  if(histV<0&&histV<hPrev)reasons.push(["⚠️","الهيستوجرام الخاص بـ MACD يتزايد سالبًا — تسارع هابط."]);
+  // 4) Bollinger
+  if(p<bLo){score+=1;reasons.push(["✅","السعر اخترق الحد السفلي لبولنجر — تشبع بيعي قد يرتد."])}
+  else if(p>bUp){score-=1;reasons.push(["⚠️","السعر فوق الحد العلوي لبولنجر — تشبع شرائي وتصحيح محتمل."])}
+  else reasons.push(["ℹ️","السعر داخل نطاق بولنجر (عرض النطاق: "+((bUp-bLo)/bMid*100).toFixed(1)+"% — "+(((bUp-bLo)/bMid*100)>25?"تقلب مرتفع":"تقلب طبيعي")+")."]);
+  // 5) الحجم
+  if(vUp>vDn*1.2){score+=0.8;reasons.push(["✅","حجم التداول يتركز في أيام الصعود — تجميع مشترين."])}
+  else if(vDn>vUp*1.2){score-=0.8;reasons.push(["⚠️","حجم التداول يتركز في أيام الهبوط — ضغط توزيع."])}
+  // 6) الموقع من قمة/قاع 52 أسبوع
+  const pos52=(p-lo52)/(hi52-lo52)*100;
+  if(pos52>85){score+=0.6;reasons.push(["✅","السعر قرب قمة 52 أسبوعًا ("+pos52.toFixed(0)+"%) — قوة اتجاه."])}
+  else if(pos52<20){score-=0.4;reasons.push(["ℹ️","السعر قرب قاع 52 أسبوعًا ("+pos52.toFixed(0)+"%) — قد يمثل فرصة قيمة أو استمرار ضعف."])}
+
+  let rec, cls, emoji;
+  if(score>=4.5){rec="شراء قوي";cls="rec-strongbuy";emoji="🚀"}
+  else if(score>=1.5){rec="شراء";cls="rec-buy";emoji="📈"}
+  else if(score>-1.5){rec="حياد / انتظار";cls="rec-hold";emoji="⚖️"}
+  else if(score>-4.5){rec="بيع";cls="rec-sell";emoji="📉"}
+  else{rec="بيع قوي";cls="rec-strongsell";emoji="🔻"}
+
+  // الثقة: مدى اتفاق الإشارات
+  const posN=reasons.filter(x=>x[0]==="✅").length, negN=reasons.filter(x=>x[0]==="⚠️").length;
+  const agree=Math.abs(posN-negN)/(posN+negN||1);
+  const conf=Math.min(94,Math.round(52+Math.abs(score)*4.5+agree*18));
+
+  return {
+    score, rec, cls, emoji, conf, reasons, sup, res,
+    rsi:rsiV, macd:macdV, sig:sigV, hist:histV, bUp, bLo, bMid,
+    sma20:s20, sma50:s50, hi52, lo52, atr:atrV, pos52,
+    stop:sup*0.97, t1:p+(p-sup)*0.8, t2:res,
+    price:p, closes, sma20Arr:sma20, sma50Arr:sma50, rsiArr:r, macdArr:m, bArr:b
+  };
+}
+
+/* ============ الرسوم SVG ============ */
+const NS="http://www.w3.org/2000/svg";
+function el(tag,attrs){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);return e}
+const FMT=(v,c)=>new Intl.NumberFormat("en-US",{maximumFractionDigits:2}).format(v)+(c?" "+c:"");
+
+function drawChart(svg, data, A, cur){
+  svg.innerHTML="";
+  const W=900,H=380,padR=64;
+  const view=data.slice(-180);
+  const min=Math.min(...view.map(d=>d.low),A.bLo||Infinity)*0.995;
+  const max=Math.max(...view.map(d=>d.high),A.bUp||0)*1.005;
+  const x=i=>padR+i*((W-padR-10)/view.length);
+  const y=v=>10+(H-30)*(1-(v-min)/(max-min));
+  // شبكة
+  for(let i=0;i<=4;i++){
+    const v=min+(max-min)*i/4, yy=y(v);
+    svg.appendChild(el("line",{x1:padR,x2:W-10,y1:yy,y2:yy,stroke:"#1e2c4a","stroke-width":1}));
+    const t=el("text",{x:W-4,y:yy+4,fill:"#8fa3c8","font-size":11,"text-anchor":"start"});t.textContent=FMT(v);svg.appendChild(t);
+  }
+  // بولنجر (رسم خطي مبسط)
+  const bStart=data.length-view.length;
+  const mkLine=(arr,color,dash)=>{
+    const pts=[];
+    for(let i=0;i<view.length;i++){const v=arr[bStart+i];if(v!=null)pts.push(x(i)+","+y(v))}
+    if(pts.length)svg.appendChild(el("polyline",{points:pts.join(" "),fill:"none",stroke:color,"stroke-width":1.4,"stroke-dasharray":dash||"none",opacity:.8}));
+  };
+  mkLine(A.bArr.up,"#3a4f7a","4 4"); mkLine(A.bArr.lo,"#3a4f7a","4 4");
+  // الشموع
+  const cw=Math.max(2,(W-padR-10)/view.length*0.62);
+  view.forEach((d,i)=>{
+    const up=d.close>=d.open, col=up?"#2ecc8f":"#ff5c72";
+    svg.appendChild(el("line",{x1:x(i),x2:x(i),y1:y(d.high),y2:y(d.low),stroke:col,"stroke-width":1}));
+    const y1=y(Math.max(d.open,d.close)), y2=y(Math.min(d.open,d.close));
+    svg.appendChild(el("rect",{x:x(i)-cw/2,y:y1,width:cw,height:Math.max(1,y2-y1),fill:col}));
+  });
+  // المتوسطات
+  const mkMA=(arr,color)=>{const pts=[];for(let i=0;i<view.length;i++){const v=arr[bStart+i];if(v!=null)pts.push(x(i)+","+y(v))}svg.appendChild(el("polyline",{points:pts.join(" "),fill:"none",stroke:color,"stroke-width":2}))};
+  mkMA(A.sma20Arr,"#4f8cff"); mkMA(A.sma50Arr,"#ffb454");
+  // مستويات الدعم والمقاومة
+  svg.appendChild(el("line",{x1:padR,x2:W-10,y1:y(A.sup),y2:y(A.sup),stroke:"#2ecc8f","stroke-dasharray":"6 5","stroke-width":1.4,opacity:.9}));
+  const ls=el("text",{x:padR+4,y:y(A.sup)-4,fill:"#2ecc8f","font-size":11});ls.textContent="دعم "+FMT(A.sup);svg.appendChild(ls);
+  if(A.res<max){svg.appendChild(el("line",{x1:padR,x2:W-10,y1:y(A.res),y2:y(A.res),stroke:"#ff5c72","stroke-dasharray":"6 5","stroke-width":1.4,opacity:.9}));
+    const lr=el("text",{x:padR+4,y:y(A.res)-4,fill:"#ff5c72","font-size":11});lr.textContent="مقاومة "+FMT(A.res);svg.appendChild(lr);}
+}
+
+function drawVol(svg, data){
+  svg.innerHTML="";
+  const view=data.slice(-180), W=900,H=90;
+  const maxV=Math.max(...view.map(d=>d.volume));
+  view.forEach((d,i)=>{
+    const h=(d.volume/maxV)*(H-14);
+    svg.appendChild(el("rect",{x:14+i*((W-24)/view.length),y:H-8-h,width:Math.max(1.5,(W-24)/view.length*0.62),height:h,fill:d.close>=d.open?"#2ecc8f66":"#ff5c7266"}));
+  });
+  const t=el("text",{x:W-4,y:12,fill:"#8fa3c8","font-size":11,"text-anchor":"end"});t.textContent="حجم التداول Volume";svg.appendChild(t);
+}
+
+function drawRSI(svg, A){
+  svg.innerHTML="";
+  const W=900,H=110, arr=A.rsiArr.slice(-180);
+  const x=i=>14+i*((W-24)/arr.length), y=v=>8+(H-24)*(1-v/100);
+  [[30,"#2ecc8f"],[50,"#3a4f7a"],[70,"#ff5c72"]].forEach(([v,c])=>{
+    svg.appendChild(el("line",{x1:14,x2:W-10,y1:y(v),y2:y(v),stroke:c,"stroke-dasharray":"5 5","stroke-width":1,opacity:.5}));
+    const t=el("text",{x:W-4,y:y(v)+4,fill:c,"font-size":10});t.textContent=v;svg.appendChild(t);
+  });
+  const pts=arr.map((v,i)=>v==null?null:x(i)+","+y(v)).filter(Boolean).join(" ");
+  svg.appendChild(el("polyline",{points:pts,fill:"none",stroke:"#9d7bff","stroke-width":2}));
+  const t=el("text",{x:14,y:14,fill:"#8fa3c8","font-size":11});t.textContent="RSI (14) — آخر قيمة: "+A.rsi.toFixed(1);svg.appendChild(t);
+}
+
+function drawMACD(svg, A){
+  svg.innerHTML="";
+  const W=900,H=110, line=A.macdArr.line.slice(-180), sig=A.macdArr.sig.slice(-180), hist=A.macdArr.hist.slice(-180);
+  const all=line.concat(sig,hist);
+  const mx=Math.max(...all.map(Math.abs)), X=i=>14+i*((W-24)/line.length), Y=v=>H/2-(v/mx)*(H/2-12);
+  svg.appendChild(el("line",{x1:14,x2:W-10,y1:H/2,y2:H/2,stroke:"#1e2c4a"}));
+  hist.forEach((v,i)=>{if(v>=0)svg.appendChild(el("rect",{x:X(i),y:Y(v),width:Math.max(1.5,(W-24)/line.length*0.5),height:Math.abs(Y(v)-H/2),fill:"#2ecc8f99"}));
+    else svg.appendChild(el("rect",{x:X(i),y:H/2,width:Math.max(1.5,(W-24)/line.length*0.5),height:Math.abs(Y(v)-H/2),fill:"#ff5c7299"}))});
+  svg.appendChild(el("polyline",{points:line.map((v,i)=>X(i)+","+Y(v)).join(" "),fill:"none",stroke:"#4f8cff","stroke-width":1.8}));
+  svg.appendChild(el("polyline",{points:sig.map((v,i)=>X(i)+","+Y(v)).join(" "),fill:"none",stroke:"#ffb454","stroke-width":1.5}));
+  const t=el("text",{x:14,y:14,fill:"#8fa3c8","font-size":11});t.textContent="MACD (12,26,9)";svg.appendChild(t);
+}
+
+/* ============ الحالة والعرض ============ */
+let CURRENT = STOCKS[0];
+let DATA = genHistory(CURRENT);
+let AN = analyze(DATA);
+let CUSTOM = null;
+
+const $ = id => document.getElementById(id);
+
+function fmtPct(v){return (v>=0?"+":"")+v.toFixed(2)+"%"}
+
+function renderHeader(){
+  const cur=CUSTOM?"":" "+(CURRENT.cur||"$");
+  const prev=DATA[DATA.length-2].close, p=last(DATA).close, ch=pctChange(p,prev);
+  $("hd-sym").textContent=CUSTOM?"CSV مخصص":CURRENT.s;
+  $("hd-name").textContent=CUSTOM?"بيانات مستوردة":CURRENT.n+" — "+CURRENT.sector;
+  $("hd-price").textContent=FMT(p,cur.trim());
+  const c=$("hd-chg"); c.textContent=fmtPct(ch); c.className="chg "+(ch>=0?"up":"down");
+}
+
+function renderReport(){
+  const A=AN;
+  $("offline-report").innerHTML=
+    '<div class="panel-title">🧠 التوصية المُولَّدة من محرك التحليل</div>'+
+    '<div style="margin:6px 0 4px"><span class="rec-badge '+A.cls+'">'+A.emoji+' '+A.rec+'</span></div>';
+  $("conf-wrap").innerHTML=
+    '<div class="panel-title">نسبة الثقة: <b style="color:var(--text)">'+A.conf+'%</b> (درجة الإشارات: '+A.score.toFixed(1)+')</div>'+
+    '<div class="conf-bar"><div class="conf-fill" style="width:'+A.conf+'%"></div></div>';
+  $("reasons").innerHTML=A.reasons.map(r=>"<li>"+r[0]+" "+r[1]+"</li>").join("");
+  $("levels").innerHTML=
+    lvl("🟢 الدعم (Support)",FMT(A.sup))+lvl("🔴 المقاومة (Resistance)",FMT(A.res))+
+    lvl("🛑 مقترح وقف الخسارة",FMT(A.stop))+lvl("🎯 الهدف الأول",FMT(A.t1));
+  function lvl(l,v){return '<div class="level"><div class="lbl">'+l+'</div><div class="val">'+v+'</div></div>'}
+  $("metrics").innerHTML=[
+    m("RSI (14)",A.rsi.toFixed(1),A.rsi<30?"تشبع بيعي":A.rsi>70?"تشبع شرائي":"نطاق طبيعي"),
+    m("MACD",A.macd.toFixed(2),A.macd>A.sig?"فوق الإشارة ✅":"تحت الإشارة ⚠️"),
+    m("ATR (14)",FMT(A.atr),"متوسط المدى اليومي"),
+    m("SMA20 / SMA50",FMT(A.sma20)+" / "+FMT(A.sma50),A.sma20>A.sma50?"تقاطع ذهبي":"تقاطع هابط"),
+    m("قمة 52 أسبوع",FMT(A.hi52),"السعر عند "+A.pos52.toFixed(0)+"% من المدى"),
+    m("قاع 52 أسبوع",FMT(A.lo52),""),
+    m("Bollinger",FMT(A.bLo)+" – "+FMT(A.bUp),"منتصف النطاق: "+FMT(A.bMid)),
+    m("التغير الشهري",fmtPct(pctChange(last(DATA).close,DATA[Math.max(0,DATA.length-22)].close)),"آخر ~21 جلسة")
+  ].map(x=>'<div class="metric"><div class="lbl">'+x[0]+'</div><div class="val">'+x[1]+'</div><div class="hint">'+x[2]+'</div></div>').join("");
+  function m(a,b,c){return [a,b,c]}
+}
+
+function renderAll(){
+  renderHeader();
+  drawChart($("chart"),DATA,AN);
+  drawVol($("vol"),DATA);
+  drawRSI($("rsi"),AN);
+  drawMACD($("macd"),AN);
+  renderReport();
+}
+
+function selectStock(st){
+  CURRENT=st; CUSTOM=null; DATA=genHistory(st); AN=analyze(DATA);
+  document.querySelectorAll(".chip").forEach(c=>c.classList.toggle("active",c.dataset.s===st.s));
+  renderAll();
+}
+
+// شريط الاختيار
+$("chips").innerHTML=STOCKS.map(s=>'<button class="chip" data-s="'+s.s+'">'+s.s+' · '+s.n+'</button>').join("");
+document.querySelectorAll(".chip").forEach(c=>c.onclick=()=>{const st=STOCKS.find(x=>x.s===c.dataset.s);if(st)selectStock(st)});
+
+$("btn-analyze").onclick=()=>{AN=analyze(DATA);renderAll();$("offline-report").scrollIntoView({behavior:"smooth",block:"center"})};
+
+/* ============ CSV ============ */
+$("btn-csv").onclick=()=>$("csv-modal").classList.add("open");
+$("csv-close").onclick=()=>$("csv-modal").classList.remove("open");
+$("csv-load").onclick=()=>{
+  const txt=$("csv-text").value.trim();
+  if(!txt){alert("الصق بيانات CSV أولًا.");return}
+  const lines=txt.split(/\r?\n/).filter(l=>l.trim());
+  const sep=lines[0].includes(";")?";":lines[0].includes("\t")?"\t":",";
+  let rows=lines.map(l=>l.split(sep).map(c=>c.trim().replace(/"/g,"")));
+  if(isNaN(parseFloat(rows[0][1])))rows=rows.slice(1); // تخطي العنوان
+  const data=rows.map(r=>{
+    const d=new Date(r[0]);
+    return {date:isNaN(d)?new Date():d, close:+r[1], high:r[2]?+r[2]:+r[1], low:r[3]?+r[3]:+r[1], open:r[4]?+r[4]:+r[1], volume:r[5]?+r[5]:0};
+  }).filter(d=>isFinite(d.close)&&d.close>0);
+  if(data.length<30){alert("البيانات غير كافية — يلزم 30 صف على الأقل بتاريخ وسعر إغلاق صحيحين.");return}
+  CUSTOM=CURRENT=null; DATA=data; AN=analyze(data);
+  $("csv-modal").classList.remove("open");
+  renderAll();
+};
+
+/* ============ AI الحقيقي ============ */
+const CFG_KEY="stock-ai-cfg";
+function loadCfg(){try{return JSON.parse(localStorage.getItem(CFG_KEY))||{}}catch(e){return{}}}
+$("btn-open-ai").onclick=()=>{
+  const c=loadCfg();
+  $("ai-url").value=c.url||""; $("ai-key").value=c.key||""; $("ai-model").value=c.model||"";
+  $("ai-modal").classList.add("open");
+};
+$("ai-close").onclick=()=>$("ai-modal").classList.remove("open");
+$("ai-save-run").onclick=()=>{saveCfg();runAI()};
+$("ai-run").onclick=()=>runAI();
+function saveCfg(){
+  localStorage.setItem(CFG_KEY,JSON.stringify({url:$("ai-url").value.trim(),key:$("ai-key").value.trim(),model:$("ai-model").value.trim()}));
+  $("ai-modal").classList.remove("open");
+}
+async function runAI(){
+  const c=loadCfg();
+  if(!c.url||!c.key){alert("أدخل عنوان الـ API والمفتاح أولًا.");$("ai-modal").classList.add("open");return}
+  const slot=$("real-ai-slot");
+  slot.innerHTML='<div class="ai-box"><span class="spin"></span>جارٍ التحليل بالذكاء الاصطناعي...</div>';
+  const A=AN, p=A.price;
+  const snapshot={
+    symbol:CUSTOM?"بيانات CSV":CURRENT.s, company:CURRENT?CURRENT.n:"",
+    currency:CURRENT&&CURRENT.cur?"EGP":"USD",
+    price:p, change_1m:pctChange(p,DATA[Math.max(0,DATA.length-22)].close),
+    rsi14:+A.rsi.toFixed(1), macd:+A.macd.toFixed(3), macd_signal:+A.sig.toFixed(3),
+    sma20:+A.sma20.toFixed(2), sma50:+A.sma50.toFixed(2),
+    bollinger:[+A.bLo.toFixed(2),+A.bUp.toFixed(2)],
+    support:+A.sup.toFixed(2), resistance:+A.res.toFixed(2), atr:+A.atr.toFixed(2),
+    high_52w:+A.hi52.toFixed(2), low_52w:+A.lo52.toFixed(2),
+    position_in_52w_range:+A.pos52.toFixed(0),
+    technical_score:+A.score.toFixed(1), local_engine_recommendation:A.rec
+  };
+  try{
+    const res=await fetch(c.url.replace(/\/$/,"")+"/chat/completions",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+c.key},
+      body:JSON.stringify({
+        model:c.model||"gpt-4o-mini",
+        messages:[
+          {role:"system",content:"أنت محلل أسهم محترف. اكتب تقريرًا موجزًا بالعربية الفصحى المبسطة بناء على المؤشرات الفنية المعطاة. اذكر: اتجاه السهم، نقاط القوة والضعف، مستويات الدعم والمقاومة، سيناريو صاعد وسيناريو هابط، وتوصية نهائية مع إدارة مخاطرة. اختم بتنبيه أن هذا ليس نصيحة استثمارية. اجعل التقرير منسقًا بعناوين ونقاط قصيرة."},
+          {role:"user",content:"حلل هذه البيانات الفنية لسهم ("+snapshot.symbol+"):\n"+JSON.stringify(snapshot,null,1)}
+        ],
+        temperature:0.4
+      })
+    });
+    if(!res.ok)throw new Error("HTTP "+res.status+" — تحقق من المفتاح أو اسم الموديل");
+    const j=await res.json();
+    const text=j.choices?.[0]?.message?.content||"(لم يتم استلام رد)";
+    slot.innerHTML='<div class="panel-title" style="margin-top:16px">🤖 تقرير الذكاء الاصطناعي ('+ (c.model||"model") +')</div><div class="ai-box">'+mdLite(text)+"</div>";
+  }catch(err){
+    slot.innerHTML='<div class="panel-title" style="margin-top:16px">🤖 تقرير الذكاء الاصطناعي</div><div class="ai-box" style="color:var(--red)">⚠️ فشل الاتصال: '+err.message+'<br><span style="color:var(--muted);font-size:12px">تأكد من صحة العنوان والمفتاح، وأن المزوّد يسمح بالاتصال من المتصفح (CORS). جرّب فتح التطبيق من GitHub Pages أو محليًا.</span></div>';
+  }
+}
+function mdLite(t){
+  return t
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/\*\*(.+?)\*\*/g,"<b style='color:#cfe0ff'>$1</b>")
+    .replace(/^### (.+)$/gm,"<b style='color:#9d7bff;font-size:15px'>$1</b>")
+    .replace(/^## (.+)$/gm,"<b style='color:#9d7bff;font-size:16px'>$1</b>")
+    .replace(/^[-*] (.+)$/gm,"• $1")
+    .replace(/\n/g,"<br>");
+}
+
+/* إقفال المودالات بالنقر خارجها */
+document.querySelectorAll(".modal").forEach(m=>m.addEventListener("click",e=>{if(e.target===m)m.classList.remove("open")}));
+
+/* تشغيل */
+selectStock(STOCKS[0]);
+</script>
+</body>
+</html>
