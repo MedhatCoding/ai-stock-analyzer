@@ -281,7 +281,8 @@
       <div class="field"><label>١) اختر المزوّد (لتعبئة الحقول تلقائيًا)</label>
         <select id="ai-preset">
           <option value="">— اختر المزوّد —</option>
-          <option value="mistral">Mistral AI (توصية — جودة عالية ورصيد تجريبي)</option>
+          <option value="gemini">Google Gemini (توصية — مجاني من AI Studio)</option>
+          <option value="mistral">Mistral AI (جودة عالية ورصيد تجريبي)</option>
           <option value="groq">Groq (مجاني وسريع جدًا)</option>
           <option value="openai">OpenAI</option>
           <option value="openrouter">OpenRouter (موديلات مجانية :free)</option>
@@ -964,6 +965,7 @@ $("pref-save").onclick=()=>{CFG.prefs={refresh:+$("auto-refresh").value,proxy:$(
 
 /* إعدادات الـ AI: قوالب المزوّدين + اختبار الاتصال */
 const AI_PRESETS={
+  gemini:{url:"https://generativelanguage.googleapis.com/v1beta/openai",model:"gemini-2.5-flash",keyUrl:"aistudio.google.com → Get API Key (مجاني)",link:"https://aistudio.google.com/apikey"},
   mistral:{url:"https://api.mistral.ai/v1",model:"mistral-small-latest",keyUrl:"console.mistral.ai → API Keys",link:"https://console.mistral.ai/api-keys/"},
   groq:{url:"https://api.groq.com/openai/v1",model:"llama-3.3-70b-versatile",keyUrl:"console.groq.com → API Keys",link:"https://console.groq.com/keys"},
   openai:{url:"https://api.openai.com/v1",model:"gpt-4o-mini",keyUrl:"platform.openai.com → API Keys",link:"https://platform.openai.com/api-keys"},
