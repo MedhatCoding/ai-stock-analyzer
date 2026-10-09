@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
@@ -128,6 +129,11 @@
 
   <!-- ============ السوق ============ -->
   <section id="tab-market">
+    <div id="offline-banner" class="warn-box hide" style="margin-bottom:14px">
+      ⚠️ <b>تعذر جلب الأسعار المباشرة الآن.</b> المعروض لقطة احتياطية من آخر إغلاق متاح.
+      لو أنت داخل نافذة معاينة فهي <b>تحجب الإنترنت</b> — افتح التطبيق من رابط GitHub Pages أو كملف محلي لتعمل الأسعار الحقيقية تلقائيًا (بدون أي مفتاح).
+      يمكنك أيضًا تشخيص المصادر من <b>الإعدادات ← 🩺 تشخيص مصادر الأسعار</b>.
+    </div>
     <div class="grid3" id="idx-cards"></div>
     <div class="card">
       <div class="flex-between">
@@ -271,11 +277,30 @@
   <section id="tab-settings" class="hide">
     <div class="card">
       <h3>🤖 ربط نموذج ذكاء اصطناعي حقيقي (اختياري)</h3>
-      <p class="small muted" style="line-height:1.8;margin-bottom:12px">اربط أي مزوّد متوافق مع OpenAI API — OpenAI · Mistral · Groq · OpenRouter · Ollama المحلي — ليقرأ النموذج مؤشراتك الفعلية ويكتب تحليلًا سردًا احترافيًا. المفتاح يُخزَّن في متصفحك فقط.</p>
-      <div class="field"><label>عنوان الـ API (Base URL)</label><input id="ai-url" placeholder="https://api.mistral.ai/v1" /></div>
-      <div class="field"><label>مفتاح الـ API</label><input id="ai-key" type="password" placeholder="sk-..." /></div>
-      <div class="field"><label>اسم الموديل</label><input id="ai-model" placeholder="mistral-small-latest" /></div>
-      <button class="btn primary" id="ai-save">💾 حفظ الإعدادات</button>
+      <p class="small muted" style="line-height:1.8;margin-bottom:12px">اربط أي مزوّد متوافق مع OpenAI API — ليقرأ النموذج مؤشراتك الفعلية ويكتب تحليلًا سردًا احترافيًا. المفتاح يُخزَّن في متصفحك فقط.</p>
+      <div class="field"><label>١) اختر المزوّد (لتعبئة الحقول تلقائيًا)</label>
+        <select id="ai-preset">
+          <option value="">— اختر المزوّد —</option>
+          <option value="mistral">Mistral AI (توصية — جودة عالية ورصيد تجريبي)</option>
+          <option value="groq">Groq (مجاني وسريع جدًا)</option>
+          <option value="openai">OpenAI</option>
+          <option value="openrouter">OpenRouter (موديلات مجانية :free)</option>
+          <option value="ollama">Ollama (يعمل على جهازك — بدون مفتاح)</option>
+        </select>
+      </div>
+      <div class="field"><label>٢) عنوان الـ API (Base URL) — يُملأ تلقائيًا من الاختيار أعلاه</label><input id="ai-url" placeholder="https://api.mistral.ai/v1" /></div>
+      <div class="field"><label>٣) مفتاح الـ API — من موقع المزوّد: <span id="ai-key-link"></span></label><input id="ai-key" type="password" placeholder="الصق المفتاح هنا..." /></div>
+      <div class="field"><label>٤) اسم الموديل</label><input id="ai-model" placeholder="mistral-small-latest" /></div>
+      <div class="row">
+        <button class="btn primary" id="ai-save">💾 حفظ</button>
+        <button class="btn" id="ai-test">🧪 اختبار الاتصال</button>
+        <span id="ai-test-result" class="small"></span>
+      </div>
+      <div class="small muted" style="margin-top:10px;line-height:1.9">
+        <b>ملاحظة:</b> الأسعار الحقيقية <b>لا تحتاج أي مفتاح API</b — تجيء تلقائيًا مجانًا من Yahoo Finance.
+        هذه الإعدادات فقط لتقارير الذكاء الاصطناعي السردية.
+        <br>⛔ قد تُحجب طلبات الشبكة داخل نافذة المعاينة — افتح التطبيق من رابط GitHub Pages أو كملف محلي.
+      </div>
     </div>
     <div class="card">
       <h3>🔄 التحديث التلقائي</h3>
@@ -289,6 +314,11 @@
       </div>
       <div class="field"><label>بروكسي CORS مخصص (للمتقدمين — اتركه فارغًا للوضع التلقائي)</label><input id="custom-proxy" placeholder="https://your-proxy.example/?url=" /></div>
       <button class="btn primary" id="pref-save">💾 حفظ التفضيلات</button>
+      <div class="row" style="margin-top:14px">
+        <button class="btn" id="btn-diag">🩺 تشخيص مصادر الأسعار</button>
+        <span class="small muted">يفحص كل البروكسيات ويقول لك أي واحد شغال عندك الآن</span>
+      </div>
+      <div id="diag-box" style="margin-top:10px"></div>
     </div>
     <div class="card">
       <h3>ℹ️ عن التطبيق</h3>
@@ -476,28 +506,34 @@ function analyze(hist){ // hist: [{d,o,h,l,c,v}]
 }
 
 /* ═════════════════════════ 5) طبقة البيانات: Yahoo + بروكسيات ═════════════════════════ */
-const PROXIES=[
-  u=>u,                                              // محاولة مباشرة
-  u=>"https://api.allorigins.win/raw?url="+encodeURIComponent(u),
-  u=>"https://corsproxy.io/?url="+encodeURIComponent(u),
-  u=>"https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(u)
+const PROXY_LIST=[
+  {name:"مباشر",            make:u=>u},
+  {name:"AllOrigins",       make:u=>"https://api.allorigins.win/raw?url="+encodeURIComponent(u)},
+  {name:"corsproxy.io",     make:u=>"https://corsproxy.io/?url="+encodeURIComponent(u)},
+  {name:"codetabs",         make:u=>"https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(u)},
+  {name:"AllOrigins-get",   make:u=>"https://api.allorigins.win/get?url="+encodeURIComponent(u), unwrap:j=>JSON.parse(j.contents)},
+  {name:"whateverorigin",   make:u=>"https://whateverorigin.org/get?url="+encodeURIComponent(u), unwrap:j=>JSON.parse(j.contents)},
+  {name:"cors.lol",         make:u=>"https://api.cors.lol/?url="+encodeURIComponent(u)}
 ];
+let LAST_PROXY="—";
 function withTimeout(promise,ms){return Promise.race([promise,new Promise((_,rej)=>setTimeout(()=>rej(new Error("timeout")),ms))])}
-async function fetchJSON(url,ms=9000){
-  const list = CFG.prefs.proxy ? [u=>CFG.prefs.proxy+encodeURIComponent(u), ...PROXIES] : PROXIES;
-  for(const wrap of list){
-    try{
-      const res=await withTimeout(fetch(wrap(url),{headers:{}}),ms);
-      if(!res.ok)continue;
-      const txt=await res.text();
-      return JSON.parse(txt);
-    }catch(e){/* البروكسي التالي */}
-  }
-  throw new Error("كل المحاولات فشلت");
+async function fetchVia(p,url,ms=9000){
+  const res=await withTimeout(fetch(p.make(url),{headers:{}}),ms);
+  if(!res.ok)throw new Error("HTTP "+res.status);
+  let j=JSON.parse(await res.text());
+  if(p.unwrap)j=p.unwrap(j);
+  return j;
 }
-async function yahooChart(sym,range="1y"){
-  const u=`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}.CA?range=${range}&interval=1d&includePrePost=false`;
-  const j=await fetchJSON(u);
+async function fetchJSON(url,ms=9000){
+  const order=CFG.prefs.proxy?[{name:"بروكسي مخصص",make:u=>CFG.prefs.proxy+encodeURIComponent(u)},...PROXY_LIST]:PROXY_LIST;
+  let err;
+  for(const p of order){
+    try{const j=await fetchVia(p,url,ms);LAST_PROXY=p.name;return j}
+    catch(e){err=e}
+  }
+  throw err||new Error("كل المحاولات فشلت");
+}
+function parseChart(j){
   const r=j?.chart?.result?.[0];
   if(!r)throw new Error("لا توجد بيانات");
   const q=r.indicators?.quote?.[0]||{},ts=r.timestamp||[];
@@ -508,6 +544,16 @@ async function yahooChart(sym,range="1y"){
   }
   const meta=r.meta||{};
   return {hist,price:meta.regularMarketPrice??lastOf(hist)?.c,prev:meta.chartPreviousClose??meta.previousClose??(hist.length>1?hist[hist.length-2].c:null),name:meta.longName||meta.shortName||null,ts:Date.now()};
+}
+async function yahooChart(sym,range="1y"){
+  let err;
+  for(const host of ["query1","query2"]){
+    try{
+      const j=await fetchJSON(`https://${host}.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}.CA?range=${range}&interval=1d&includePrePost=false`);
+      return parseChart(j);
+    }catch(e){err=e}
+  }
+  throw err;
 }
 const inflight={};
 async function getStock(sym,{force=false}={}){
@@ -597,8 +643,9 @@ async function renderMarket(force=false){
   // نبض السوق: اسحب 24 سهمًا سائلًا
   const syms=LIQUID.slice(0,24);
   const data=await queue(syms,s=>getStock(s,{force}),3,(i,n)=>net(true,`تحديث السوق ${i}/${n}`));
-  net(true,"متصل");
   const arr=Object.values(data).filter(Boolean);
+  $("offline-banner").classList.toggle("hide",arr.length>0);
+  if(arr.length)net(true,"مباشر · "+LAST_PROXY);else net(false,"وضع اللقطة");
   const up=arr.filter(d=>d.chg>0).length,dn=arr.filter(d=>d.chg<0).length,fl=arr.length-up-dn;
   const adv=up/(up+dn||1)*100;
   $("breadth").innerHTML=`<div class="row small" style="gap:14px">
@@ -913,8 +960,52 @@ function loadSettings(){
   $("ai-url").value=CFG.ai.url||"";$("ai-key").value=CFG.ai.key||"";$("ai-model").value=CFG.ai.model||"";
   $("auto-refresh").value=String(CFG.prefs.refresh||0);$("custom-proxy").value=CFG.prefs.proxy||"";
 }
-$("ai-save").onclick=()=>{CFG.ai={url:$("ai-url").value.trim(),key:$("ai-key").value.trim(),model:$("ai-model").value.trim()};store.set("egx_ai_cfg",CFG.ai);toast("✅ تم حفظ إعدادات الـ AI")};
 $("pref-save").onclick=()=>{CFG.prefs={refresh:+$("auto-refresh").value,proxy:$("custom-proxy").value.trim()};store.set("egx_prefs",CFG.prefs);setupAutoRefresh();toast("✅ تم حفظ التفضيلات")};
+
+/* إعدادات الـ AI: قوالب المزوّدين + اختبار الاتصال */
+const AI_PRESETS={
+  mistral:{url:"https://api.mistral.ai/v1",model:"mistral-small-latest",keyUrl:"console.mistral.ai → API Keys",link:"https://console.mistral.ai/api-keys/"},
+  groq:{url:"https://api.groq.com/openai/v1",model:"llama-3.3-70b-versatile",keyUrl:"console.groq.com → API Keys",link:"https://console.groq.com/keys"},
+  openai:{url:"https://api.openai.com/v1",model:"gpt-4o-mini",keyUrl:"platform.openai.com → API Keys",link:"https://platform.openai.com/api-keys"},
+  openrouter:{url:"https://openrouter.ai/api/v1",model:"meta-llama/llama-3.3-70b-instruct:free",keyUrl:"openrouter.ai → Keys",link:"https://openrouter.ai/keys"},
+  ollama:{url:"http://localhost:11434/v1",model:"llama3.1",keyUrl:"لا يحتاج مفتاح — اكتب أي حرف مثل ollama",link:"https://ollama.com"}
+};
+$("ai-preset").onchange=()=>{
+  const p=AI_PRESETS[$("ai-preset").value];if(!p)return;
+  $("ai-url").value=p.url;$("ai-model").value=p.model;
+  $("ai-key-link").innerHTML='<a href="'+p.link+'" target="_blank">'+p.keyUrl+'</a>';
+};
+$("ai-save").onclick=()=>{CFG.ai={url:$("ai-url").value.trim(),key:$("ai-key").value.trim(),model:$("ai-model").value.trim()};store.set("egx_ai_cfg",CFG.ai);toast("✅ تم حفظ إعدادات الـ AI")};
+$("ai-test").onclick=async()=>{
+  const r=$("ai-test-result");r.innerHTML='<span class="spin"></span>جارٍ الاختبار...';
+  const saved={url:CFG.ai.url,key:CFG.ai.key,model:CFG.ai.model};
+  CFG.ai={url:$("ai-url").value.trim(),key:$("ai-key").value.trim(),model:$("ai-model").value.trim()};
+  try{
+    const txt=await callLLM("أجب بكلمة واحدة فقط.","قل: تم الاتصال");
+    r.innerHTML='<span class="up">✅ الاتصال ناجح — الرد: '+txt.slice(0,30)+'</span>';
+    store.set("egx_ai_cfg",CFG.ai);
+  }catch(e){
+    CFG.ai=saved;
+    r.innerHTML='<span class="down">❌ '+e.message+' — تحقق من العنوان والمفتاح واسم الموديل، وأنك فاتح التطبيق من رابط مباشر (مش من نافذة معاينة محجوبة)</span>';
+  }
+};
+/* تشخيص مصادر البيانات */
+$("btn-diag").onclick=async()=>{
+  const box=$("diag-box");
+  box.innerHTML='<div class="small"><span class="spin"></span>جارٍ فحص البروكسيات واحدًا واحدًا...</div>';
+  const target="https://query1.finance.yahoo.com/v8/finance/chart/COMI.CA?range=1d&interval=1d";
+  const order=CFG.prefs.proxy?[{name:"بروكسي مخصص",make:u=>CFG.prefs.proxy+encodeURIComponent(u)},...PROXY_LIST]:PROXY_LIST;
+  const results=[];
+  for(const p of order){
+    try{await fetchVia(p,target,7000);results.push("✅ "+p.name)}
+    catch(e){results.push("❌ "+p.name)}
+    box.innerHTML='<div class="small" style="line-height:2">'+results.map(x=>"· "+x).join("<br>")+'</div>';
+  }
+  const ok=results.some(x=>x.startsWith("✅"));
+  box.insertAdjacentHTML("beforeend",ok
+    ?'<div class="up small" style="margin-top:8px">✅ يوجد مصدر يعمل — الأسعار الحقيقية ستعمل عندك. آخر مصدر مستخدم: <b>'+LAST_PROXY+'</b></div>'
+    :'<div class="warn-box" style="margin-top:8px">❌ لا يوجد مصدر يعمل من هذه النافذة — غالبًا أنت داخل <b>نافذة معاينة تحجب الإنترنت</b>. افتح التطبيق من رابط GitHub Pages أو نزّل index.html وافتحه في المتصفح مباشرة، وسيعمل فورًا. اللقطة الاحتياطية تظل متاحة للتحليل.</div>');
+};
 
 /* ═════════════════════════ 14) التنقل والتحديث التلقائي ═════════════════════════ */
 let REFRESH_TIMER=null;
