@@ -288,12 +288,14 @@
         <div class="row">
          <span class="pill-auto">⚙️ فحص تلقائي: يعمل بنفسه عند فتح التطبيق وكل ٦ ساعات</span>
           <button class="btn mini" id="btn-scan" title="إعادة الفحص يدويًا">🔄 إعادة الفحص</button>
+          <button class="btn ai mini" id="btn-picks-llm" title="ملخص الفرص بنموذج AI">🤖 ملخص الفرص</button>
           <span class="small muted" id="scan-status"></span>
         </div>
       </div>
-      <p class="small muted" style="line-height:1.8">يفحص المحرك الأسهم الأكثر سيولة وسيولةً في البورصة المصرية ويقيّم كل سهم على 6 محاور (الاتجاه · الزخم · التقلب · الحجم · الموقع من المدى · بولنجر) ثم يرتّب أقوى الفرص الشرائية وأهم التحذيرات. النتائج تُخزَّن مؤقتًا حتى لا يُعاد الفحص في نفس الجلسة.</p>
+      <p class="small muted" style="line-height:1.8">يفحص المحرك الأسهم الأكثر سيولة في البورصة المصرية ويقيّم كل سهم على 6 محاور (الاتجاه · الزخم · التقلب · الموقع من المدى · بولنجر) ثم يرتّب أقوى الفرص الشرائية وأهم التحذيرات. الفحص سريع — يجيب كل الأسهم في طلب واحد ويعمل تلقائيًا من نفسه.</p>
       <div class="bar hide" id="scan-bar-wrap" style="margin:10px 0"><div id="scan-bar" style="width:0%"></div></div>
       <div class="grid2" id="picks-grid"></div>
+      <div id="picks-ai" style="margin-top:12px"></div>
     </div>
   </section>
 
@@ -763,6 +765,7 @@ function drawMACD(svg,V){
 
 /* ═════════════════════════ 7) واجهة السوق ═════════════════════════ */
 const MARKET_SYMS=["EGX30→COMI","idx"]; // placeholder
+let MKT_RETRY=0;
 async function renderMarket(force=false){
   $("market-updated").textContent=egxOpen()?"🟢 الجلسة مفتوحة تقريبًا (٩ص–٣م بتوقيت القاهرة)":"⚪ خارج جلسة التداول";
   // المؤشرات: بيانات حقيقية من Yahoo (رموز مرشحة) ثم اللقطة المدمجة كبديل
@@ -839,12 +842,12 @@ async function renderMarket(force=false){
   const avgChg=arr.length?arr.reduce((s,d)=>s+d.chg,0)/arr.length:0;
   $("market-ai").innerHTML=`<div class="ai-box">القراءة الآلية: ${adv>=60?"السوق في موجة صاعدة واضحة — السيولة متجهة للشراء، قد تكون فرصة لتقوية المراكز المختارة بعناية.":adv<=40?"الاتجاه العام هابط — الحذر واجب، ورجّح السيولة النقدية وثبّت وقف الخسائر.":"السوق في نطاق عرضي/متوازن — تداول انتقائي على الأسهم ذات الزخم فقط."} متوسط تغير العينة: <b class="${avgChg>=0?"up":"down"}">${PCT(avgChg)}</b>.</div>`;
   renderPortfolioMini();
-  // 🤖 ملخص AI تلقائي (مرة كل ٣٠ دقيقة عند وجود مفتاح مفعل)
+  // 🤖 ملخص AI تلقائي (مرة كل ٣٠ دقيقة عند وجود مفتاح مفعل) — بدون أي زر
   if(CFG.ai.key&&CFG.ai.url&&CFG.prefs.auto!==false){
     const last=+store.get("egx_mktllm_ts",0);
     if(Date.now()-last>30*60*1000){
       store.set("egx_mktllm_ts",Date.now());
-      $("btn-market-llm").click();
+      safe("ملخص السوق التلقائي",()=>llmMarket());
     }
   }
 }
@@ -1024,9 +1027,9 @@ async function renderPortfolio(){
   $("holdings-ai").innerHTML=aiCards.join("")||'<div class="empty"><span class="spin"></span> جارٍ تحليل محفظتك...</div>';
   renderFunds();
   /* التشغيل التلقائي: تحليل المحفظة بنموذج AI مرة كل 30 دقيقة بدون أي زر */
-  if(CFG.ai.key&&CFG.prefs.auto!==false&&HOLDINGS.length){
+  if(CFG.ai.key&&CFG.ai.url&&CFG.prefs.auto!==false&&HOLDINGS.length){
     const last=+store.get("egx_pfllm_ts",0);
-    if(Date.now()-last>30*60*1000){store.set("egx_pfllm_ts",Date.now());$("btn-portfolio-llm").click();}
+    if(Date.now()-last>30*60*1000){store.set("egx_pfllm_ts",Date.now());safe("تحليل المحفظة التلقائي",()=>llmPortfolio());}
   }
 }
 window.delHolding=t=>{const i=HOLDINGS.findIndex(h=>h.t===t);if(i>-1){HOLDINGS.splice(i,1);store.set("egx_holdings",HOLDINGS);renderPortfolio()}};
@@ -1091,21 +1094,69 @@ $("fund-save").onclick=()=>{
 async function runScan(){
   $("btn-scan").disabled=true;
   $("scan-bar-wrap").classList.remove("hide");
+  $("scan-status").textContent="فحص سريع بطلب واحد...";
   const list=[...new Set([...LIQUID,...HOLDINGS.map(h=>h.t)])];
-  const data=await queue(list,s=>getStock(s,{force:true}),3,(i,n)=>{$("scan-bar").style.width=(i/n*100)+"%";$("scan-status").textContent=`فحص ${i}/${n}`});
-  const arr=Object.values(data).filter(x=>x&&x.verdict).map(x=>({sym:x.sym,n:BYSYM[x.sym]?.n,price:x.price,chg:x.chg,v:x.verdict}));
+  const out={};
+  /* المرحلة 1: طلب spark واحد لكل الأسهم — سنة كاملة من الإغلاقات في طلب واحد */
+  try{
+    const q=list.map(s=>s+".CA");
+    const j=await fetchJSON(`https://query1.finance.yahoo.com/v8/finance/spark?symbols=${q.map(encodeURIComponent).join(",")}&range=1y&interval=1d`);
+    list.forEach((s,i)=>{
+      const closes=(((j&&j[q[i]])||{}).close||[]).filter(v=>v!=null);
+      if(closes.length>=60){
+        const hist=closes.map((c,k)=>{const o=k?closes[k-1]:c;return {d:null,o,h:Math.max(o,c),l:Math.min(o,c),c,v:0}});
+        const price=closes[closes.length-1],prev=closes[closes.length-2];
+        out[s]={t:Date.now(),sym:s,price,prev,chg:(price-prev)/prev*100,name:BYSYM[s]?.n,hist,verdict:analyze(hist)};
+        WATCH_CACHE[s]=out[s];
+      }
+    });
+    store.set("egx_watch",WATCH_CACHE);
+    net(true,"مباشر · "+LAST_PROXY);
+  }catch(e){/* نكمل بالمرحلة 2 */}
+  /* المرحلة 2: أي سهم ناقص نجربه من الكاش الفردي (بدون إجبار التحديث) */
+  const rest=list.filter(s=>!(out[s]&&out[s].verdict));
+  if(rest.length){
+    const data=await queue(rest,s=>getStock(s),3,(i,n)=>{$("scan-bar").style.width=(i/n*100)+"%";$("scan-status").textContent=`فحص ${i}/${n}`});
+    Object.assign(out,data);
+  }
+  const arr=Object.values(out).filter(x=>x&&x.verdict).map(x=>({sym:x.sym,n:BYSYM[x.sym]?.n,price:x.price,chg:x.chg,v:x.verdict}));
   const buys=[...arr].sort((a,b)=>b.v.sc-a.v.sc).slice(0,6);
-  const sells=[...arr].sort((a,b)=>a.v.sc-b.v.sc).slice(0,6);
-  const out={time:Date.now(),buys,sells};
-  store.set("egx_picks",out);
-  renderPicks(out);
-  $("scan-status").textContent="تم — "+new Date().toLocaleTimeString("ar-EG");
+  const buySyms=new Set(buys.map(x=>x.sym));
+  const sells=[...arr].sort((a,b)=>a.v.sc-b.v.sc).filter(x=>!buySyms.has(x.sym)).slice(0,6);
+  const outp={time:Date.now(),buys,sells,count:arr.length};
+  store.set("egx_picks",outp);
+  renderPicks(outp);
+  $("scan-status").textContent="تم فحص "+arr.length+" سهمًا — "+new Date().toLocaleTimeString("ar-EG");
+  $("scan-bar-wrap").classList.add("hide");
   $("btn-scan").disabled=false;
   toast("✨ اكتمل فحص "+arr.length+" سهمًا");
+  /* ملخص الفرص بالـ AI تلقائيًا (كل ٣٠ دقيقة عند وجود مفتاح مفعل) */
+  autoPicksLLM();
 }
 $("btn-scan").onclick=runScan;
+/* 🤖 ملخص الفرص بنموذج AI — يعمل تلقائيًا بعد كل فحص أو عند فتح التبويب */
+async function llmPicks(){
+  const box=$("picks-ai");if(!box)return;
+  if(!CFG.ai.key||!CFG.ai.url||!CFG.ai.model){box.innerHTML='<div class="small muted">🤖 عشان الملخص بنموذج AI يشتغل من نفسه: اربط مزوّدك (مجاني) من ⚙️ الإعدادات مرة واحدة — وبعدها هيتولد تلقائيًا مع كل فحص.</div>';return}
+  box.innerHTML='<div class="ai-box"><span class="spin"></span>جارٍ توليد ملخص الفرص بالذكاء الاصطناعي...</div>';
+  try{
+    const p=store.get("egx_picks",null);
+    if(!p||!p.buys||!p.buys.length)throw new Error("لا نتائج فحص بعد — انتظر انتهاء الفحص");
+    const lite=x=>({sym:x.sym,company:x.n,score:+x.v.sc.toFixed(1),rec:x.v.rec,price:+x.price.toFixed(2),chg_1d:+x.chg.toFixed(2),conf:x.v.conf});
+    const txt=await callLLM(SYS,"اكتب ملخصًا موجزًا (150 كلمة كحد أقصى) لفرص اليوم في البورصة المصرية من نتائج الفحص التالية: اذكر أقوى فرصتين شراء مع السبب، وأهم تحذير، ونصيحة إدارة مخاطر واحدة:\nفرص شراء:\n"+JSON.stringify(p.buys.map(lite),null,1)+"\nتحذيرات بيع:\n"+JSON.stringify((p.sells||[]).map(lite),null,1));
+    box.innerHTML=`<div class="ai-box">🤖 <b>ملخص الفرص — ${CFG.ai.model}</b><br><br>${mdLite(txt)}</div>`;
+  }catch(e){box.innerHTML=`<div class="ai-box" style="color:var(--red)">⚠️ ${e.message}</div>`}
+}
+function autoPicksLLM(){
+  if(!PICKSOK())return;
+  if(CFG.prefs.auto===false)return;
+  const last=+store.get("egx_pickllm_ts",0);
+  if(Date.now()-last>30*60*1000){store.set("egx_pickllm_ts",Date.now());safe("ملخص الفرص",()=>llmPicks());}
+}
+function PICKSOK(){return !!store.get("egx_picks",null)}
+$("btn-picks-llm").onclick=()=>{store.set("egx_pickllm_ts",Date.now());llmPicks()};
 function renderPicks(p=PICKS){
-  if(!p){$("picks-grid").innerHTML='<div class="empty"><span class="spin"></span> جارٍ فحص السوق تلقائيًا لتوليد توصيات اليوم (30–60 ثانية) — أو اضغط «⚡ ابدأ فحص السوق» لإعادته يدويًا</div>';return}
+  if(!p||(!p.buys&&!p.sells)){$("picks-grid").innerHTML='<div class="empty"><span class="spin"></span> جارٍ فحص السوق تلقائيًا لتوليد توصيات اليوم — من غير أي زر</div>';return}
   const card=(x,isBuy)=>`<div class="card" style="background:var(--card2)">
     <div class="row" style="gap:10px"><b style="font-size:17px">${x.sym}</b><span class="sect-tag">${x.n||""}</span><span class="badge ${isBuy?"b-buy":"b-sell"}">${x.chg>=0?"+":""}${x.chg.toFixed(2)}%</span><span style="margin-inline-start:auto" class="stars">${"★".repeat(x.v.stars)}${"☆".repeat(5-x.v.stars)}</span></div>
     <div class="row" style="gap:8px;margin:8px 0"><span class="rec-badge ${x.v.cls}" style="font-size:14px;padding:7px 12px">${x.v.em} ${x.v.rec}</span><span class="small muted">ثقة ${x.v.conf}%</span><span class="small muted">السعر ${NF(x.price)}</span></div>
@@ -1114,8 +1165,9 @@ function renderPicks(p=PICKS){
     <button class="btn mini" style="margin-top:8px" onclick="openStock('${x.sym}')">📊 التحليل الكامل</button>
   </div>`;
   $("picks-grid").innerHTML=`
-    <div><h3 class="small" style="margin-bottom:8px">🟢 أقوى فرص الشراء</h3>${p.buys.map(x=>card(x,true)).join("")}</div>
-    <div><h3 class="small" style="margin-bottom:8px">🔴 تحذيرات / فرص بيع</h3>${p.sells.map(x=>card(x,false)).join("")}</div>`;
+    <div><h3 class="small" style="margin-bottom:8px">🟢 أقوى فرص الشراء</h3>${p.buys.map(x=>card(x,true)).join("")||'<div class="empty">لا فرص واضحة الآن</div>'}</div>
+    <div><h3 class="small" style="margin-bottom:8px">🔴 تحذيرات / فرص بيع</h3>${(p.sells||[]).map(x=>card(x,false)).join("")||'<div class="empty">لا تحذيرات قوية الآن</div>'}</div>`;
+  autoPicksLLM();
 }
 
 /* ═════════════════════════ 12) الربط بنموذج LLM حقيقي ═════════════════════════ */
@@ -1147,7 +1199,7 @@ window.llmStock=async function(sym){
     box.innerHTML=`<div class="ai-box">🤖 <b>تقرير ${CFG.ai.model}</b><br><br>${mdLite(txt)}</div>`;
   }catch(e){box.innerHTML=`<div class="ai-box" style="color:var(--red)">⚠️ ${e.message}</div>`}
 };
-$("btn-portfolio-llm").onclick=async()=>{
+async function llmPortfolio(){
   const id="pf-llm-"+Date.now();
   $("holdings-ai").insertAdjacentHTML("afterbegin",`<div class="ai-box" id="${id}"><span class="spin"></span>جارٍ تحليل المحفظة بالكامل...</div>`);
   try{
@@ -1158,15 +1210,17 @@ $("btn-portfolio-llm").onclick=async()=>{
     const txt=await callLLM(SYS,"حلّل محفظتي في البورصة المصرية (القيمة:"+NF(t.val)+" ج.م، الربح/الخسارة:"+NF(t.pl)+" ج.م). قراراتي الحالية معلقة: لكل سهم قل لي بوضوح: احتفاظ أو زيادة أو بيع ولماذا:\nأسهمي:\n"+JSON.stringify(hs,null,1)+"\nصناديقي:\n"+JSON.stringify(funds));
     const el=document.getElementById(id);if(el)el.outerHTML=`<div class="ai-box" style="border-color:var(--violet)">🤖 <b>تحليل المحفظة — ${CFG.ai.model}</b><br><br>${mdLite(txt)}</div><div style="height:10px"></div>`;
   }catch(e){const el=document.getElementById(id);if(el)el.outerHTML=`<div class="ai-box" style="color:var(--red)">⚠️ ${e.message}</div>`}
-};
-$("btn-market-llm").onclick=async()=>{
+}
+$("btn-portfolio-llm").onclick=llmPortfolio;;
+async function llmMarket(){
   const box=$("market-ai");box.insertAdjacentHTML("afterend",`<div class="ai-box" id="market-llm-box"><span class="spin"></span>جارٍ توليد ملخص السوق...</div>`);
   try{
     const syms=LIQUID.slice(0,15).map(s=>snap(s)).filter(Boolean);
     const txt=await callLLM(SYS,"اكتب ملخص جلسة للبورصة المصرية من هذه العينة (لا تتجاوز 200 كلمة — اذكر الاتجاه العام وأبرز الفرص والمخاطر):\n"+JSON.stringify(syms,null,1));
     $("market-llm-box").innerHTML=`🤖 <b>ملخص ${CFG.ai.model}</b><br><br>${mdLite(txt)}`;
   }catch(e){$("market-llm-box").innerHTML=`<span style="color:var(--red)">⚠️ ${e.message}</span>`}
-};
+}
+$("btn-market-llm").onclick=llmMarket;
 
 /* ═════════════════════════ 13) الإعدادات والتفضيلات ═════════════════════════ */
 function loadSettings(){
