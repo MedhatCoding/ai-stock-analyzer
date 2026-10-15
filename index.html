@@ -605,7 +605,8 @@ function drawArea(svg,vals,up){
 }
 function withTimeout(promise,ms){return Promise.race([promise,new Promise((_,rej)=>setTimeout(()=>rej(new Error("timeout")),ms))])}
 async function fetchVia(p,url,ms=9000){
-  const res=await withTimeout(fetch(p.make(url),{headers:{}}),ms);
+  const bust=url+(url.includes("?")?"&":"?")+"_cb="+Date.now();
+  const res=await withTimeout(fetch(p.make(bust),{headers:{}}),ms);
   if(!res.ok)throw new Error("HTTP "+res.status);
   let j=JSON.parse(await res.text());
   if(p.unwrap)j=p.unwrap(j);
@@ -1335,6 +1336,23 @@ function init(){
   /* التشغيل التلقائي: فحص السوق يشتغل من نفسه إذا كانت النتائج أقدم من 6 ساعات */
   if(CFG.prefs.auto!==false&&(!PICKS||Date.now()-PICKS.time>6*3600*1000))safe("فحص السوق التلقائي",()=>runScan());
 }
+/* التكيف مع iframe ستيرمليت: التطبيق يملأ الشاشة كاملة — لا شريط أسود ولا مساحات فاضية */
+(function(){
+  if(window.parent===window)return;
+  function fit(){
+    try{
+      const ifr=[...window.parent.document.querySelectorAll("iframe")].find(f=>f.contentWindow===window);
+      if(!ifr)return;
+      const h=Math.max(document.documentElement.scrollHeight,window.parent.innerHeight-12);
+      ifr.style.height=h+"px";
+      ifr.style.width="100%";
+      ifr.style.border="none";
+    }catch(e){}
+  }
+  fit();setTimeout(fit,400);setTimeout(fit,1500);setTimeout(fit,4000);
+  window.addEventListener("resize",fit);
+  if(window.ResizeObserver)new ResizeObserver(fit).observe(document.body);
+})();
 init();
 </script>
 </body>
