@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
@@ -124,7 +123,7 @@
     <div class="logo">🕌</div>
     <div>
       <h1>عقار — محلل البورصة المصرية بالذكاء الاصطناعي</h1>
-      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · متوافق مع الشريعة EGX33</div>
+      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة EGX33 فقط · <b>v3.9</b></div>
     </div>
     <div class="hd-right">
       <span class="pill" id="clock">—</span>
@@ -286,14 +285,13 @@
       <div class="flex-between">
         <h3>🌟 الماسح الذكي — فرص اليوم</h3>
         <div class="row">
-         <span class="pill-auto">⚙️ فحص تلقائي: يعمل بنفسه عند فتح التطبيق وكل ٦ ساعات</span>
-          <button class="btn mini ok" id="btn-sharia-toggle">☪️ الشريعة فقط: مفعّل</button>
+         <span class="pill-auto">⚙️ فحص تلقائي: يعمل بنفسه عند فتح التطبيق وكل ٤٥ دقيقة</span>
           <button class="btn mini" id="btn-scan" title="إعادة الفحص يدويًا">🔄 إعادة الفحص</button>
           <button class="btn ai mini" id="btn-picks-llm" title="ملخص الفرص بنموذج AI">🤖 ملخص الفرص</button>
           <span class="small muted" id="scan-status"></span>
         </div>
       </div>
-      <p class="small muted" style="line-height:1.8">افتراضيًا التوصيات كلها <b>متوافقة مع الشريعة ☪️</b>: يفحص المحرك أسهم مؤشر EGX33 ويقيّم كل سهم على 6 محاور (الاتجاه · الزخم · التقلب · الموقع من المدى · بولنجر) ثم يرتّب أقوى فرص الشراء وأهم التحذيرات — في طلب واحد وسريع. لو عايز الفحص يشمل كل الأسهم اضغط زر «الشريعة فقط» عشان يطفيه.</p>
+      <p class="small muted" style="line-height:1.8">التوصيات هنا للأسهم <b>المتوافقة مع الشريعة ☪️ فقط</b> — مفيش أي فرص تانية خالص: يفحص المحرك أسهم مؤشر EGX33 ويقيّم كل سهم على 6 محاور (الاتجاه · الزخم · التقلب · الموقع من المدى · بولنجر) ثم يرتّب أقوى فرص الشراء وأهم التحذيرات — في طلب واحد وسريع. ولو مش عايز أسهم أصلاً، تحت في قسم «صناديق متوافقة مع الشريعة» فرص حلال جاهزة للتتبع.</p>
       <div class="bar hide" id="scan-bar-wrap" style="margin:10px 0"><div id="scan-bar" style="width:0%"></div></div>
       <div class="grid2" id="picks-grid"></div>
       <div id="picks-ai" style="margin-top:12px"></div>
@@ -502,8 +500,8 @@ const store={
 const CFG={ai:store.get("egx_ai_cfg",{}),prefs:store.get("egx_prefs",{})};
 const HOLDINGS=store.get("egx_holdings",[]);   // {t,qty,avg}
 const FUNDS=store.get("egx_funds",[]);         // {name,units,avg,nav,type}
-const WATCH_CACHE=store.get("egx_watch",{});   // {sym:{t,price,chg,history,verdict}}
-const PICKS=store.get("egx_picks",null);       // {time,buys:[],sells:[]}
+const WATCH_CACHE=store.get("egx_watch2",{});   // {sym:{t,price,chg,history,verdict}}
+const PICKS=store.get("egx_picks2",null);       // {time,buys:[],sells:[]}
 const WATCH_TTL=30*60*1000, HIST_TTL=12*3600*1000;
 
 function toast(msg,ms=3500){const d=document.createElement("div");d.className="toast";d.innerHTML=msg;document.body.appendChild(d);setTimeout(()=>d.remove(),ms)}
@@ -564,6 +562,7 @@ function analyze(hist){ // hist: [{d,o,h,l,c,v}]
 
 /* ═════════════════════════ 5) طبقة البيانات: Yahoo + بروكسيات ═════════════════════════ */
 const PROXY_LIST=[
+  {name:"Jina Reader", make:u=>"https://r.jina.ai/"+u, unwrap:t=>JSON.parse(t.slice(Math.max(0,t.indexOf("{"))))},
   {name:"AllOrigins",       make:u=>"https://api.allorigins.win/raw?url="+encodeURIComponent(u)},
   {name:"AllOrigins-get",   make:u=>"https://api.allorigins.win/get?url="+encodeURIComponent(u), unwrap:j=>JSON.parse(j.contents)},
   {name:"codetabs",         make:u=>"https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(u)},
@@ -679,7 +678,7 @@ async function getIndexData(cands){
         const verdict=analyze(d.hist);
         if(!verdict)throw new Error("insufficient");
         const rec={t:Date.now(),sym:c,price:d.price,prev:d.prev,chg:(d.price-d.prev)/d.prev*100,name:null,hist:d.hist,verdict,cur:d.cur};
-        WATCH_CACHE[c]=rec;store.set("egx_watch",WATCH_CACHE);
+        WATCH_CACHE[c]=rec;store.set("egx_watch2",WATCH_CACHE);
         net(true,"مباشر · "+LAST_PROXY);
         return rec;
       }catch(e){return null}
@@ -701,7 +700,7 @@ async function getStock(sym,{force=false}={}){
       const verdict=analyze(d.hist);
       if(!verdict)throw new Error("بيانات غير كافية");
       const rec={t:Date.now(),sym,price:d.price,prev:d.prev,chg:(d.price-d.prev)/d.prev*100,name:d.name,hist:d.hist,verdict};
-      WATCH_CACHE[sym]=rec;store.set("egx_watch",WATCH_CACHE);
+      WATCH_CACHE[sym]=rec;store.set("egx_watch2",WATCH_CACHE);
       net(true,"متصل");
       return rec;
     }catch(e){
@@ -822,12 +821,12 @@ async function renderMarket(force=false){
   </div>`;
   if(arr.length){
     const sorted=[...arr].sort((a,b)=>b.chg-a.chg);
-    store.set("egx_last_mkt",{time:Date.now(),movers:arr.map(d=>({sym:d.sym,price:d.price,chg:d.chg,histc:(d.hist||[]).map(x=>x&&x.c).filter(v=>v!=null).slice(-45)}))});
+    store.set("egx_mkt2",{time:Date.now(),movers:arr.map(d=>({sym:d.sym,price:d.price,chg:d.chg,histc:(d.hist||[]).map(x=>x&&x.c).filter(v=>v!=null).slice(-45)}))});
     $("top-gainers").innerHTML=sorted.slice(0,6).map(moverCard).join("");
     $("top-losers").innerHTML=sorted.slice(-6).reverse().map(moverCard).join("");
     MKT_RETRY=0;
   }else{
-    const last=store.get("egx_last_mkt",null);
+    const last=store.get("egx_mkt2",null);
     const staleCard=d=>`<div class="mover" onclick="openStock('${d.sym}')"><div class="row" style="justify-content:space-between;gap:6px"><div><b>${BYSYM[d.sym]?.n||d.sym}</b><div class="sect-tag">${d.sym}</div></div><span class="badge ${d.chg>=0?"b-buy":"b-sell"}">${PCT(d.chg)}</span></div><div class="row" style="justify-content:space-between;align-items:flex-end;margin-top:6px"><div class="mp">${NF(d.price)}</div>${spark(d.histc)}</div></div>`;
     if(last&&last.movers&&last.movers.length){
       const ago=Math.max(1,Math.round((Date.now()-last.time)/60000));
@@ -1098,8 +1097,7 @@ async function runScan(){
   $("btn-scan").disabled=true;
   $("scan-bar-wrap").classList.remove("hide");
   $("scan-status").textContent="فحص سريع بطلب واحد...";
-  const SHARIA_MODE=CFG.prefs.shariaPicks!==false;
-  const list=[...new Set([...(SHARIA_MODE?SHARIA:LIQUID),...HOLDINGS.map(h=>h.t)])];
+  const list=[...new Set([...SHARIA,...HOLDINGS.map(h=>h.t)])];
   const out={};
   /* المرحلة 1: طلب spark واحد لكل الأسهم — سنة كاملة من الإغلاقات في طلب واحد */
   try{
@@ -1114,7 +1112,7 @@ async function runScan(){
         WATCH_CACHE[s]=out[s];
       }
     });
-    store.set("egx_watch",WATCH_CACHE);
+    store.set("egx_watch2",WATCH_CACHE);
     net(true,"مباشر · "+LAST_PROXY);
   }catch(e){/* نكمل بالمرحلة 2 */}
   /* المرحلة 2: أي سهم ناقص نجربه من الكاش الفردي (بدون إجبار التحديث) */
@@ -1124,24 +1122,22 @@ async function runScan(){
     Object.assign(out,data);
   }
   const arr=Object.values(out).filter(x=>x&&x.verdict).map(x=>({sym:x.sym,n:BYSYM[x.sym]?.n,price:x.price,chg:x.chg,v:x.verdict}));
-  const pool=SHARIA_MODE?arr.filter(x=>SHARIA.includes(x.sym)):arr;
+  const pool=arr.filter(x=>SHARIA.includes(x.sym));
   const buys=[...pool].sort((a,b)=>b.v.sc-a.v.sc).slice(0,6);
   const buySyms=new Set(buys.map(x=>x.sym));
   const sells=[...pool].sort((a,b)=>a.v.sc-b.v.sc).filter(x=>!buySyms.has(x.sym)).slice(0,6);
   const outp={time:Date.now(),buys,sells,count:arr.length};
-  store.set("egx_picks",outp);
+  if(arr.length)store.set("egx_picks2",outp);
+  else{const prev=store.get("egx_picks2",null);if(prev&&prev.buys&&prev.buys.length){outp.buys=prev.buys;outp.sells=prev.sells||[];outp.time=prev.time}outp.stale=true}
   renderPicks(outp);
-  $("scan-status").textContent="تم فحص "+arr.length+" سهمًا — "+new Date().toLocaleTimeString("ar-EG");
+  $("scan-status").textContent=arr.length?("تم فحص "+arr.length+" سهمًا — "+new Date().toLocaleTimeString("ar-EG")):"⚠️ فشل جلب الأسعار المباشرة — جرّب إعادة الفحص";
   $("scan-bar-wrap").classList.add("hide");
   $("btn-scan").disabled=false;
-  toast("✨ اكتمل فحص "+arr.length+" سهمًا");
+  if(arr.length)toast("✨ اكتمل فحص "+arr.length+" سهمًا");else toast("⚠️ تعذر الاتصال بمصدر الأسعار — الأسعار على الكروت قديمة",6000);
   /* ملخص الفرص بالـ AI تلقائيًا (كل ٣٠ دقيقة عند وجود مفتاح مفعل) */
   autoPicksLLM();
 }
 $("btn-scan").onclick=runScan;
-function shariaPicksOn(){return CFG.prefs.shariaPicks!==false}
-function updateShariaToggle(){const b=$("btn-sharia-toggle");if(!b)return;const on=shariaPicksOn();b.textContent=on?"☪️ الشريعة فقط: مفعّل":"☪️ الشريعة فقط: متوقف";b.classList.toggle("ok",on)}
-$("btn-sharia-toggle").onclick=()=>{CFG.prefs.shariaPicks=!shariaPicksOn();store.set("egx_prefs",CFG.prefs);updateShariaToggle();toast(shariaPicksOn()?"☪️ التوصيات دلوقتي للأسهم المتوافقة مع الشريعة بس — جاري إعادة الفحص":"التوصيات رجعت لكل الأسهم — جاري إعادة الفحص");runScan()};
 function renderShariaFunds(){
   const box=$("sharia-funds");if(!box)return;
   const fs=FUNDS_CATALOG.map((f,i)=>({f,i})).filter(x=>x.f.sh);
@@ -1149,14 +1145,13 @@ function renderShariaFunds(){
   <div class="row" style="flex-wrap:wrap;gap:10px;align-items:stretch">${fs.map(({f,i})=>`<div class="card" style="background:var(--card2);flex:1 1 240px;max-width:300px;padding:12px"><div class="row" style="gap:8px;align-items:center"><b style="font-size:14px">${f.name}</b></div><div class="small muted" style="margin:6px 0">${f.type} — ${f.nav!=null?("آخر NAV ≈ "+f.nav+" ج.م"):"أدخل آخر NAV من كشف حسابك"}</div><button class="btn mini primary" onclick="trackFund(${i})">＋ تتبع</button></div>`).join("")}</div>
   <p class="small muted" style="margin-top:8px;line-height:1.7">الصناديق المصرية لا تنشر أسعارها عبر API مجاني — حدّث الـ NAV من كشف حسابك. والتوصيات اليومية فوق للأسهم المتوافقة مع الشريعة فقط.</p>`;
 }
-updateShariaToggle();
 /* 🤖 ملخص الفرص بنموذج AI — يعمل تلقائيًا بعد كل فحص أو عند فتح التبويب */
 async function llmPicks(){
   const box=$("picks-ai");if(!box)return;
   if(!CFG.ai.key||!CFG.ai.url||!CFG.ai.model){box.innerHTML='<div class="small muted">🤖 عشان الملخص بنموذج AI يشتغل من نفسه: اربط مزوّدك (مجاني) من ⚙️ الإعدادات مرة واحدة — وبعدها هيتولد تلقائيًا مع كل فحص.</div>';return}
   box.innerHTML='<div class="ai-box"><span class="spin"></span>جارٍ توليد ملخص الفرص بالذكاء الاصطناعي...</div>';
   try{
-    const p=store.get("egx_picks",null);
+    const p=store.get("egx_picks2",null);
     if(!p||!p.buys||!p.buys.length)throw new Error("لا نتائج فحص بعد — انتظر انتهاء الفحص");
     const lite=x=>({sym:x.sym,company:x.n,score:+x.v.sc.toFixed(1),rec:x.v.rec,price:+x.price.toFixed(2),chg_1d:+x.chg.toFixed(2),conf:x.v.conf,sharia:SHARIA.includes(x.sym)});
     const txt=await callLLM(SYS,"اكتب ملخصًا موجزًا (150 كلمة كحد أقصى) لفرص اليوم في البورصة المصرية من نتائج الفحص التالية (العميل مهتم بالاستثمار المتوافق مع الشريعة): اذكر أقوى فرصتين شراء مع السبب، وأهم تحذير، ونصيحة إدارة مخاطر واحدة:\nفرص شراء:\n"+JSON.stringify(p.buys.map(lite),null,1)+"\nتحذيرات بيع:\n"+JSON.stringify((p.sells||[]).map(lite),null,1));
@@ -1169,7 +1164,7 @@ function autoPicksLLM(){
   const last=+store.get("egx_pickllm_ts",0);
   if(Date.now()-last>30*60*1000){store.set("egx_pickllm_ts",Date.now());safe("ملخص الفرص",()=>llmPicks());}
 }
-function PICKSOK(){return !!store.get("egx_picks",null)}
+function PICKSOK(){return !!store.get("egx_picks2",null)}
 $("btn-picks-llm").onclick=()=>{store.set("egx_pickllm_ts",Date.now());llmPicks()};
 function renderPicks(p=PICKS){
   if(!p||(!p.buys&&!p.sells)){$("picks-grid").innerHTML='<div class="empty"><span class="spin"></span> جارٍ فحص السوق تلقائيًا لتوليد توصيات اليوم — من غير أي زر</div>';return}
@@ -1180,7 +1175,11 @@ function renderPicks(p=PICKS){
     <div class="row small" style="gap:12px;margin-top:6px"><span class="sharia-green">دعم ${NF(x.v.sup)}</span><span class="down">مقاومة ${NF(x.v.res)}</span><span style="color:var(--amber)">وقف ${NF(x.v.stop)}</span><span style="color:var(--accent2)">هدف ${NF(x.v.t1)}</span></div>
     <button class="btn mini" style="margin-top:8px" onclick="openStock('${x.sym}')">📊 التحليل الكامل</button>
   </div>`;
-  $("picks-grid").innerHTML=`
+  const fresh=p.time&&Date.now()-p.time<45*60*1000;
+  const ageMin=p.time?Math.round((Date.now()-p.time)/60000):null;
+  const stale=p.stale||!fresh;
+  const hdr=`<div class="row small" style="gap:10px;align-items:center;margin-bottom:10px">${stale?'<span class="badge b-sell">⚠️ أسعار قديمة</span>':'<span class="badge b-buy">🟢 أسعار مباشرة</span>'}<span class="muted">آخر تحديث أسعار: ${p.time?new Date(p.time).toLocaleString("ar-EG"):"—"}${ageMin!=null?" (قبل "+ageMin+" دقيقة)":""}</span>${stale?'<button class="btn mini" onclick="runScan()">🔄 حاول تحديث الأسعار</button>':""}</div>`;
+  $("picks-grid").innerHTML=hdr+`
     <div><h3 class="small" style="margin-bottom:8px">🟢 أقوى فرص الشراء</h3>${p.buys.map(x=>card(x,true)).join("")||'<div class="empty">لا فرص واضحة الآن</div>'}</div>
     <div><h3 class="small" style="margin-bottom:8px">🔴 تحذيرات / فرص بيع</h3>${(p.sells||[]).map(x=>card(x,false)).join("")||'<div class="empty">لا تحذيرات قوية الآن</div>'}</div>`;
   autoPicksLLM();
@@ -1323,7 +1322,7 @@ document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{
   switchTab(b.dataset.tab);
 });
 // تبويب صفحة السهم مخفي — زر رجوع
-$("btn-refresh-all").onclick=()=>{WATCH_CACHE&&store.set("egx_watch",{});Object.keys(WATCH_CACHE).forEach(k=>delete WATCH_CACHE[k]);toast("🔄 جارٍ التحديث...");renderMarket(true);if(CURRENT_SYM)openStock(CURRENT_SYM)};
+$("btn-refresh-all").onclick=()=>{WATCH_CACHE&&store.set("egx_watch2",{});Object.keys(WATCH_CACHE).forEach(k=>delete WATCH_CACHE[k]);toast("🔄 جارٍ التحديث...");renderMarket(true);if(CURRENT_SYM)openStock(CURRENT_SYM)};
 
 /* الساعة */
 setInterval(()=>{
@@ -1350,7 +1349,7 @@ function init(){
   safe("عرض السوق",()=>renderMarket());
   safe("ملخص المحفظة",renderPortfolioMini);
   /* التشغيل التلقائي: فحص السوق يشتغل من نفسه إذا كانت النتائج أقدم من 6 ساعات */
-  if(CFG.prefs.auto!==false&&(!PICKS||Date.now()-PICKS.time>6*3600*1000))safe("فحص السوق التلقائي",()=>runScan());
+  if(CFG.prefs.auto!==false&&(!PICKS||!PICKS.buys||!PICKS.buys.length||Date.now()-PICKS.time>45*60*1000))safe("فحص السوق التلقائي",()=>runScan());
 }
 /* التكيف مع iframe ستيرمليت: التطبيق يملأ الشاشة كاملة — لا شريط أسود ولا مساحات فاضية */
 (function(){
