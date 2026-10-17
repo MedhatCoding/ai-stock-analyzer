@@ -125,7 +125,7 @@
     <div class="logo">🕌</div>
     <div>
       <h1>عقار — محلل البورصة المصرية بالذكاء الاصطناعي</h1>
-      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.14</b></div>
+      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.15</b></div>
     </div>
     <div class="hd-right">
       <span class="pill" id="clock">—</span>
@@ -891,7 +891,7 @@ async function openStock(sym){
   CURRENT_SYM=sym;
   switchTab("stock");
   const st=BYSYM[sym];
-  $("tab-stock").innerHTML=`<div class="card"><div class="row" style="gap:14px"><span style="font-size:21px;font-weight:700">${st?.n||sym}</span><span class="sect-tag" style="font-size:14px">${sym}</span><span class="tag">${st?.s||""}</span>${SHARIA.includes(sym)?'<span class="badge b-sharia">☪️ متوافق مع الشريعة'+(PURIFY[sym]?' · تطهير '+PURIFY[sym]+'%':'')+'</span>':""}<span class="pill">جارٍ جلب البيانات المباشرة<span class="spin"></span></span></div><div id="stock-body"></div></div>`;
+  $("tab-stock").innerHTML=`<div class="card"><div class="row" style="gap:14px"><span style="font-size:21px;font-weight:700">${st?.n||sym}</span><span class="sect-tag" style="font-size:14px">${sym}</span><span class="tag">${st?.s||""}</span>${SHARIA.includes(sym)?'<span class="badge b-sharia">☪️ متوافق مع الشريعة'+(PURIFY[sym]?' · تطهير '+PURIFY[sym]+'%':'')+'</span>':""}<span class="pill">جارٍ جلب البيانات المباشرة<span class="spin"></span></span></div><div id="stock-body"></div></div><div class="card" style="margin-top:14px"><h3>🔬 مختبر الاستراتيجيات — محاكاة كمية</h3><p class="small muted" style="line-height:1.8;margin-bottom:10px">محاكاة استراتيجية كمّية (اتجاه SMA20/50 + زخم RSI + إدارة مخاطر بوقف 2×ATR وهدف 3×ATR) على بيانات سنة كاملة، ومقارنتها بـ«اشترِ واحتفظ» — قبل ما تدفع فلوسك، اعرف الأرقام.</p><button class="btn primary mini" onclick="runBacktest()">🚀 شغّل المحاكاة</button><div id="backtest-out" style="margin-top:12px"></div></div>`;
   const d=await getStock(sym);
   if(CURRENT_SYM!==sym)return;
   const body=$("stock-body");
@@ -1234,6 +1234,81 @@ async function llmMarket(){
   }catch(e){$("market-llm-box").innerHTML=`<span style="color:var(--red)">⚠️ ${e.message}</span>`}
 }
 
+
+/* ═══════════════ 12.5) مختبر الاستراتيجيات — محرك Backtest كمي ═══════════════ */
+function btSMA(a,n){const r=[];let s=0;for(let i=0;i<a.length;i++){s+=a[i];if(i>=n)s-=a[i-n];r.push(i>=n-1?s/n:null)}return r}
+function btRSI(a,n){const r=[null];let g=0,l=0;for(let i=1;i<a.length;i++){const d=a[i]-a[i-1],up=d>0?d:0,dn=d<0?-d:0;if(i<=n){g+=up;l+=dn;r.push(i===n?100-100/(1+g/(l||1e-9)):null)}else{g=(g*(n-1)+up)/n;l=(l*(n-1)+dn)/n;r.push(100-100/(1+g/(l||1e-9)))}}return r}
+function btATR(hi,lo,cl,n){const r=[null];let prev=null;for(let i=1;i<cl.length;i++){const tr=Math.max(hi[i]-lo[i],Math.abs(hi[i]-cl[i-1]),Math.abs(lo[i]-cl[i-1]));if(prev==null){let s=0;for(let k=1;k<=Math.min(n,i);k++)s+=Math.max(hi[k]-lo[k],Math.abs(hi[k]-cl[k-1]),Math.abs(lo[k]-cl[k-1]));prev=s/Math.min(n,i)}else{prev=(prev*(n-1)+tr)/n}r.push(prev)}return r}
+async function runBacktest(){
+  const sym=CURRENT_SYM,box=$("backtest-out");if(!box||!sym)return;
+  box.innerHTML='<span class="spin"></span> جارٍ تجهيز بيانات السنة...';
+  let cl=null,hi=null,lo=null;
+  const c=WATCH_CACHE[sym],hist=c&&c.history;
+  if(hist&&hist.length>=80){cl=hist.map(x=>x.c!=null?x.c:x.close);hi=hist.map((x,i)=>x.h!=null?x.h:cl[i]);lo=hist.map((x,i)=>x.l!=null?x.l:cl[i])}
+  if(!cl){
+    let q=null;
+    for(const s of [sym+".CA",sym]){
+      try{
+        const j=await fetchJSON("https://query1.finance.yahoo.com/v8/finance/chart/"+encodeURIComponent(s)+"?range=1y&interval=1d");
+        const r=j&&j.chart&&j.chart.result&&j.chart.result[0],qq=r&&r.indicators&&r.indicators.quote&&r.indicators.quote[0];
+        if(qq&&qq.close&&qq.close.filter(x=>x!=null).length>=80){q=qq;break}
+      }catch(e){}
+    }
+    if(!q){box.innerHTML='<div class="warn-box">تعذر جلب تاريخ سنة كاملة — جرّب بعد تحديث الأسعار أو افتح التطبيق من رابط مباشر.</div>';return}
+    const rows=[];for(let i=0;i<q.close.length;i++){if(q.close[i]!=null)rows.push({c:q.close[i],h:(q.high&&q.high[i]!=null)?q.high[i]:q.close[i],l:(q.low&&q.low[i]!=null)?q.low[i]:q.close[i]})}
+    cl=rows.map(x=>x.c);hi=rows.map(x=>x.h);lo=rows.map(x=>x.l);
+  }
+  if(!cl||cl.length<80){box.innerHTML='<div class="warn-box">البيانات المتاحة أقل من ٨٠ جلسة — مش كفاية لمحاكاة موثوقة.</div>';return}
+  const s20=btSMA(cl,20),s50=btSMA(cl,50),rsi=btRSI(cl,14),atr=btATR(hi,lo,cl,14);
+  let inPos=false,pend=false,eCash=1,entry=0,stop=0,target=0,eAt=0;const trades=[],eq=[];
+  for(let i=50;i<cl.length;i++){
+    if(!inPos&&!pend){
+      if(s20[i]!=null&&s50[i]!=null&&s20[i]>s50[i]&&rsi[i]!=null&&rsi[i]<70&&cl[i]>s20[i]&&atr[i]!=null)pend=true;
+    }else if(pend&&!inPos){
+      pend=false;inPos=true;entry=cl[i];eAt=i;stop=entry-2*atr[i];target=entry+3*atr[i];
+    }else if(inPos){
+      let exit=null,why="";
+      if(lo[i]<=stop){exit=stop;why="وقف"}
+      else if(hi[i]>=target){exit=target;why="هدف"}
+      else if(s20[i]!=null&&s50[i]!=null&&s20[i]<s50[i]){exit=cl[i];why="انعكاس"}
+      else if(i-eAt>=40){exit=cl[i];why="مهلة"}
+      if(exit!=null){const ret=(exit-entry)/entry;eCash*=1+ret;trades.push({en:entry,ex:exit,ret:ret,why:why,days:i-eAt});inPos=false}
+    }
+    eq.push(inPos?eCash*(cl[i]/entry):eCash);
+  }
+  const n=trades.length,wins=trades.filter(t=>t.ret>0).length,wr=n?100*wins/n:0;
+  const tot=100*(eCash-1),bh=100*(cl[cl.length-1]/cl[50]-1);
+  const gains=trades.filter(t=>t.ret>0).reduce((s,t)=>s+t.ret,0),losses=Math.abs(trades.filter(t=>t.ret<0).reduce((s,t)=>s+t.ret,0));
+  const pfs=losses>0?(gains/losses).toFixed(2):(gains>0?"∞":"—");
+  let peak=0,mdd=0;for(const v of eq){if(v>peak)peak=v;if(peak>0)mdd=Math.max(mdd,100*(peak-v)/peak)}
+  const rets=[];for(let i=1;i<cl.length;i++)rets.push(cl[i]/cl[i-1]-1);
+  const mu=rets.reduce((a,b)=>a+b,0)/(rets.length||1);
+  const vol=Math.sqrt(rets.reduce((s,x)=>s+(x-mu)*(x-mu),0)/(rets.length||1))*Math.sqrt(252)*100;
+  const aw=wins?gains/wins:0,al=(n-wins)?losses/(n-wins):0;
+  const kelly=(aw>0&&al>0)?Math.max(0,100*((wr/100)-((1-wr/100)/(aw/al)))):0;
+  const W=880,H=150,pad=10;
+  const mn=Math.min.apply(null,eq.concat([1])),mx=Math.max.apply(null,eq.concat([1]));
+  const X=i=>pad+(i/((eq.length-1)||1))*(W-2*pad),Y=v=>10+(H-25)*(1-((v-mn)/((mx-mn)||1)));
+  const pts=eq.map((v,i)=>X(i)+","+Y(v)).join(" ");
+  const bpts=cl.map((v,i)=>i<50?null:(X(i-50)+","+Y(v/cl[50]))).filter(Boolean).join(" ");
+  const sign=x=>(x>=0?"+":"")+x.toFixed(1)+"%";
+  const last=trades.slice(-6).reverse().map(t=>'<tr><td>'+t.why+'</td><td class="num">'+NF(t.en)+'</td><td class="num">'+NF(t.ex)+'</td><td class="num '+(t.ret>=0?"up":"down")+'">'+(100*t.ret).toFixed(1)+'%</td><td class="num">'+t.days+' يوم</td></tr>').join("");
+  let html='<div class="metrics" style="margin-bottom:12px">'
+   +'<div class="metric"><div class="lbl">عدد الصفقات</div><div class="val">'+n+'</div></div>'
+   +'<div class="metric"><div class="lbl">نسبة النجاح</div><div class="val" style="color:'+(wr>=50?"var(--green)":"var(--red)")+'">'+wr.toFixed(0)+'%</div></div>'
+   +'<div class="metric"><div class="lbl">عائد الاستراتيجية</div><div class="val" style="color:'+(tot>=0?"var(--green)":"var(--red)")+'">'+sign(tot)+'</div></div>'
+   +'<div class="metric"><div class="lbl">اشترِ واحتفظ</div><div class="val" style="color:'+(bh>=0?"var(--green)":"var(--red)")+'">'+sign(bh)+'</div></div>'
+   +'<div class="metric"><div class="lbl">أقصى سحب</div><div class="val" style="color:var(--red)">-'+mdd.toFixed(1)+'%</div></div>'
+   +'<div class="metric"><div class="lbl">معامل الربح</div><div class="val">'+pfs+'</div></div>'
+   +'<div class="metric"><div class="lbl">التقلب السنوي</div><div class="val">'+vol.toFixed(0)+'%</div></div>'
+   +'<div class="metric"><div class="lbl">حجم مقترح (كيلي)</div><div class="val" style="color:var(--amber)">'+kelly.toFixed(0)+'%</div></div>'
+   +'</div>'
+   +'<svg viewBox="0 0 880 150" style="width:100%;height:auto"><polyline points="'+pts+'" fill="none" stroke="#22d3a5" stroke-width="2"/><polyline points="'+bpts+'" fill="none" stroke="#8da3c9" stroke-width="1.2" stroke-dasharray="5 4"/></svg>'
+   +'<div class="small muted" style="margin-top:4px">🟢 منحنى الاستراتيجية · الرمادي المتقطع: اشترِ واحتفظ</div>';
+  if(n)html+='<div class="scroll-x" style="margin-top:10px"><table><thead><tr><th>سبب الخروج</th><th>سعر الدخول</th><th>سعر الخروج</th><th>العائد</th><th>المدة</th></tr></thead><tbody>'+last+'</tbody></table></div>';
+  html+='<div class="warn-box" style="margin-top:10px">⚠️ المحاكاة على بيانات تاريخية (آخر ١٢ شهرًا) — الأداء السابق لا يضمن المستقبل، وتكاليف السمسرة والفروق السعري غير محسوبة.</div>';
+  box.innerHTML=html;
+}
 /* ═════════════════════════ 13) الإعدادات والتفضيلات ═════════════════════════ */
 function loadSettings(){
   $("ai-url").value=CFG.ai.url||"";$("ai-key").value=CFG.ai.key||"";$("ai-model").value=CFG.ai.model||"";
