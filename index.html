@@ -125,7 +125,7 @@
     <div class="logo">🕌</div>
     <div>
       <h1>عقار — محلل البورصة المصرية بالذكاء الاصطناعي</h1>
-      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.12</b></div>
+      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.13</b></div>
     </div>
     <div class="hd-right">
       <span class="pill" id="clock">—</span>
@@ -184,11 +184,8 @@
     </div>
     <div class="card">
       <h3>🤖 ملخص السوق بالذكاء الاصطناعي</h3>
-      <p class="small muted" style="margin-bottom:10px">يولّد المحرك المدمج قراءة عامة لاتجاه السوق من بيانات الأسهم المتاحة. ولتحليل سرد أعمق اربط نموذج ذكاء اصطناعي من تبويب الإعدادات.</p>
+      <p class="small muted" style="margin-bottom:10px">يولّد المحرك المدمج قراءة عامة لاتجاه السوق من بيانات الأسهم المتاحة.</p>
       <div id="market-ai"></div>
-      <div class="row" style="margin-top:10px">
-        <button class="btn ai" id="btn-market-llm">🤖 ملخص بنموذج AI حقيقي</button>
-      </div>
     </div>
   </section>
 
@@ -267,7 +264,6 @@
     <div class="card">
       <div class="flex-between">
         <h3>🧠 قرارات الذكاء الاصطناعي لكل سهم</h3>
-        <button class="btn ai mini" id="btn-portfolio-llm">🤖 تحليل المحفظة بنموذج AI حقيقي</button>
       </div>
       <div id="holdings-ai"></div>
     </div>
@@ -288,9 +284,8 @@
       <div class="flex-between">
         <h3>🌟 الماسح الذكي — فرص اليوم</h3>
         <div class="row">
-         <span class="pill-auto">⚙️ فحص تلقائي: يعمل بنفسه عند فتح التطبيق وكل ٤٥ دقيقة</span>
+         <span class="pill-auto">⚙️ فحص تلقائي: مرة كل ٢٤ ساعة عند فتح التطبيق</span>
           <button class="btn mini" id="btn-scan" title="إعادة الفحص يدويًا">🔄 إعادة الفحص</button>
-          <button class="btn ai mini" id="btn-picks-llm" title="ملخص الفرص بنموذج AI">🤖 ملخص الفرص</button>
           <span class="small muted" id="scan-status"></span>
         </div>
       </div>
@@ -1142,8 +1137,6 @@ async function runScan(){
   $("scan-bar-wrap").classList.add("hide");
   $("btn-scan").disabled=false;
   if(arr.length)toast("✨ اكتمل فحص "+arr.length+" سهمًا");else toast("⚠️ تعذر الاتصال بمصدر الأسعار — الأسعار على الكروت قديمة",6000);
-  /* ملخص الفرص بالـ AI تلقائيًا (كل ٣٠ دقيقة عند وجود مفتاح مفعل) */
-  autoPicksLLM();
 }
 $("btn-scan").onclick=runScan;
 function renderShariaFunds(){
@@ -1173,7 +1166,6 @@ function autoPicksLLM(){
   if(Date.now()-last>30*60*1000){store.set("egx_pickllm_ts",Date.now());safe("ملخص الفرص",()=>llmPicks());}
 }
 function PICKSOK(){return !!store.get("egx_picks3",null)}
-$("btn-picks-llm").onclick=()=>{store.set("egx_pickllm_ts",Date.now());llmPicks()};
 function renderPicks(p=PICKS){
   if(!p||(!p.buys&&!p.sells)){$("picks-grid").innerHTML='<div class="empty"><span class="spin"></span> جارٍ فحص السوق تلقائيًا لتوليد توصيات اليوم — من غير أي زر</div>';return}
   const card=(x,isBuy)=>`<div class="card" style="background:var(--card2)">
@@ -1183,14 +1175,13 @@ function renderPicks(p=PICKS){
     <div class="row small" style="gap:12px;margin-top:6px"><span class="sharia-green">دعم ${NF(x.v.sup)}</span><span class="down">مقاومة ${NF(x.v.res)}</span><span style="color:var(--amber)">وقف ${NF(x.v.stop)}</span><span style="color:var(--accent2)">هدف ${NF(x.v.t1)}</span></div>
     <button class="btn mini" style="margin-top:8px" onclick="openStock('${x.sym}')">📊 التحليل الكامل</button>
   </div>`;
-  const fresh=p.time&&Date.now()-p.time<45*60*1000;
+  const fresh=p.time&&Date.now()-p.time<24*60*60*1000;
   const ageMin=p.time?Math.round((Date.now()-p.time)/60000):null;
   const stale=p.stale||!fresh;
   const hdr=`<div class="row small" style="gap:10px;align-items:center;margin-bottom:10px">${stale?'<span class="badge b-sell">⚠️ أسعار قديمة</span>':'<span class="badge b-buy">🟢 أسعار مباشرة</span>'}<span class="muted">آخر تحديث أسعار: ${p.time?new Date(p.time).toLocaleString("ar-EG"):"—"}${ageMin!=null?" (قبل "+ageMin+" دقيقة)":""}</span>${stale?'<button class="btn mini" onclick="runScan()">🔄 حاول تحديث الأسعار</button>':""}</div>`;
   $("picks-grid").innerHTML=hdr+`
     <div><h3 class="small" style="margin-bottom:8px">🟢 أقوى فرص الشراء</h3>${p.buys.map(x=>card(x,true)).join("")||'<div class="empty">لا فرص واضحة الآن</div>'}</div>
     <div><h3 class="small" style="margin-bottom:8px">🔴 تحذيرات / فرص بيع</h3>${(p.sells||[]).map(x=>card(x,false)).join("")||'<div class="empty">لا تحذيرات قوية الآن</div>'}</div>`;
-  autoPicksLLM();
 }
 
 /* ═════════════════════════ 12) الربط بنموذج LLM حقيقي ═════════════════════════ */
@@ -1234,7 +1225,6 @@ async function llmPortfolio(){
     const el=document.getElementById(id);if(el)el.outerHTML=`<div class="ai-box" style="border-color:var(--violet)">🤖 <b>تحليل المحفظة — ${CFG.ai.model}</b><br><br>${mdLite(txt)}</div><div style="height:10px"></div>`;
   }catch(e){const el=document.getElementById(id);if(el)el.outerHTML=`<div class="ai-box" style="color:var(--red)">⚠️ ${e.message}</div>`}
 }
-$("btn-portfolio-llm").onclick=llmPortfolio;;
 async function llmMarket(){
   const box=$("market-ai");box.insertAdjacentHTML("afterend",`<div class="ai-box" id="market-llm-box"><span class="spin"></span>جارٍ توليد ملخص السوق...</div>`);
   try{
@@ -1243,7 +1233,6 @@ async function llmMarket(){
     $("market-llm-box").innerHTML=`🤖 <b>ملخص ${CFG.ai.model}</b><br><br>${mdLite(txt)}`;
   }catch(e){$("market-llm-box").innerHTML=`<span style="color:var(--red)">⚠️ ${e.message}</span>`}
 }
-$("btn-market-llm").onclick=llmMarket;
 
 /* ═════════════════════════ 13) الإعدادات والتفضيلات ═════════════════════════ */
 function loadSettings(){
@@ -1356,8 +1345,8 @@ function init(){
   safe("صناديق الشريعة",renderShariaFunds);
   safe("عرض السوق",()=>renderMarket());
   safe("ملخص المحفظة",renderPortfolioMini);
-  /* التشغيل التلقائي: فحص السوق يشتغل من نفسه إذا كانت النتائج أقدم من 6 ساعات */
-  if(CFG.prefs.auto!==false&&(!PICKS||!PICKS.buys||!PICKS.buys.length||Date.now()-PICKS.time>45*60*1000))safe("فحص السوق التلقائي",()=>runScan());
+  /* التشغيل التلقائي: فحص السوق يشتغل من نفسه إذا كانت النتائج أقدم من 24 ساعة */
+  if(CFG.prefs.auto!==false&&(!PICKS||!PICKS.buys||!PICKS.buys.length||Date.now()-PICKS.time>24*60*60*1000))safe("فحص السوق التلقائي",()=>runScan());
 }
 /* التكيف مع iframe ستيرمليت: التطبيق يملأ الشاشة كاملة — لا شريط أسود ولا مساحات فاضية */
 (function(){
