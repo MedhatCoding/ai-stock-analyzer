@@ -125,7 +125,7 @@
     <div class="logo">🕌</div>
     <div>
       <h1>عقار — محلل البورصة المصرية بالذكاء الاصطناعي</h1>
-      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.13</b></div>
+      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.14</b></div>
     </div>
     <div class="hd-right">
       <span class="pill" id="clock">—</span>
@@ -1348,14 +1348,15 @@ function init(){
   /* التشغيل التلقائي: فحص السوق يشتغل من نفسه إذا كانت النتائج أقدم من 24 ساعة */
   if(CFG.prefs.auto!==false&&(!PICKS||!PICKS.buys||!PICKS.buys.length||Date.now()-PICKS.time>24*60*60*1000))safe("فحص السوق التلقائي",()=>runScan());
 }
-/* التكيف مع iframe ستيرمليت: التطبيق يملأ الشاشة كاملة — لا شريط أسود ولا مساحات فاضية */
+/* التكيف مع iframe ستيرمليت: الإطار بارتفاع الشاشة الظاهرة — التمرير جوه التطبيق فشريط التبويبات الثابت يفضل ظاهر دايمًا */
 (function(){
   if(window.parent===window)return;
   function fit(){
     try{
       const ifr=[...window.parent.document.querySelectorAll("iframe")].find(f=>f.contentWindow===window);
       if(!ifr)return;
-      const h=Math.max(document.documentElement.scrollHeight,window.parent.innerHeight-12);
+      const top=ifr.getBoundingClientRect().top+(window.parent.pageYOffset||0);
+      const h=Math.max(420,window.parent.innerHeight-top-14);
       ifr.style.height=h+"px";
       ifr.style.width="100%";
       ifr.style.border="none";
