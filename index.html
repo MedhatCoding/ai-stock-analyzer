@@ -13,7 +13,7 @@
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:radial-gradient(1100px 500px at 85% -5%,#14234a 0%,var(--bg) 55%);color:var(--text);min-height:100vh}
-  .wrap{max-width:1280px;margin:0 auto;padding:18px 14px 70px}
+  .wrap{max-width:1280px;margin:0 auto;padding:18px 14px 96px}
   header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:6px 0 14px}
   .logo{width:50px;height:50px;border-radius:15px;background:linear-gradient(135deg,#4f8cff,#22d3a5);display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 4px 24px #4f8cff44}
   h1{font-size:24px}
@@ -24,10 +24,12 @@
   .live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);margin-inline-end:5px;animation:pulse 1.6s infinite}
   .live-dot.off{background:var(--red);box-shadow:0 0 8px var(--red);animation:none}
   @keyframes pulse{50%{opacity:.35}}
-  nav{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:16px}
-  .tab{background:transparent;border:1px solid transparent;color:var(--muted);padding:9px 16px;border-radius:12px;cursor:pointer;font-size:14.5px;font-family:inherit;transition:.15s}
-  .tab:hover{color:var(--text);background:var(--card)}
-  .tab.active{background:linear-gradient(135deg,#1b3565,#24488a);color:#fff;font-weight:600}
+  nav{position:fixed;bottom:0;inset-inline:0;z-index:70;display:flex;justify-content:space-around;gap:0;flex-wrap:nowrap;border-top:1px solid var(--border2);padding:7px 4px calc(7px + env(safe-area-inset-bottom,0px));margin:0;background:rgba(12,21,38,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 -6px 24px #000a}
+  .tab{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:transparent;border:1px solid transparent;color:var(--muted);padding:6px 2px;border-radius:12px;cursor:pointer;font-size:10.5px;font-family:inherit;transition:.15s;white-space:nowrap}
+  .tab .ico{display:block;font-size:19px;line-height:1}
+  .tab:hover{color:var(--text);background:transparent}
+  .tab.active{background:transparent;color:var(--accent2);font-weight:600}
+  .tab.active .ico{filter:drop-shadow(0 0 7px #22d3a599)}
   .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:14px}
   .card h3{font-size:16px;margin-bottom:10px}
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
@@ -84,7 +86,7 @@
   .field{margin-bottom:11px}
   .field label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:5px}
   .field input,.field select{width:100%}
-  .toast{position:fixed;bottom:18px;right:18px;background:var(--card);border:1px solid var(--border2);border-radius:12px;padding:12px 18px;font-size:13.5px;z-index:80;box-shadow:0 8px 30px #000a;animation:tin .25s}
+  .toast{position:fixed;bottom:92px;right:18px;background:var(--card);border:1px solid var(--border2);border-radius:12px;padding:12px 18px;font-size:13.5px;z-index:80;box-shadow:0 8px 30px #000a;animation:tin .25s}
   @keyframes tin{from{transform:translateY(15px);opacity:0}}
   .spin{display:inline-block;width:15px;height:15px;border:2px solid #ffffff55;border-top-color:#fff;border-radius:50%;animation:r 1s linear infinite;vertical-align:-2px;margin-inline-end:6px}
   @keyframes r{to{transform:rotate(360deg)}}
@@ -123,7 +125,7 @@
     <div class="logo">🕌</div>
     <div>
       <h1>عقار — محلل البورصة المصرية بالذكاء الاصطناعي</h1>
-      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.10</b></div>
+      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.11</b></div>
     </div>
     <div class="hd-right">
       <span class="pill" id="clock">—</span>
@@ -133,12 +135,12 @@
   </header>
 
   <nav>
-    <button class="tab active" data-tab="market">🏠 السوق</button>
-    <button class="tab" data-tab="stocks">🔎 الأسهم</button>
-    <button class="tab" data-tab="sharia">☪️ الشريعة</button>
-    <button class="tab" data-tab="portfolio">💼 محفظتي</button>
-    <button class="tab" data-tab="picks">🌟 توصيات اليوم</button>
-    <button class="tab" data-tab="settings">⚙️ الإعدادات</button>
+    <button class="tab active" data-tab="market"><span class="ico">🏠</span><span>السوق</span></button>
+    <button class="tab" data-tab="stocks"><span class="ico">🔎</span><span>الأسهم</span></button>
+    <button class="tab" data-tab="sharia"><span class="ico">☪️</span><span>الشريعة</span></button>
+    <button class="tab" data-tab="portfolio"><span class="ico">💼</span><span>محفظتي</span></button>
+    <button class="tab" data-tab="picks"><span class="ico">🌟</span><span>توصيات</span></button>
+    <button class="tab" data-tab="settings"><span class="ico">⚙️</span><span>الإعدادات</span></button>
   </nav>
 
   <!-- ============ السوق ============ -->
