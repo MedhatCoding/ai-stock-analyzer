@@ -1,16 +1,50 @@
 # -*- coding: utf-8 -*-
-# تدريب نموذج LightGBM لأسهم الشريعة في البورصة المصرية (EGX33 + متوافق خارج المؤشر) - إصدار 2
-# الجديد في الإصدار 2: سمتان إضافيتان (نسبة السيولة 5/20 وزخم 6 شهور) + جدول معايرة على بيانات الاختبار
-# يعمل داخل GitHub Actions: يسحب تاريخ ٥ سنين من Yahoo Finance، يبني نفس السمات الفنية
-# العشر اللي التطبيق بيحسبها في المتصفح بالظبط، يدرب مصنف LightGBM بفصل زمني 80/20،
-# ويصدّر الأوزان في ملف model_weights.json اللي التطبيق بيجيبه ويشغّل التوقع بيه محليًا.
+# تدريب نموذج LightGBM لأسهم الشريعة في البورصة المصرية (EGX33 + متوافق خارج المؤشر) - إصدار 3
+# الجديد في الإصدار 3: جلب البيانات مباشرة من Yahoo chart API (v8) بدل مكتبة yfinance
+# اللي بتفشل على GitHub Actions — مع كوكيز وإعادة محاولة على سيرفرين مختلفين.
+# السمات العشر وجدول المعايرة زي الإصدار 2 بالظبط، وصيغة ملف الأوزان (version: 2)
+# زي ما التطبيق في المتصفح متوقعها.
 import json, math, time, datetime
-import yfinance as yf
+import urllib.request, http.cookiejar
 import lightgbm as lgb
 
 SYMS = ["ACGC","ETEL","OCDI","PHDC","SKPC","TMGH","ETRS","IFAP","LCSW","MASR","MPCO","ORWE","SAUD","MCQE","AMOC","EGAS","FAIT","ATQA","CIRA","EGAL","FAITA","JUFO","ORHD","ADIB","ARCC","ORAS","EFID","OLFI","MTIE","RACC","ICFC","ISPH","RMDA","EFIH","GOUR","CLHO","ABUK","SWDY","MFPC","FWRY","POUL","EGCH","EGTS","ELKA","EMFD","TAQA","MNHD"]
 LOOK = 10
 MINF = 55
+
+def make_opener():
+    cj = http.cookiejar.CookieJar()
+    op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
+    op.addheaders = [("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"), ("Accept", "application/json,text/plain,*/*"), ("Accept-Language", "en-US,en;q=0.9")]
+    try:
+        op.open("https://fc.yahoo.com/", timeout=15)
+    except Exception:
+        pass
+    return op
+
+def fetch(sym, op):
+    err = None
+    for host in ("query1", "query2"):
+        for attempt in range(3):
+            try:
+                url = "https://" + host + ".finance.yahoo.com/v8/finance/chart/" + sym + ".CA?range=5y&interval=1d"
+                with op.open(url, timeout=30) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+                res = data["chart"]["result"][0]
+                q = res["indicators"]["quote"][0]
+                closes_raw = q.get("close") or []
+                vols_raw = q.get("volume") or []
+                cs, vs = [], []
+                for cc, vv in zip(closes_raw, vols_raw):
+                    if cc is not None and cc > 0:
+                        cs.append(float(cc))
+                        vs.append(float(vv) if vv is not None and vv > 0 else None)
+                return cs, vs
+            except Exception as e:
+                err = e
+                time.sleep(2 + attempt * 3)
+    print(sym, "fetch failed:", err)
+    return [], []
 
 def features(c, v):
     n = len(c)
@@ -53,15 +87,9 @@ def features(c, v):
 
 def main():
     X, Y, ok = [], [], []
+    op = make_opener()
     for s in SYMS:
-        closes, vols = [], []
-        try:
-            df = yf.download(s + ".CA", period="5y", interval="1d", progress=False, auto_adjust=True)
-            mask = df["Close"].notna()
-            closes = [float(x) for x in df["Close"][mask].tolist()]
-            vols = [(float(x) if x == x else None) for x in df["Volume"][mask].tolist()]
-        except Exception:
-            closes, vols = [], []
+        closes, vols = fetch(s, op)
         cnt = 0
         if len(closes) >= MINF + LOOK + 1:
             for t in range(MINF - 1, len(closes) - LOOK):
@@ -74,10 +102,11 @@ def main():
         if cnt:
             ok.append(s)
         print(s, "samples:", cnt)
-        time.sleep(0.35)
+        time.sleep(1.2)
     print("total:", len(X), "symbols:", len(ok))
     if len(X) < 3000:
-        raise SystemExit("insufficient data - keeping existing model")
+        print("insufficient data - no model written this run")
+        return
     cut = int(len(X) * 0.8)
     Xtr, Ytr = X[:cut], Y[:cut]
     Xte, Yte = X[cut:], Y[cut:]
