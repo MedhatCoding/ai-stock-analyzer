@@ -1,0 +1,28 @@
+name: Train LightGBM Model (weekly)
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 18 * * 0"
+permissions:
+  contents: write
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: pip install --quiet yfinance lightgbm
+      - name: Train model
+        run: python train_model.py
+      - name: Commit model weights
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add model_weights.json
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "chore: weekly LightGBM retrain (model_weights.json)"
+          git push
