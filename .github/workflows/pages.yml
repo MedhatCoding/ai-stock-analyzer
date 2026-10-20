@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "index.html"
+      - ".github/workflows/pages.yml"
 permissions:
   contents: read
   pages: write
@@ -16,9 +17,12 @@ jobs:
   deploy:
     runs-on: ubuntu-24.04
     permissions:
+      contents: read
       pages: write
       id-token: write
-    environment: github-pages
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
@@ -27,4 +31,5 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: "."
-      - uses: actions/deploy-pages@v4
+      - id: deployment
+        uses: actions/deploy-pages@v4
