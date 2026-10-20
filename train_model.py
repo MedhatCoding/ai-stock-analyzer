@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-# تدريب نموذج LightGBM لأسهم الشريعة في البورصة المصرية - إصدار 4
-# الإصدار 4: لوج تشخيصي كامل يتكتب في train_log.txt وبيترفع للريبو تلقائيًا،
+# تدريب نموذج LightGBM لأسهم الشريعة في البورصة المصرية - إصدار 5
+# الإصدار 5: لوج تشخيصي كامل يتكتب في train_log.txt وبيترفع للريبو تلقائيًا،
 # حارس على قسمة AUC، وثبات النسخة على ubuntu-24.04 في الـ workflow.
 # صيغة ملف الأوزان (version: 2) زي ما التطبيق في المتصفح متوقعها.
 import json, math, time, datetime, traceback
@@ -171,8 +171,7 @@ def main():
         L("ERROR: " + traceback.format_exc())
     finally:
         with open("train_log.txt", "w", encoding="utf-8") as fh:
-            fh.write("
-".join(LOG))
+            fh.write(chr(10).join(LOG))
 
 if __name__ == "__main__":
     main()
