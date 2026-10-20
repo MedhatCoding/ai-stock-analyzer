@@ -125,7 +125,7 @@
     <div class="logo">🕌</div>
     <div>
       <h1>عقار — محلل البورصة المصرية بالذكاء الاصطناعي</h1>
-      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.16</b></div>
+      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.17</b></div>
     </div>
     <div class="hd-right">
       <span class="pill" id="clock">—</span>
@@ -266,6 +266,7 @@
         <h3>🧠 قرارات الذكاء الاصطناعي لكل سهم</h3>
       </div>
       <div id="holdings-ai"></div>
+    <div id="quant-lab"></div>
     </div>
     <div class="card">
       <div class="flex-between">
@@ -1424,6 +1425,141 @@ function mlShow(o,m){
   o.innerHTML=html;
 }
 
+/* ═════════════════════════ 12.6) 🔗🎲 مختبر المحفظة الكمي — ارتباط · تنويع · مونت كارلو ═════════════════════════ */
+function qHist(sym){const w=WATCH_CACHE[sym];if(!w)return null;const h=(w.hist||w.history||[]).map(x=>x&&x.c).filter(v=>v!=null&&v>0);return h.length>=60?h:null}
+function qReturns(h,n){const L=Math.min(n,h.length-1);const out=[];for(let i=h.length-L;i<h.length;i++)out.push(h[i]/h[i-1]-1);return out}
+function qPearson(a,b){const n=Math.min(a.length,b.length);if(n<30)return null;let ma=0,mb=0;for(let i=0;i<n;i++){ma+=a[i];mb+=b[i]}ma/=n;mb/=n;let sa=0,sb=0,sab=0;for(let i=0;i<n;i++){const da=a[i]-ma,db=b[i]-mb;sa+=da*da;sb+=db*db;sab+=da*db}const d=Math.sqrt(sa*sb);return d<1e-12?0:sab/d}
+function qSyms(){
+  const held=HOLDINGS.map(h=>h.t).filter(s=>qHist(s));
+  if(held.length>=2)return {syms:held,mode:"محفظتك الفعلية"};
+  const ranked=SHARIA.filter(s=>qHist(s)&&!held.includes(s)).map(s=>({s:s,n:qHist(s).length})).sort((a,b)=>b.n-a.n).slice(0,15).map(x=>x.s);
+  return {syms:ranked,mode:"نموذج عرض لأشهر ١٥ سهمًا متوافقًا — أضف أسهمك في «أسهمي» عشان نحلل محفظتك نفسها"};
+}
+function renderQuant(){
+  const box=$("quant-lab");if(!box)return;
+  const q=qSyms();
+  box.innerHTML='<div class="card"><h3>🔗 مصفوفة الارتباط ودرجة التنويع</h3>'
+   +'<p class="small muted" style="line-height:1.8;margin-bottom:10px">الارتباط بين الأساهم هو قلب إدارة المخاطر: أسهم مرتبطة ببعض بترتفع وتنزل مع بعض — يعني التنويع بينها صوري. المصفوفة محسوبة على العوائد اليومية لآخر ١٢٠ جلسة'+(q.mode?' · '+q.mode:'')+'.</p>'
+   +'<button class="btn primary mini" id="btn-corr">🔗 احسب الارتباط والتنويع</button><div id="corr-out" style="margin-top:12px"></div></div>'
+   +'<div class="card"><h3>🎲 محاكاة مونت كارلو — ٢٠٠٠ سيناريو لمستقبل محفظتك</h3>'
+   +'<p class="small muted" style="line-height:1.8;margin-bottom:10px">بنولّد ٢٠٠٠ مسار عشوائي لمحفظتك خلال ٦٠ جلسة جاية، بسحب عوائد حقيقية من تاريخ المحفظة نفسها (Bootstrap) — فبنحافظ على الذيل السمين والارتباط بين الأسهم، ونطلع نطاق الاحتمالات بدل رقم واحد يتوهم.</p>'
+   +'<button class="btn primary mini" id="btn-mc">🎲 شغّل المحاكاة</button><div id="mc-out" style="margin-top:12px"></div></div>';
+  $("btn-corr").onclick=()=>{const o=$("corr-out");o.innerHTML='<span class="spin"></span> جارٍ حساب المصفوفة...';setTimeout(()=>runCorr(o,q),50)};
+  $("btn-mc").onclick=()=>{const o=$("mc-out");o.innerHTML='<span class="spin"></span> جارٍ توليد ٢٠٠٠ سيناريو...';setTimeout(()=>runMC(o),50)};
+}
+function runCorr(o,q){
+  const syms=q.syms;
+  const R={};let L=1e9;
+  syms.forEach(s=>{R[s]=qReturns(qHist(s),120);L=Math.min(L,R[s].length)});
+  if(L<30){o.innerHTML='<div class="warn-box">⚠️ مفيش تاريخ كافي — اعمل «فحص السوق» الأول عشان يتجمع تاريخ سنة للأسهم، وبعدها احسب تاني.</div>';return}
+  syms.forEach(s=>{R[s]=R[s].slice(-L)});
+  const n=syms.length,cell=Math.max(16,Math.min(26,Math.floor(520/Math.max(n,1)))),pad=40;
+  let svg='<svg viewBox="0 0 '+(pad+n*cell+10)+' '+(pad+n*cell+10)+'" style="width:100%;max-width:660px;height:auto">';
+  for(let r=0;r<n;r++){
+    svg+='<text x="'+(pad-4)+'" y="'+(pad+r*cell+cell*0.7)+'" font-size="'+Math.min(11,cell*0.55)+'" fill="#8da3c9" text-anchor="end">'+syms[r]+'</text>';
+    svg+='<text x="'+(pad+r*cell+cell/2)+'" y="'+(pad-6)+'" font-size="'+Math.min(11,cell*0.55)+'" fill="#8da3c9" text-anchor="middle" transform="rotate(-45 '+(pad+r*cell+cell/2)+' '+(pad-6)+')">'+syms[r]+'</text>';
+  }
+  let sum=0,cnt=0;
+  for(let r=0;r<n;r++)for(let k=r+1;k<n;k++){const v=qPearson(R[syms[r]],R[syms[k]]);if(v!=null){sum+=v;cnt++}}
+  for(let r=0;r<n;r++)for(let k=0;k<n;k++){
+    let col,op;
+    if(r===k){col="#27406e";op=1}
+    else{
+      const v=qPearson(R[syms[r]],R[syms[k]]);
+      if(v==null){col="#0a1122";op=1}
+      else if(v>0.7){col="#ff5c72";op=(0.35+0.65*Math.min(1,(v-0.7)/0.3)).toFixed(2)}
+      else if(v>0.3){col="#ffb454";op=(0.35+0.65*(v-0.3)/0.4).toFixed(2)}
+      else{col="#22d3a5";op=(0.3+0.7*(0.3-Math.max(-1,v))/1.3).toFixed(2)}
+      svg+='<rect x="'+(pad+k*cell)+'" y="'+(pad+r*cell)+'" width="'+(cell-1)+'" height="'+(cell-1)+'" rx="2" fill="'+col+'" opacity="'+op+'"><title>'+syms[r]+' × '+syms[k]+': '+(v==null?"—":v.toFixed(2))+'</title></rect>';
+      continue;
+    }
+    svg+='<rect x="'+(pad+k*cell)+'" y="'+(pad+r*cell)+'" width="'+(cell-1)+'" height="'+(cell-1)+'" rx="2" fill="'+col+'" opacity="'+op+'"><title>'+syms[r]+' × '+syms[k]+'</title></rect>';
+  }
+  svg+='</svg>';
+  const avgR=cnt?sum/cnt:null;
+  let html='<div class="scroll-x">'+svg+'</div>'
+   +'<div class="row" style="gap:8px;margin-top:10px"><span class="tag">🟢 ارتباط منخفض = تنويع حقيقي</span><span class="tag">🟠 ارتباط متوسط</span><span class="tag">🔴 ارتباط مرتفع — الأسهم بتتحرك مع بعض</span></div>';
+  if(avgR!=null){
+    html='<div class="metrics" style="margin-bottom:10px"><div class="metric"><div class="lbl">متوسط الارتباط بين الأزواج</div><div class="val" style="color:'+(avgR<0.3?"var(--green)":avgR<0.5?"var(--amber)":"var(--red)")+'">'+avgR.toFixed(2)+'</div></div></div>'+html;
+  }
+  const held=HOLDINGS.map(h=>h.t).filter(s=>qHist(s));
+  if(held.length>=2){
+    const vals=HOLDINGS.filter(h=>qHist(h.t)).map(h=>({t:h.t,v:h.qty*((WATCH_CACHE[h.t].price!=null?WATCH_CACHE[h.t].price:h.avg)||h.avg)}));
+    const tot=vals.reduce((a,x)=>a+x.v,0)||1;
+    const ws=vals.map(x=>x.v/tot);
+    const hhi=ws.reduce((a,w)=>a+w*w,0);
+    const grade=(avgR!=null&&avgR<0.3&&hhi<0.25)?"ممتاز 🌟":(avgR!=null&&avgR<0.5&&hhi<0.4)?"كويس ✅":(avgR!=null&&avgR<0.65)?"متوسط ⚠️":"ضعيف ❌";
+    html+='<div class="metrics" style="margin-top:10px">'
+     +'<div class="metric"><div class="lbl">تركيز المحفظة (HHI)</div><div class="val">'+hhi.toFixed(2)+'</div></div>'
+     +'<div class="metric"><div class="lbl">درجة التنويع</div><div class="val" style="font-size:15px">'+grade+'</div></div>'
+     +'</div>';
+    const cands=SHARIA.filter(s=>!held.includes(s)&&qHist(s)).map(s=>{
+      const rs=qReturns(qHist(s),120).slice(-L);
+      let s2=0,cn2=0;held.forEach(h2=>{const p=qPearson(rs,R[h2]);if(p!=null){s2+=p;cn2++}});
+      return {s:s,avg:cn2?s2/cn2:null};
+    }).filter(x=>x.avg!=null).sort((a,b)=>a.avg-b.avg).slice(0,5);
+    if(cands.length)html+='<div class="small" style="margin-top:8px;line-height:2">💡 <b>أسهم متوافقة مع الشريعة تقلل مخاطر محفظتك</b> (أقل ارتباط بما تملك): '+cands.map(x=>'<span class="tag" style="cursor:pointer" onclick="openStock(&quot;'+x.s+'&quot;)">'+(BYSYM[x.s]?BYSYM[x.s].n:x.s)+' · '+x.avg.toFixed(2)+'</span>').join(" ")+'</div>';
+  }
+  html+='<div class="warn-box" style="margin-top:8px">⚠️ الارتباط تاريخي وبيتغير مع الوقت — راجعه دوريًا، والقرار الاستثماري يفضل قرارك.</div>';
+  o.innerHTML=html;
+}
+function runMC(o){
+  let syms,ws,label;
+  const held=HOLDINGS.filter(h=>qHist(h.t));
+  if(held.length>=2){
+    syms=held.map(h=>h.t);
+    const vals=held.map(h=>h.qty*((WATCH_CACHE[h.t].price!=null?WATCH_CACHE[h.t].price:h.avg)||h.avg));
+    const tot=vals.reduce((a,x)=>a+x,0)||1;
+    ws=vals.map(v=>v/tot);
+    label="محفظتك الفعلية";
+  }else{
+    const buys=((PICKS&&PICKS.buys)||[]).map(x=>x.sym).filter(s=>qHist(s)).slice(0,6);
+    if(buys.length<2){o.innerHTML='<div class="warn-box">⚠️ محتاجين على الأقل سهمين بتاريخ كافي — أضف أسهمك في «أسهمي» أو شغّل فحص السوق الأول وبعدها جرب تاني.</div>';return}
+    syms=buys;ws=buys.map(()=>1/buys.length);label="محفظة افتراضية من فرص اليوم (أوزان متساوية)";
+  }
+  let L=1e9;const R={};
+  syms.forEach(s=>{R[s]=qReturns(qHist(s),240);L=Math.min(L,R[s].length)});
+  if(L<80){o.innerHTML='<div class="warn-box">⚠️ التاريخ المتاح لسه قصير (مطلوب ٨٠ جلسة على الأقل) — اعمل فحص سوق الأول.</div>';return}
+  syms.forEach(s=>{R[s]=R[s].slice(-L)});
+  const pr=[];for(let i=0;i<L;i++){let r2=0;for(let k=0;k<syms.length;k++)r2+=ws[k]*R[syms[k]][i];pr.push(r2)}
+  const paths=2000,days=60,V0=100;
+  const perDay=[];for(let d=0;d<=days;d++)perDay.push([]);
+  for(let p=0;p<paths;p++){
+    let v=V0;perDay[0].push(v);
+    for(let d=1;d<=days;d++){v*=1+pr[Math.floor(Math.random()*pr.length)];perDay[d].push(v)}
+  }
+  const p5=[],p25=[],med=[],p75=[],p95=[];
+  for(let d=0;d<=days;d++){
+    const a=perDay[d].slice().sort((x,y)=>x-y);const ix=f=>Math.min(a.length-1,Math.floor(f*a.length));
+    p5.push(a[ix(0.05)]);p25.push(a[ix(0.25)]);med.push(a[ix(0.5)]);p75.push(a[ix(0.75)]);p95.push(a[ix(0.95)]);
+  }
+  const lo=Math.min.apply(null,p5)*0.97,hi=Math.max.apply(null,p95)*1.03;
+  const X=d=>(10+d/days*860).toFixed(1),Y=v=>(10+(hi-v)/(hi-lo)*150).toFixed(1);
+  const bandPoly=(loA,hiA,fill,op2)=>'<polygon points="'+loA.map((v,d)=>X(d)+","+Y(v)).join(" ")+" "+hiA.slice().reverse().map((v,i)=>X(days-i)+","+Y(v)).join(" ")+'" fill="'+fill+'" opacity="'+op2+'"/>';
+  let svg='<svg viewBox="0 0 880 170" style="width:100%;height:auto">';
+  svg+=bandPoly(p5,p95,"#4f8cff",0.16);
+  svg+=bandPoly(p25,p75,"#4f8cff",0.34);
+  svg+='<polyline points="'+med.map((v,d)=>X(d)+","+Y(v)).join(" ")+'" fill="none" stroke="#22d3a5" stroke-width="2"/>';
+  svg+='<line x1="10" y1="'+Y(V0)+'" x2="870" y2="'+Y(V0)+'" stroke="#8da3c9" stroke-width="1" stroke-dasharray="5 4"/>';
+  svg+='<text x="12" y="'+(parseFloat(Y(V0))-4)+'" font-size="10" fill="#8da3c9">نقطة البداية</text>';
+  svg+='<text x="12" y="20" font-size="10" fill="#8da3c9">'+hi.toFixed(0)+'</text>';
+  svg+='<text x="12" y="164" font-size="10" fill="#8da3c9">'+lo.toFixed(0)+'</text>';
+  svg+='</svg>';
+  let nLoss=0;perDay[days].forEach(v=>{if(v<V0)nLoss++});
+  const pLoss=nLoss/paths*100,md=med[days],r5=p5[days],r95=p95[days];
+  let html='<div class="small muted" style="margin-bottom:8px">🎯 السيناريو: '+label+'</div>'
+   +'<div class="metrics">'
+   +'<div class="metric"><div class="lbl">الوسيط بعد ٦٠ جلسة</div><div class="val '+(md>=V0?"up":"down")+'">'+((md/V0-1)*100).toFixed(1)+'%</div></div>'
+   +'<div class="metric"><div class="lbl">أسوأ ٥٪ سيناريوهات</div><div class="val down">'+((r5/V0-1)*100).toFixed(1)+'%</div></div>'
+   +'<div class="metric"><div class="lbl">أفضل ٥٪ سيناريوهات</div><div class="val up">'+((r95/V0-1)*100).toFixed(1)+'%</div></div>'
+   +'<div class="metric"><div class="lbl">احتمالية الخسارة</div><div class="val" style="color:'+(pLoss<35?"var(--green)":pLoss<55?"var(--amber)":"var(--red)")+'">'+pLoss.toFixed(0)+'%</div></div>'
+   +'</div>'
+   +'<div class="scroll-x" style="margin-top:10px">'+svg+'</div>'
+   +'<div class="small muted" style="margin-top:4px">🟢 الخط الأوسط: الوسيط · نطاق أزرق فاتح: ٥٪–٩٥٪ · أزرق أغمق: ٢٥٪–٧٥٪ · الرمادي المتقطع: نقطة البداية (القيم مؤشر نسبي من قيمة محفظتك اليوم = ١٠٠)</div>'
+   +'<div class="warn-box" style="margin-top:8px">⚠️ المحاكاة بتفتترض إن توزيع العوائد اليومية هيتكرر، ومش بتحسب سيولة الأسهم ولا رسوم السمسرة — أداة لفهم المخاطر مش كرة بلورية.</div>';
+  o.innerHTML=html;
+}
+
 /* ═════════════════════════ 13) الإعدادات والتفضيلات ═════════════════════════ */
 function loadSettings(){
   $("ai-url").value=CFG.ai.url||"";$("ai-key").value=CFG.ai.key||"";$("ai-model").value=CFG.ai.model||"";
@@ -1500,6 +1636,7 @@ function switchTab(name){
   if(name==="stocks")renderStocksTable();
   if(name==="sharia")renderSharia();
   if(name==="portfolio")renderPortfolio();
+  if(name==="portfolio")renderQuant();
   if(name==="picks")renderPicks();
   if(name==="picks")renderML();
   if(name==="settings")loadSettings();
