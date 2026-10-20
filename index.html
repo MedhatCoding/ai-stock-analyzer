@@ -125,7 +125,7 @@
     <div class="logo">🕌</div>
     <div>
       <h1>عقار — محلل البورصة المصرية بالذكاء الاصطناعي</h1>
-      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.17</b></div>
+      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.19</b></div>
     </div>
     <div class="hd-right">
       <span class="pill" id="clock">—</span>
@@ -329,7 +329,16 @@
         <br>⛔ قد تُحجب طلبات الشبكة داخل نافذة المعاينة — افتح التطبيق من رابط GitHub Pages أو كملف محلي.
       </div>
     </div>
-    <div class="card">
+        <div class="card">
+      <h3>🧠 التعميق الشامل — Deep Research (اختياري)</h3>
+      <p class="small muted" style="line-height:1.8;margin-bottom:12px">خطوة واحدة <b>بيدك فقط</b> — عمرها ما بتشتغل لوحدها: بنجمّع كل مُخرجات التطبيق الكمية (فرص اليوم + محفظتك + توقعات محرك التعلم الآلي + الارتباط والتنويع + مونت كارلو) ونبعتها في طلب واحد للنموذج اللي ربطته فوق، فيكتبلك تقرير بحثي عميق متكامل بيلمّ الصورة كلها ويقولك بصراحة فين الكمية بتتفق مع الفني وفين بتتعارض. استهلاكه أعلى من التحليلات العادية — الحد الأقصى مرة كل ١٠ دقايق.</p>
+      <div class="row">
+        <button class="btn ai" id="btn-deep">🧠 اعمل التعميق الشامل الآن</button>
+        <span class="small muted">مفتاحك يفضل محفوظ في متصفحك بس</span>
+      </div>
+      <div id="deep-out" style="margin-top:12px"></div>
+    </div>
+<div class="card">
       <h3>🔄 التحديث التلقائي</h3>
       <div class="field"><label>تحديث أسعار تبويب السوق تلقائيًا</label>
         <select id="auto-refresh">
@@ -361,7 +370,7 @@
         <li>💼 <b>محفظتك</b> وبياناتك كلها محفوظة في متصفحك (localStorage) ولا تُرسل لأي سيرفر سوى مزوّد الـ AI الذي تختاره بنفسك.</li>
         <li>⚠️ هذا التطبيق لاستخدام شخصي تعليمي — <b>ليس نصيحة استثمارية</b>.</li>
       </ul>
-      <div class="small muted">إصدار 2.0 · صنع بحُب لمستثمر مصري 🇪🇬</div>
+      <div class="small muted">إصدار 3.19 · صنع بحُب لمستثمر مصري 🇪🇬</div>
     </div>
   </section>
 
@@ -1559,6 +1568,80 @@ function runMC(o){
    +'<div class="warn-box" style="margin-top:8px">⚠️ المحاكاة بتفتترض إن توزيع العوائد اليومية هيتكرر، ومش بتحسب سيولة الأسهم ولا رسوم السمسرة — أداة لفهم المخاطر مش كرة بلورية.</div>';
   o.innerHTML=html;
 }
+
+/* ═════════════════════════ 12.8) 🧠 التعميق الشامل — تقرير بحثي عميق بنموذج خارجي بمفتاحك (زرار يدوي فقط) ═════════════════════════ */
+let DEEP_LAST=0,DEEP_BUSY=false;
+const DEEP_SYS="أنت رئيس أبحاث كمية في شركة إدارة أصول متخصصة في البورصة المصرية، وكل اقتراحاتك للأسهم المتوافقة مع الشريعة فقط. ستستلم حزمة بيانات محسوبة من محرك كمي: توصيات فنية لفرص اليوم، توقعات احتمالية من نموذج تعلم آلي (انحدار لوجستي) مدرّب داخل المتصفح على سنة بيانات، ملخص ارتباط وتنويع، ومحاكاة مونت كارلو لمستقبل المحفظة. اكتب تقريرًا بحثيًا عميقًا منظمًا بالعربية المصرية الفصيحة بالأقسام الآتية: (١) خلاصة تنفيذية في خمسة أسطر، (٢) قراءة السوق من الفرص والتحذيرات، (٣) تشريح محفظتي: قوة التنويع ومخاطر التركز والسهم الأكثر خطورة فيها، (٤) هل التوقعات الكمية تتفق مع القراءة الفنية أم تتعارض — قلها بصدق مع تفسير، (٥) خطة عمل عملية للأسابيع القادمة بخطوات مرقمة مع إدارة مخاطر ومستويات خروج، (٦) اقتراحان للتنويع أقل ارتباطًا بمحفظتي. حلّل الأرقام ولا تكتفِ بترديدها، واختم بتنبيه أن هذا ليس نصيحة استثمارية.";
+function deepLite(x){return {sym:x.sym,company:x.n,score:+x.v.sc.toFixed(1),rec:x.v.rec,price:+x.price.toFixed(2),chg_1d:+x.chg.toFixed(2),conf:x.v.conf}}
+function deepData(){
+  const out={report_date:new Date().toLocaleDateString("ar-EG"),note:"كل الأسهم متوافقة مع الشريعة — الأسعار بالجنيه المصري"};
+  const p=store.get("egx_picks3",null);
+  if(p&&p.buys)out.today_scan={top_buys:(p.buys||[]).slice(0,6).map(deepLite),warnings:(p.sells||[]).slice(0,6).map(deepLite),scan_age_hours:p.time?Math.round((Date.now()-p.time)/3600000):null};
+  if(HOLDINGS&&HOLDINGS.length){
+    const t=calcTotals();
+    out.portfolio={current_value:Math.round(t.val),profit_loss:Math.round(t.pl),pl_pct:+t.plP.toFixed(1),holdings:HOLDINGS.map(function(h){const s=snap(h.t);if(!s)return null;const mp=mlProb(h.t);return {symbol:h.t,qty:h.qty,avg_cost:h.avg,last_price:s.price,chg_1d_pct:s.chg_1d,tech_score:s.technical_score,engine_rec:s.engine_recommendation,ml_prob_up_10d:mp!=null?+mp.toFixed(2):null}}).filter(Boolean)};
+  } else out.portfolio="فاضية — حلّل على أساس الفرص المقترحة واقترح محفظة بداية متوافقة مع الشريعة";
+  const db=mlGet();
+  if(db.model){
+    out.ml_model={trained_at:new Date(db.model.at).toLocaleDateString("ar-EG"),samples:db.model.n,test_accuracy_pct:+db.model.acc.toFixed(1),naive_baseline_pct:+db.model.base.toFixed(1),top_features:db.model.w.map(function(v,i){return {feature:ML_FEATS[i],weight:+v.toFixed(3)}}).sort(function(a,b){return Math.abs(b.weight)-Math.abs(a.weight)}).slice(0,4),top_predictions:SHARIA.map(function(s){return {s:s,p:mlProb(s)}}).filter(function(x){return x.p!=null}).sort(function(a,b){return b.p-a.p}).slice(0,8).map(function(x){return {symbol:x.s,prob_up_10d:+x.p.toFixed(2)}})};
+  } else out.ml_model="النموذج المحلي لسه متدربش — علّق على ده في التقرير";
+  const corr=deepCorr();
+  if(corr)out.correlation=corr;
+  const pr=deepReturns();
+  if(pr)out.monte_carlo=deepMC(pr);
+  return out;
+}
+function deepCorr(){
+  const q=qSyms();const syms=q.syms.filter(qHist);
+  if(syms.length<2)return null;
+  const R={};let L=1e9;
+  syms.forEach(function(s){R[s]=qReturns(qHist(s),120);L=Math.min(L,R[s].length)});
+  if(L<30)return null;
+  let sum=0,c2=0,mx=null;
+  for(let i=0;i<syms.length;i++)for(let j=i+1;j<syms.length;j++){
+    const c=qPearson(R[syms[i]].slice(-L),R[syms[j]].slice(-L));
+    if(c!=null){sum+=c;c2++;if(!mx||Math.abs(c)>Math.abs(mx.c))mx={pair:syms[i]+"+"+syms[j],corr:+c.toFixed(2)}}
+  }
+  return c2?{universe_size:syms.length,avg_pairwise_corr:+(sum/c2).toFixed(2),most_correlated_pair:mx}:null;
+}
+function deepReturns(){
+  const held=HOLDINGS.map(function(h){const w=WATCH_CACHE[h.t];const pr=w?(w.price!=null?w.price:w.p):0;return {s:h.t,val:h.qty*pr}}).filter(function(x){return x.val>0&&qHist(x.s)});
+  let syms,ws;
+  if(held.length>=2){const tot=held.reduce(function(a,b){return a+b.val},0);syms=held.map(function(x){return x.s});ws=held.map(function(x){return x.val/tot})}
+  else{const q=qSyms();syms=q.syms.slice(0,10);if(syms.length<2)return null;const ew=1/syms.length;ws=syms.map(function(){return ew})}
+  const Rs={};let L=1e9;
+  syms.forEach(function(s){Rs[s]=qReturns(qHist(s),120);L=Math.min(L,Rs[s].length)});
+  if(L<30)return null;
+  const pr=[];
+  for(let i=0;i<L;i++){let r=0;for(let k=0;k<syms.length;k++){const a=Rs[syms[k]];r+=ws[k]*a[a.length-L+i]}pr.push(r)}
+  return pr;
+}
+function deepMC(pr){
+  const N=800,H=60,ends=[];
+  for(let p=0;p<N;p++){let v=1;for(let d=0;d<H;d++)v*=1+pr[Math.floor(Math.random()*pr.length)];ends.push(v)}
+  ends.sort(function(a,b){return a-b});
+  const q=function(f){return ends[Math.min(N-1,Math.max(0,Math.round(f*(N-1))))]};
+  const lossP=ends.filter(function(v){return v<1}).length/N*100;
+  return {method:"Bootstrap من عوائد المحفظة الفعلية",paths:N,horizon_sessions:H,p5_pct:+(q(0.05)*100-100).toFixed(1),median_pct:+(q(0.5)*100-100).toFixed(1),p95_pct:+(q(0.95)*100-100).toFixed(1),loss_probability_pct:+lossP.toFixed(0)};
+}
+$("btn-deep").onclick=async()=>{
+  const o=$("deep-out");
+  if(DEEP_BUSY){toast("⏳ التعميق شغال بالفعل — استنى ينتهي");return}
+  if(!CFG.ai.url||!CFG.ai.key||!CFG.ai.model){o.innerHTML='<div class="warn-box">⚠️ اربط نموذج AI شغّال في الكارت اللي فوق ده أولًا: اختر مزوّد، الصق مفتاحك، اعمل 💾 حفظ، وجرّب «🧪 اختبار الاتصال» — وبعدها ارجع لزرار التعميق.</div>';return}
+  const wait=10*60*1000-(Date.now()-DEEP_LAST);
+  if(wait>0){o.innerHTML='<div class="warn-box">⏳ التعميق مكلف — الحد الأقصى مرة كل ١٠ دقايق، فاضل '+Math.ceil(wait/60000)+' دقيقة.</div>';return}
+  DEEP_BUSY=true;DEEP_LAST=Date.now();
+  o.innerHTML='<div class="ai-box"><span class="spin"></span>جارٍ تجميع كل المُخرجات الكمية (فحص اليوم + محفظتك + نموذج التعلم الآلي + الارتباط + مونت كارلو) وبناء التقرير العميق...</div>';
+  try{
+    const NL=String.fromCharCode(10);
+    const txt=await callLLM(DEEP_SYS,"حزمة البيانات الكمية الكاملة لعميل مصري:"+NL+JSON.stringify(deepData(),null,1));
+    o.innerHTML='<div class="ai-box" style="border-color:var(--violet)">🧠 <b>التقرير البحثي العميق — '+CFG.ai.model+'</b><br><br>'+mdLite(txt)+'</div>';
+  }catch(e){
+    const m=String(e.message);
+    o.innerHTML='<div class="ai-box" style="color:var(--red)">⚠️ '+(m.includes("429")?"HTTP 429 — تجاوزتَ حد طلبات المزوّد: استنى العد التنازلي ينتهي وجرّب تاني، أو استخدم مزوّدًا مجانيًا زي Gemini أو Groq.":m)+'</div>';
+  }
+  DEEP_BUSY=false;
+};
 
 /* ═════════════════════════ 13) الإعدادات والتفضيلات ═════════════════════════ */
 function loadSettings(){
