@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-# تدريب نموذج LightGBM لأسهم الشريعة في البورصة المصرية (EGX33 + متوافق خارج المؤشر).
+# تدريب نموذج LightGBM لأسهم الشريعة في البورصة المصرية (EGX33 + متوافق خارج المؤشر) - إصدار 2
+# الجديد في الإصدار 2: سمتان إضافيتان (نسبة السيولة 5/20 وزخم 6 شهور) + جدول معايرة على بيانات الاختبار
 # يعمل داخل GitHub Actions: يسحب تاريخ ٥ سنين من Yahoo Finance، يبني نفس السمات الفنية
-# الثمانية اللي التطبيق بيحسبها في المتصفح بالظبط، يدرب مصنف LightGBM بفصل زمني 80/20،
+# العشر اللي التطبيق بيحسبها في المتصفح بالظبط، يدرب مصنف LightGBM بفصل زمني 80/20،
 # ويصدّر الأوزان في ملف model_weights.json اللي التطبيق بيجيبه ويشغّل التوقع بيه محليًا.
 import json, math, time, datetime
 import yfinance as yf
@@ -11,7 +12,7 @@ SYMS = ["ACGC","ETEL","OCDI","PHDC","SKPC","TMGH","ETRS","IFAP","LCSW","MASR","M
 LOOK = 10
 MINF = 55
 
-def features(c):
+def features(c, v):
     n = len(c)
     if n < MINF:
         return None
@@ -41,24 +42,30 @@ def features(c):
     hi = max(c[-120:])
     lo = min(c[-120:])
     rng = (hi - lo) if (hi - lo) != 0 else 1e-9
-    return [ret(5), ret(10), ret(20), (last / sma(20) - 1) * 100, (sma(20) / sma(50) - 1) * 100, rsi, (last - lo) / rng * 100, vol(20) / last * 100]
+    def pavg(k):
+        a = [x for x in v[-k:] if x is not None and x > 0]
+        return (sum(a) / len(a)) if a else None
+    m5 = pavg(5)
+    m20 = pavg(20)
+    vr = (m5 / m20) if (m5 is not None and m20 is not None and m20 > 0) else 1.0
+    ret120 = ((last - c[n - 121]) / c[n - 121] * 100) if n >= 121 else 0.0
+    return [ret(5), ret(10), ret(20), (last / sma(20) - 1) * 100, (sma(20) / sma(50) - 1) * 100, rsi, (last - lo) / rng * 100, vol(20) / last * 100, vr, ret120]
 
 def main():
     X, Y, ok = [], [], []
     for s in SYMS:
-        closes = []
+        closes, vols = [], []
         try:
             df = yf.download(s + ".CA", period="5y", interval="1d", progress=False, auto_adjust=True)
-            col = df["Close"]
-            if hasattr(col, "columns"):
-                col = col.iloc[:, 0]
-            closes = [float(v) for v in col.dropna().tolist()]
+            mask = df["Close"].notna()
+            closes = [float(x) for x in df["Close"][mask].tolist()]
+            vols = [(float(x) if x == x else None) for x in df["Volume"][mask].tolist()]
         except Exception:
-            closes = []
+            closes, vols = [], []
         cnt = 0
         if len(closes) >= MINF + LOOK + 1:
             for t in range(MINF - 1, len(closes) - LOOK):
-                f = features(closes[: t + 1])
+                f = features(closes[: t + 1], vols[: t + 1])
                 if f is None:
                     continue
                 X.append(f)
@@ -88,25 +95,33 @@ def main():
     npos = float(ones)
     nneg = float(len(Yte) - ones)
     auc = (sum(ranks[i] for i in range(len(Yte)) if Yte[i] == 1) - npos * (npos + 1) / 2) / (npos * nneg)
+    buckets = [(0.0, 0.5, "under 50%"), (0.5, 0.6, "50-60%"), (0.6, 0.7, "60-70%"), (0.7, 0.8, "70-80%"), (0.8, 1.01, "80-100%")]
+    cal = []
+    for lo, hi, name in buckets:
+        idx = [i for i, p in enumerate(probs) if lo <= p < hi]
+        if len(idx) >= 30:
+            pred = sum(probs[i] for i in idx) / len(idx) * 100
+            act = sum(Yte[i] for i in idx) / len(idx) * 100
+            cal.append({"range": name, "n": len(idx), "pred_pct": round(pred, 1), "actual_pct": round(act, 1)})
     dm = booster.dump_model(num_iteration=best)
     nodes = []
     def walk(nd):
         if "leaf_value" in nd:
             nodes.append([-1, 0.0, -1, -1, float(nd["leaf_value"])])
             return len(nodes) - 1
-        idx = len(nodes)
+        idx2 = len(nodes)
         nodes.append(None)
         f = int(nd["split_feature"])
         thr = float(nd["threshold"])
         left = walk(nd["left_child"])
         right = walk(nd["right_child"])
-        nodes[idx] = [f, thr, left, right, 0.0]
-        return idx
+        nodes[idx2] = [f, thr, left, right, 0.0]
+        return idx2
     roots = [walk(t["tree_structure"]) for t in dm["tree_info"]]
-    out = {"version": 1, "kind": "lightgbm-egx-sharia-10d", "trained_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d"), "feature_names": ["ret5", "ret10", "ret20", "pos_sma20", "sma_cross", "rsi14", "range120_pos", "vol20"], "n_train": len(Xtr), "n_test": len(Xte), "test_acc": round(acc * 100, 1), "naive_base": round(base * 100, 1), "auc": round(auc, 3), "n_trees": len(roots), "n_symbols": len(ok), "symbols": ok, "roots": roots, "nodes": nodes}
+    out = {"version": 2, "kind": "lightgbm-egx-sharia-10d", "trained_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d"), "feature_names": ["ret5", "ret10", "ret20", "pos_sma20", "sma_cross", "rsi14", "range120_pos", "vol20", "vol_ratio_5_20", "ret120"], "n_train": len(Xtr), "n_test": len(Xte), "test_acc": round(acc * 100, 1), "naive_base": round(base * 100, 1), "auc": round(auc, 3), "n_trees": len(roots), "n_symbols": len(ok), "symbols": ok, "calibration": cal, "roots": roots, "nodes": nodes}
     with open("model_weights.json", "w", encoding="utf-8") as fh:
         json.dump(out, fh, ensure_ascii=False, separators=(",", ":"))
-    print("model written - trees:", len(roots), "nodes:", len(nodes), "acc:", round(acc * 100, 1), "auc:", round(auc, 3))
+    print("model v2 written - trees:", len(roots), "nodes:", len(nodes), "acc:", round(acc * 100, 1), "auc:", round(auc, 3), "cal buckets:", len(cal))
 
 if __name__ == "__main__":
     main()
