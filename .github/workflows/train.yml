@@ -10,7 +10,7 @@ permissions:
   contents: write
 jobs:
   train:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
@@ -23,11 +23,11 @@ jobs:
         run: python train_model.py
       - name: Commit model weights
         run: |
-          if [ ! -f model_weights.json ]; then echo "No model produced this run"; exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add model_weights.json
+          git add train_log.txt
+          if [ -f model_weights.json ]; then git add model_weights.json; fi
           git diff --cached --quiet && echo "No changes" && exit 0
-          git commit -m "chore: weekly LightGBM retrain (model_weights.json)"
+          git commit -m "chore: weekly LightGBM retrain (model_weights.json + train_log)"
           git pull --rebase origin main || true
           git push
