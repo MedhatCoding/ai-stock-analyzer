@@ -1,6 +1,10 @@
 name: Train LightGBM Model (weekly)
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - train_model.py
+      - .github/workflows/train.yml
   schedule:
     - cron: "30 18 * * 0"
 permissions:
