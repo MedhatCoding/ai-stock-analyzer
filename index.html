@@ -125,7 +125,7 @@
     <div class="logo">🕌</div>
     <div>
       <h1>عقار — محلل البورصة المصرية بالذكاء الاصطناعي</h1>
-      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.19</b></div>
+      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.20</b></div>
     </div>
     <div class="hd-right">
       <span class="pill" id="clock">—</span>
@@ -295,6 +295,7 @@
       <div class="grid2" id="picks-grid"></div>
       <div id="picks-ai" style="margin-top:12px"></div>
       <div id="ml-card" style="margin-top:12px"></div>
+      <div id="lgb-card" style="margin-top:12px"></div>
       <div id="sharia-funds"></div>
     </div>
   </section>
@@ -370,7 +371,7 @@
         <li>💼 <b>محفظتك</b> وبياناتك كلها محفوظة في متصفحك (localStorage) ولا تُرسل لأي سيرفر سوى مزوّد الـ AI الذي تختاره بنفسك.</li>
         <li>⚠️ هذا التطبيق لاستخدام شخصي تعليمي — <b>ليس نصيحة استثمارية</b>.</li>
       </ul>
-      <div class="small muted">إصدار 3.19 · صنع بحُب لمستثمر مصري 🇪🇬</div>
+      <div class="small muted">إصدار 3.20 · صنع بحُب لمستثمر مصري 🇪🇬</div>
     </div>
   </section>
 
@@ -1643,6 +1644,79 @@ $("btn-deep").onclick=async()=>{
   DEEP_BUSY=false;
 };
 
+/* ═════════════════════════ 12.9) 🌲 محرك LightGBM الخارجي — مدرَّب أسبوعيًا على GitHub Actions والتوقع بيحصل في متصفحك ═════════════════════════ */
+let LGB=null;
+const LGB_URLS=["https://raw.githubusercontent.com/MedhatCoding/ai-stock-analyzer/main/model_weights.json","https://cdn.jsdelivr.net/gh/MedhatCoding/ai-stock-analyzer@main/model_weights.json"];
+async function lgbFetch(){
+  for(const u of LGB_URLS){
+    try{
+      const r=await withTimeout(fetch(u,{cache:"no-store"}),9000);
+      if(!r.ok)throw new Error("HTTP "+r.status);
+      const m=await withTimeout(r.json(),9000);
+      if(m&&m.version===1&&m.nodes&&m.roots){LGB=m;store.set("egx_lgb_v1",{model:m,at:Date.now()});return m}
+      throw new Error("bad model file");
+    }catch(e){}
+  }
+  return null;
+}
+function lgbScore(M,f){
+  let s=0;
+  for(let i=0;i<M.roots.length;i++){
+    let n=M.roots[i],guard=0;
+    while(guard++<512){
+      const nd=M.nodes[n];
+      if(nd[0]<0){s+=nd[4];break}
+      n=f[nd[0]]<=nd[1]?nd[2]:nd[3];
+    }
+  }
+  return s;
+}
+function lgbProb(sym){
+  if(!LGB)return null;
+  const w=WATCH_CACHE[sym];if(!w)return null;
+  const h=(w.hist||w.history||[]).map(x=>x&&x.c).filter(v=>v!=null&&v>0);
+  const f=mlFeatures(h);if(!f)return null;
+  const raw=lgbScore(LGB,f);
+  if(raw==null||!isFinite(raw))return null;
+  return 1/(1+Math.exp(-Math.max(-30,Math.min(30,raw))));
+}
+async function renderLGB(){
+  const box=$("lgb-card");if(!box)return;
+  box.innerHTML='<div class="card"><h3>🌲 محرك LightGBM الخارجي — تعلم حقيقي مدرَّب على السيرفر</h3><div class="small"><span class="spin"></span>جارٍ جلب النموذج المدرَّب من GitHub...</div></div>';
+  let m=LGB;
+  if(!m){const c=store.get("egx_lgb_v1",null);if(c&&c.model&&c.model.nodes){LGB=c.model;m=c.model}}
+  if(!m)m=await lgbFetch();
+  if(!m){box.innerHTML='<div class="card"><h3>🌲 محرك LightGBM الخارجي — تعلم حقيقي مدرَّب على السيرفر</h3><div class="warn-box">⚠️ ملف النموذج لسه مش موجود في المستودع. شغّل التدريب مرة واحدة من GitHub: تبويب <b>Actions</b> ← اختار <b>Train LightGBM Model</b> ← زرار <b>Run workflow</b> ← اختار <b>main</b> ← Run. بعد ما الـ Action يخلص (٥-١٠ دقايق) افتح تبويب الفرص تاني وهتلاقيه شغال لوحده — وبيتدرب لوحده كل أسبوع بعد كده.</div></div>';return}
+  const cached=store.get("egx_lgb_v1",null)||{};
+  showLGB(box,m);
+  if(!cached.at||Date.now()-cached.at>24*60*60*1000)lgbFetch().then(function(nm){if(nm&&nm!==m)showLGB(box,nm)});
+}
+function showLGB(box,m){
+  const rows=SHARIA.map(function(s){return {s:s,p:lgbProb(s),q:mlProb(s),w:WATCH_CACHE[s]}}).filter(function(x){return x.p!=null}).sort(function(a,b){return b.p-a.p}).slice(0,10);
+  let h='<div class="card"><h3>🌲 محرك LightGBM الخارجي — تعلم حقيقي مدرَّب على السيرفر</h3>'
+   +'<p class="small muted" style="line-height:1.8;margin-bottom:10px">نموذج <b>LightGBM</b> (تدرّج شجري معزّز) بيتدرب أسبوعيًا على <b>GitHub Actions</b> مجانًا على تاريخ ٥ سنوات من Yahoo Finance لأسهم الشريعة، وبيوصل هنا مجرد أوزان جاهزة — كل التوقع بيحصل في متصفحك من غير أي طلب خارجي. المقارنة جنب نموذج اللوجستي المحلي بتقولك هما متفقين على سهم ولا متعارضين — والتعارض نفسه معلومة مهمة.</p>'
+   +'<div class="metrics">'
+   +'<div class="metric"><div class="lbl">دقة عينة الاختبار</div><div class="val" style="color:'+(m.test_acc>=m.naive_base?"var(--green)":"var(--amber)")+'">'+m.test_acc+'%</div></div>'
+   +'<div class="metric"><div class="lbl">AUC</div><div class="val">'+m.auc+'</div></div>'
+   +'<div class="metric"><div class="lbl">حد التخمين الساذج</div><div class="val">'+m.naive_base+'%</div></div>'
+   +'<div class="metric"><div class="lbl">عينات التدريب</div><div class="val">'+m.n_train.toLocaleString("en-US")+'</div></div>'
+   +'<div class="metric"><div class="lbl">عدد الأشجار</div><div class="val">'+m.n_trees+'</div></div>'
+   +'<div class="metric"><div class="lbl">تاريخ التدريب</div><div class="val" style="font-size:13px">'+m.trained_at+'</div></div>'
+   +'</div>';
+  if(rows.length){
+    h+='<div class="scroll-x" style="margin-top:10px"><table><thead><tr><th>السهم</th><th>LightGBM (١٠ جلسات)</th><th>اللوجستي المحلي</th><th>الاتفاق</th><th>السعر</th></tr></thead><tbody>'
+     +rows.map(function(x){
+        const ag=(x.p>=0.6&&x.q!=null&&x.q>=0.6)?'<span class="up">✅ متفقان على الصعود</span>':((x.p<0.5&&x.q!=null&&x.q<0.5)?'<span class="muted">✅ متفقان على الحذر</span>':'<span style="color:var(--amber)">⚡ تعارض — راجع بيدك</span>');
+        return '<tr class="click" onclick="openStock(&quot;'+x.s+'&quot;)"><td><b>'+(BYSYM[x.s]?BYSYM[x.s].n:x.s)+'</b> <span class="sect-tag">'+x.s+'</span></td><td><div class="bar" style="min-width:100px;display:inline-block;vertical-align:middle"><div style="width:'+(x.p*100).toFixed(0)+'%"></div></div> <b class="'+(x.p>=0.6?"up":"muted")+'">'+(x.p*100).toFixed(0)+'%</b></td><td>'+(x.q!=null?'<b class="'+(x.q>=0.6?"up":"muted")+'">'+(x.q*100).toFixed(0)+'%</b>':'—')+'</td><td>'+ag+'</td><td class="num">'+(x.w?NF(x.w.price!=null?x.w.price:x.w.p):"—")+'</td></tr>';
+      }).join("")
+     +'</tbody></table></div>';
+  } else {
+    h+='<div class="small muted" style="margin-top:8px">اعمل «فحص السوق» الأول عشان يتجمع التاريخ اللازم لتشغيل النموذج على أسهمك.</div>';
+  }
+  h+='<div class="warn-box" style="margin-top:8px">⚠️ النموذج مدرَّب على عوائد تاريخية والأسواق بتتغير — التوقعات احتمالية مش وعد. استخدمها مع التحليل الفني ومختبر الاستراتيجيات، ودي مش نصيحة استثمارية.</div></div>';
+  box.innerHTML=h;
+}
+
 /* ═════════════════════════ 13) الإعدادات والتفضيلات ═════════════════════════ */
 function loadSettings(){
   $("ai-url").value=CFG.ai.url||"";$("ai-key").value=CFG.ai.key||"";$("ai-model").value=CFG.ai.model||"";
@@ -1722,6 +1796,7 @@ function switchTab(name){
   if(name==="portfolio")renderQuant();
   if(name==="picks")renderPicks();
   if(name==="picks")renderML();
+  if(name==="picks")renderLGB();
   if(name==="settings")loadSettings();
   window.scrollTo({top:0});
 }
