@@ -125,7 +125,7 @@
     <div class="logo">🕌</div>
     <div>
       <h1>عقار — محلل البورصة المصرية بالذكاء الاصطناعي</h1>
-      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.21</b></div>
+      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.22</b></div>
     </div>
     <div class="hd-right">
       <span class="pill" id="clock">—</span>
@@ -382,7 +382,7 @@
         <li>💼 <b>محفظتك</b> وبياناتك كلها محفوظة في متصفحك (localStorage) ولا تُرسل لأي سيرفر سوى مزوّد الـ AI الذي تختاره بنفسك.</li>
         <li>⚠️ هذا التطبيق لاستخدام شخصي تعليمي — <b>ليس نصيحة استثمارية</b>.</li>
       </ul>
-      <div class="small muted">إصدار 3.21 · صنع بحُب لمستثمر مصري 🇪🇬</div>
+      <div class="small muted">إصدار 3.22 · صنع بحُب لمستثمر مصري 🇪🇬</div>
     </div>
   </section>
 
@@ -1349,8 +1349,14 @@ function mlDaily(){
   while(ks.length>500)delete db.days[ks.shift()];
   store.set(ML_KEY,db);
 }
-/* ٨ سمات فنية موحّدة من سلسلة الإغلاقات */
-function mlFeatures(c){
+/* ١٠ سمات فنية موحّدة من الإغلاقات والفوليوم — مطابقة للنموذج الخارجي بالظبط */
+function mlCV(w){
+  const raw=(w.hist||w.history||[]);
+  const h=[],v=[];
+  raw.forEach(function(x){if(x&&x.c!=null&&x.c>0){h.push(x.c);v.push(x&&x.v!=null&&x.v>0?x.v:0)}});
+  return {h:h,v:v};
+}
+function mlFeatures(c,v){
   const n=c.length;if(n<55)return null;
   const last=c[n-1];
   const mean=a=>a.reduce((x,y)=>x+y,0)/a.length;
@@ -1360,16 +1366,20 @@ function mlFeatures(c){
   let g=0,l=0;for(let i=n-14;i<n;i++){const d=c[i]-c[i-1];if(d>0)g+=d;else l-=d}
   const rsi=g+l===0?50:100-100/(1+(g/14)/((l/14)||1e-9));
   const hi=Math.max.apply(null,c.slice(-120)),lo=Math.min.apply(null,c.slice(-120));
-  return [ret(5),ret(10),ret(20),(last/sma(20)-1)*100,(sma(20)/sma(50)-1)*100,rsi,(last-lo)/((hi-lo)||1e-9)*100,vol(20)/last*100];
+  const pavg=k=>{const a=(v||[]).slice(-k).filter(x=>x>0);return a.length?mean(a):null};
+  const m5=pavg(5),m20=pavg(20);
+  const vr=(m5!=null&&m20!=null&&m20>0)?m5/m20:1;
+  const r120=n>=121?ret(120):0;
+  return [ret(5),ret(10),ret(20),(last/sma(20)-1)*100,(sma(20)/sma(50)-1)*100,rsi,(last-lo)/((hi-lo)||1e-9)*100,vol(20)/last*100,vr,r120];
 }
-const ML_FEATS=["عائد ٥ جلسات","عائد ١٠ جلسات","عائد ٢٠ جلسة","الموقع من SMA20","تقاطع SMA20/50","RSI","الموقع من مدى ١٢٠ جلسة","التقلب"];
+const ML_FEATS=["عائد ٥ جلسات","عائد ١٠ جلسات","عائد ٢٠ جلسة","الموقع من SMA20","تقاطع SMA20/50","RSI","الموقع من مدى ١٢٠ جلسة","التقلب","نسبة السيولة ٥/٢٠","زخم ٦ شهور"];
 /* بناء العينات من تاريخ سنة كاملة: السمات من اليوم t والعلامة = هل صعد خلال ١٠ جلسات بعده؟ */
 function mlSamples(){
   const X=[],Y=[];
   SHARIA.forEach(s=>{const w=WATCH_CACHE[s];if(!w)return;
-    const h=(w.hist||w.history||[]).map(x=>x&&x.c).filter(v=>v!=null&&v>0);
+    const cv=mlCV(w),h=cv.h,vols=cv.v;
     if(h.length<65)return;
-    for(let t=55;t<h.length-10;t++){const f=mlFeatures(h.slice(0,t+1));if(f){X.push(f);Y.push(h[t+10]>h[t]?1:0)}}
+    for(let t=55;t<h.length-10;t++){const f=mlFeatures(h.slice(0,t+1),vols.slice(0,t+1));if(f){X.push(f);Y.push(h[t+10]>h[t]?1:0)}}
   });
   return {X:X,Y:Y};
 }
@@ -1401,10 +1411,10 @@ function mlTrain(){
 }
 /* احتمالية صعود السهم خلال ١٠ جلسات حسب النموذج المحفوظ */
 function mlProb(sym){
-  const db=mlGet();if(!db.model)return null;
+  const db=mlGet();if(!db.model||!db.model.w||db.model.w.length!==10)return null;
   const w=WATCH_CACHE[sym];if(!w)return null;
-  const h=(w.hist||w.history||[]).map(x=>x&&x.c).filter(v=>v!=null&&v>0);
-  const f=mlFeatures(h);if(!f)return null;
+  const cv=mlCV(w);
+  const f=mlFeatures(cv.h,cv.v);if(!f)return null;
   let z=db.model.b;for(let k=0;k<f.length;k++)z+=db.model.w[k]*f[k];
   return 1/(1+Math.exp(-Math.max(-30,Math.min(30,z))));
 }
@@ -1413,7 +1423,7 @@ function renderML(){
   const box=$("ml-card");if(!box)return;
   const db=mlGet(),nDays=Object.keys(db.days||{}).length;
   box.innerHTML='<div class="card"><h3>🧠 محرك التعلم الآلي — توقعات العشر جلسات القادمة</h3>'
-   +'<p class="small muted" style="line-height:1.8;margin-bottom:10px">نموذج <b>انحدار لوجستي</b> بيتدرّب جوّه المتصفح من غير أي خدمة خارجية ولا حدود API: بيتعلم من ٨ سمات فنية (زخم العوائد · المتوسطات · RSI · الموقع من المدى · التقلب) على تاريخ سنة كاملة لكل سهم من الأسهم المتوافقة مع الشريعة، ويقدّر احتمالية صعود كل سهم خلال ١٠ جلسات قادمة.</p>'
+   +'<p class="small muted" style="line-height:1.8;margin-bottom:10px">نموذج <b>انحدار لوجستي</b> بيتدرّب جوّه المتصفح من غير أي خدمة خارجية ولا حدود API: بيتعلم من ١٠ سمات فنية (زخم العوائد · المتوسطات · RSI · الموقع من المدى · التقلب · نسبة السيولة ٥/٢٠ · زخم ٦ شهور) على تاريخ سنة كاملة لكل سهم من الأسهم المتوافقة مع الشريعة، ويقدّر احتمالية صعود كل سهم خلال ١٠ جلسات قادمة.</p>'
    +'<div class="row" style="gap:8px"><button class="btn primary mini" id="btn-ml-train">🎓 درّب النموذج الآن</button><span class="small muted">📸 قاعدة البيانات اليومية: '+nDays+' لقطة محفوظة — بتكبر تلقائيًا مع كل فحص سوق</span></div>'
    +'<div id="ml-out" style="margin-top:12px"></div></div>';
   $("btn-ml-train").onclick=()=>{
@@ -1423,7 +1433,7 @@ function renderML(){
       mlShow(o,r.model);
     },60);
   };
-  if(db.model)mlShow($("ml-out"),db.model);
+  if(db.model&&db.model.w&&db.model.w.length===10)mlShow($("ml-out"),db.model);
   else $("ml-out").innerHTML='<div class="small muted">اضغط «🎓 درّب النموذج الآن» — أول تدريب بياخد ثواني معدودة، والتوقعات تفضل محفوظة على جهازك.</div>';
 }
 function mlShow(o,m){
@@ -1464,9 +1474,13 @@ function renderQuant(){
    +'<button class="btn primary mini" id="btn-corr">🔗 احسب الارتباط والتنويع</button><div id="corr-out" style="margin-top:12px"></div></div>'
    +'<div class="card"><h3>🎲 محاكاة مونت كارلو — ٢٠٠٠ سيناريو لمستقبل محفظتك</h3>'
    +'<p class="small muted" style="line-height:1.8;margin-bottom:10px">بنولّد ٢٠٠٠ مسار عشوائي لمحفظتك خلال ٦٠ جلسة جاية، بسحب عوائد حقيقية من تاريخ المحفظة نفسها (Bootstrap) — فبنحافظ على الذيل السمين والارتباط بين الأسهم، ونطلع نطاق الاحتمالات بدل رقم واحد يتوهم.</p>'
-   +'<button class="btn primary mini" id="btn-mc">🎲 شغّل المحاكاة</button><div id="mc-out" style="margin-top:12px"></div></div>';
+   +'<button class="btn primary mini" id="btn-mc">🎲 شغّل المحاكاة</button><div id="mc-out" style="margin-top:12px"></div></div>'
+   +'<div class="card" style="margin-top:12px"><h3>🎯 محسّن ماركوفيتز — الأوزان المثلى لمحفظتك</h3>'
+   +'<p class="small muted" style="line-height:1.8;margin-bottom:10px">نظرية المحفظة الحديثة: بنجرب ٤٠٠٠ توزيعة أوزان على أساس العائد والمخاطرة التاريخية لأسهم المحفظة، ونطلعلك محفظة <b>أعلى نسبة شارب</b> (أفضل عائد لكل وحدة مخاطرة) ومحفظة <b>أقل مخاطرة</b> — قارن أوزانك الحالية بالمقترحة، والفروق الكبيرة دي إشارة إنك تعيد النظر في توزيعك.</p>'
+   +'<button class="btn primary mini" id="btn-mk">🎯 احسب الأوزان المثلى</button><div id="mk-out" style="margin-top:12px"></div></div>';
   $("btn-corr").onclick=()=>{const o=$("corr-out");o.innerHTML='<span class="spin"></span> جارٍ حساب المصفوفة...';setTimeout(()=>runCorr(o,q),50)};
   $("btn-mc").onclick=()=>{const o=$("mc-out");o.innerHTML='<span class="spin"></span> جارٍ توليد ٢٠٠٠ سيناريو...';setTimeout(()=>runMC(o),50)};
+  $("btn-mk").onclick=()=>{const o=$("mk-out");o.innerHTML='<span class="spin"></span> جارٍ فحص ٤٠٠٠ توزيعة أوزان...';setTimeout(()=>runMK(o),50)};
 }
 function runCorr(o,q){
   const syms=q.syms;
@@ -1664,7 +1678,7 @@ async function lgbFetch(){
       const r=await withTimeout(fetch(u,{cache:"no-store"}),9000);
       if(!r.ok)throw new Error("HTTP "+r.status);
       const m=await withTimeout(r.json(),9000);
-      if(m&&m.version===1&&m.nodes&&m.roots){LGB=m;store.set("egx_lgb_v1",{model:m,at:Date.now()});return m}
+      if(m&&(m.version===1||m.version===2)&&m.nodes&&m.roots){LGB=m;store.set("egx_lgb_v1",{model:m,at:Date.now()});return m}
       throw new Error("bad model file");
     }catch(e){}
   }
@@ -1685,8 +1699,8 @@ function lgbScore(M,f){
 function lgbProb(sym){
   if(!LGB)return null;
   const w=WATCH_CACHE[sym];if(!w)return null;
-  const h=(w.hist||w.history||[]).map(x=>x&&x.c).filter(v=>v!=null&&v>0);
-  const f=mlFeatures(h);if(!f)return null;
+  const cv=mlCV(w);
+  const f=mlFeatures(cv.h,cv.v);if(!f)return null;
   const raw=lgbScore(LGB,f);
   if(raw==null||!isFinite(raw))return null;
   return 1/(1+Math.exp(-Math.max(-30,Math.min(30,raw))));
@@ -1703,7 +1717,7 @@ async function renderLGB(){
   if(!cached.at||Date.now()-cached.at>24*60*60*1000)lgbFetch().then(function(nm){if(nm&&nm!==m)showLGB(box,nm)});
 }
 function showLGB(box,m){
-  const rows=SHARIA.map(function(s){return {s:s,p:lgbProb(s),q:mlProb(s),w:WATCH_CACHE[s]}}).filter(function(x){return x.p!=null}).sort(function(a,b){return b.p-a.p}).slice(0,10);
+  const rows=SHARIA.map(function(s){return {s:s,p:lgbProb(s),q:mlProb(s),w:WATCH_CACHE[s]}}).filter(function(x){return x.p!=null}).map(function(x){x.e=x.q!=null?(x.p+x.q)/2:x.p;return x}).sort(function(a,b){return b.e-a.e}).slice(0,10);
   let h='<div class="card"><h3>🌲 محرك LightGBM الخارجي — تعلم حقيقي مدرَّب على السيرفر</h3>'
    +'<p class="small muted" style="line-height:1.8;margin-bottom:10px">نموذج <b>LightGBM</b> (تدرّج شجري معزّز) بيتدرب أسبوعيًا على <b>GitHub Actions</b> مجانًا على تاريخ ٥ سنوات من Yahoo Finance لأسهم الشريعة، وبيوصل هنا مجرد أوزان جاهزة — كل التوقع بيحصل في متصفحك من غير أي طلب خارجي. المقارنة جنب نموذج اللوجستي المحلي بتقولك هما متفقين على سهم ولا متعارضين — والتعارض نفسه معلومة مهمة.</p>'
    +'<div class="metrics">'
@@ -1715,14 +1729,20 @@ function showLGB(box,m){
    +'<div class="metric"><div class="lbl">تاريخ التدريب</div><div class="val" style="font-size:13px">'+m.trained_at+'</div></div>'
    +'</div>';
   if(rows.length){
-    h+='<div class="scroll-x" style="margin-top:10px"><table><thead><tr><th>السهم</th><th>LightGBM (١٠ جلسات)</th><th>اللوجستي المحلي</th><th>الاتفاق</th><th>السعر</th></tr></thead><tbody>'
+    h+='<div class="scroll-x" style="margin-top:10px"><table><thead><tr><th>السهم</th><th>LightGBM (١٠ جلسات)</th><th>اللوجستي المحلي</th><th>الدمج المرجّح</th><th>الاتفاق</th><th>السعر</th></tr></thead><tbody>'
      +rows.map(function(x){
         const ag=(x.p>=0.6&&x.q!=null&&x.q>=0.6)?'<span class="up">✅ متفقان على الصعود</span>':((x.p<0.5&&x.q!=null&&x.q<0.5)?'<span class="muted">✅ متفقان على الحذر</span>':'<span style="color:var(--amber)">⚡ تعارض — راجع بيدك</span>');
-        return '<tr class="click" onclick="openStock(&quot;'+x.s+'&quot;)"><td><b>'+(BYSYM[x.s]?BYSYM[x.s].n:x.s)+'</b> <span class="sect-tag">'+x.s+'</span></td><td><div class="bar" style="min-width:100px;display:inline-block;vertical-align:middle"><div style="width:'+(x.p*100).toFixed(0)+'%"></div></div> <b class="'+(x.p>=0.6?"up":"muted")+'">'+(x.p*100).toFixed(0)+'%</b></td><td>'+(x.q!=null?'<b class="'+(x.q>=0.6?"up":"muted")+'">'+(x.q*100).toFixed(0)+'%</b>':'—')+'</td><td>'+ag+'</td><td class="num">'+(x.w?NF(x.w.price!=null?x.w.price:x.w.p):"—")+'</td></tr>';
+        return '<tr class="click" onclick="openStock(&quot;'+x.s+'&quot;)"><td><b>'+(BYSYM[x.s]?BYSYM[x.s].n:x.s)+'</b> <span class="sect-tag">'+x.s+'</span></td><td><div class="bar" style="min-width:100px;display:inline-block;vertical-align:middle"><div style="width:'+(x.p*100).toFixed(0)+'%"></div></div> <b class="'+(x.p>=0.6?"up":"muted")+'">'+(x.p*100).toFixed(0)+'%</b></td><td>'+(x.q!=null?'<b class="'+(x.q>=0.6?"up":"muted")+'">'+(x.q*100).toFixed(0)+'%</b>':'—')+'</td><td><b class="'+(x.e>=0.6?"up":"muted")+'">'+(x.e*100).toFixed(0)+'%</b></td><td>'+ag+'</td><td class="num">'+(x.w?NF(x.w.price!=null?x.w.price:x.w.p):"—")+'</td></tr>';
       }).join("")
      +'</tbody></table></div>';
   } else {
     h+='<div class="small muted" style="margin-top:8px">اعمل «فحص السوق» الأول عشان يتجمع التاريخ اللازم لتشغيل النموذج على أسهمك.</div>';
+  }
+  if(m.calibration&&m.calibration.length){
+    h+='<div class="scroll-x" style="margin-top:10px"><table><thead><tr><th>نطاق التوقع</th><th>عينات</th><th>الصعود المتوقع</th><th>الصعود الفعلي</th></tr></thead><tbody>'
+     +m.calibration.map(function(r){return '<tr><td>'+r.range+'</td><td class="num">'+r.n+'</td><td class="num">'+r.pred_pct+'%</td><td class="num">'+r.actual_pct+'%</td></tr>'}).join("")
+     +'</tbody></table></div>'
+     +'<div class="small muted" style="margin-top:6px">🎯 جدول المعايرة: لو الصعود الفعلي قريب من المتوقع في نطاق معين، خد توقعات النطاق ده بثقة أعلى.</div>';
   }
   h+='<div class="warn-box" style="margin-top:8px">⚠️ النموذج مدرَّب على عوائد تاريخية والأسواق بتتغير — التوقعات احتمالية مش وعد. استخدمها مع التحليل الفني ومختبر الاستراتيجيات، ودي مش نصيحة استثمارية.</div></div>';
   box.innerHTML=h;
@@ -1773,6 +1793,49 @@ $("bk-file").onchange=async function(){
     setTimeout(function(){location.reload()},1500);
   }catch(e){o.innerHTML='<div class="warn-box">⚠️ فشلت الاستعادة: '+e.message+'</div>'}
 };
+
+/* ═════════════════════════ 12.11) 🎯 محسّن ماركوفيتز — أوزان المحفظة الأمثل ═════════════════════════ */
+function runMK(o){
+  const obj=qSyms();const syms=obj.syms;
+  if(syms.length<2){o.innerHTML='<div class="warn-box">⚠️ محتاجين سهمين على الأقل عندهم تاريخ كافي — اعمل «فحص السوق» الأول.</div>';return}
+  const rets=syms.map(s=>qReturns(qHist(s),60));
+  if(rets.some(r=>r.length<30)){o.innerHTML='<div class="warn-box">⚠️ التاريخ المتاح لسه قصير — اعمل «فحص السوق» وشوف تاني.</div>';return}
+  const n=syms.length;
+  const L=Math.min.apply(null,rets.map(r=>r.length));
+  const rs=rets.map(r=>r.slice(-L));
+  const mu=rs.map(a=>a.reduce((x,y)=>x+y,0)/a.length);
+  const sd=rs.map(a=>{const m=a.reduce((x,y)=>x+y,0)/a.length;return Math.sqrt(a.reduce((s,x)=>s+(x-m)*(x-m),0)/a.length)});
+  const cov=[];
+  for(let i=0;i<n;i++){cov[i]=[];for(let j=0;j<n;j++){const p=(i===j)?1:qPearson(rs[i],rs[j]);cov[i][j]=(p==null?0.2:p)*sd[i]*sd[j]}}
+  let seed=987654321;
+  const rnd=()=>{seed=(seed*48271)%2147483647;return seed/2147483647};
+  let shp=null,mnv=null;
+  for(let it=0;it<4000;it++){
+    const w=[];let tot=0;
+    for(let i=0;i<n;i++){const x=rnd();w.push(x);tot+=x}
+    for(let i=0;i<n;i++)w[i]/=tot;
+    let r=0,v=0;
+    for(let i=0;i<n;i++)r+=w[i]*mu[i];
+    for(let i=0;i<n;i++)for(let j=0;j<n;j++)v+=w[i]*cov[i][j]*w[j];
+    v=Math.sqrt(Math.max(v,1e-12));
+    if(!mnv||v<mnv.v)mnv={w:w.slice(),v:v,r:r};
+    const s=(r*250)/((v*Math.sqrt(250))||1e-9);
+    if(!shp||s>shp.s)shp={w:w.slice(),v:v,r:r,s:s};
+  }
+  const rows=syms.map((s,i)=>({s:s,a:shp.w[i],b:mnv.w[i]})).filter(x=>x.a>=0.02||x.b>=0.02).sort((x,y)=>Math.max(y.a,y.b)-Math.max(x.a,x.b));
+  let h='<div class="metrics">'
+   +'<div class="metric"><div class="lbl">عائد سنوي متوقع (أعلى شارب)</div><div class="val" style="color:var(--green)">'+(shp.r*250*100).toFixed(1)+'%</div></div>'
+   +'<div class="metric"><div class="lbl">مخاطرة سنوية (أعلى شارب)</div><div class="val">'+(shp.v*Math.sqrt(250)*100).toFixed(1)+'%</div></div>'
+   +'<div class="metric"><div class="lbl">نسبة شارب</div><div class="val">'+shp.s.toFixed(2)+'</div></div>'
+   +'<div class="metric"><div class="lbl">أقل مخاطرة سنوية</div><div class="val">'+(mnv.v*Math.sqrt(250)*100).toFixed(1)+'%</div></div>'
+   +'</div>'
+   +'<div class="scroll-x" style="margin-top:10px"><table><thead><tr><th>السهم</th><th>وزن أعلى شارب</th><th>وزن أقل مخاطرة</th></tr></thead><tbody>'
+   +rows.map(x=>'<tr class="click" onclick="openStock(&quot;'+x.s+'&quot;)"><td><b>'+(BYSYM[x.s]?BYSYM[x.s].n:x.s)+'</b> <span class="sect-tag">'+x.s+'</span></td><td><div class="bar" style="min-width:90px;display:inline-block;vertical-align:middle"><div style="width:'+(x.a*100).toFixed(0)+'%"></div></div> <b>'+(x.a*100).toFixed(0)+'%</b></td><td><div class="bar" style="min-width:90px;display:inline-block;vertical-align:middle"><div style="width:'+(x.b*100).toFixed(0)+'%"></div></div> <b>'+(x.b*100).toFixed(0)+'%</b></td></tr>').join("")
+   +'</tbody></table></div>'
+   +'<div class="small muted" style="margin-top:8px">⚖️ محسوبة على عوائد آخر ٦٠ جلسة ومُطبَّعة سنويًا على ٢٥٠ جلسة — الأسهم اللي وزنها أقل من ٢٪ مش معروضة.</div>'
+   +'<div class="warn-box" style="margin-top:8px">⚠️ ماركوفيتز بيفترض إن العوائد التاريخية هتتكرر تقريبًا — دي أداة ترشيد للأوزان مش وعد بأرباح، والقرار الاستثماري يفضل قرارك.</div>';
+  o.innerHTML=h;
+}
 
 /* ═════════════════════════ 13) الإعدادات والتفضيلات ═════════════════════════ */
 function loadSettings(){
