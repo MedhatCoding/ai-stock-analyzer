@@ -1,0 +1,66 @@
+start 2026-10-20T23:21:25.067597+00:00
+ACGC samples: 1145
+ETEL samples: 1145
+OCDI samples: 1145
+PHDC samples: 1145
+SKPC samples: 1145
+TMGH samples: 1145
+ETRS samples: 1145
+IFAP samples: 1145
+LCSW samples: 1145
+MASR samples: 1145
+MPCO samples: 1145
+ORWE samples: 1145
+SAUD samples: 1145
+MCQE samples: 1145
+AMOC samples: 1145
+EGAS samples: 1146
+FAIT samples: 1145
+ATQA samples: 1145
+CIRA samples: 1145
+EGAL samples: 1145
+FAITA samples: 1145
+JUFO samples: 1145
+ORHD samples: 1145
+ADIB samples: 1147
+ARCC samples: 1145
+ORAS samples: 1147
+EFID samples: 1145
+OLFI samples: 1145
+MTIE samples: 1147
+RACC samples: 1145
+ICFC samples: 1145
+ISPH samples: 1145
+RMDA samples: 1145
+EFIH samples: 1147
+GOUR fetch failed: <HTTPError 404: 'Not Found'>
+GOUR samples: 0
+CLHO samples: 1145
+ABUK samples: 1145
+SWDY samples: 1145
+MFPC samples: 1145
+FWRY samples: 1145
+POUL samples: 1145
+EGCH samples: 1145
+EGTS samples: 1145
+ELKA samples: 1145
+EMFD samples: 1145
+TAQA fetch failed: <HTTPError 404: 'Not Found'>
+TAQA samples: 0
+MNHD fetch failed: <HTTPError 404: 'Not Found'>
+MNHD samples: 0
+total: 50389 symbols: 44
+ERROR: Traceback (most recent call last):
+  File "/home/runner/work/ai-stock-analyzer/ai-stock-analyzer/train_model.py", line 127, in main
+    booster = lgb.train(params, lgb.Dataset(Xtr, label=Ytr), num_boost_round=300, valid_sets=[lgb.Dataset(Xte, label=Yte)], callbacks=[lgb.early_stopping(30, verbose=False)])
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/lightgbm/engine.py", line 296, in train
+    booster = Booster(params=params, train_set=train_set)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/lightgbm/basic.py", line 3758, in __init__
+    train_set.construct()
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/lightgbm/basic.py", line 2574, in construct
+    self._lazy_init(
+  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/lightgbm/basic.py", line 2179, in _lazy_init
+    raise TypeError("Data list can only be of ndarray or Sequence")
+TypeError: Data list can only be of ndarray or Sequence
