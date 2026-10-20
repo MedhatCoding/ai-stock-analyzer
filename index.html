@@ -125,7 +125,7 @@
     <div class="logo">🕌</div>
     <div>
       <h1>عقار — محلل البورصة المصرية بالذكاء الاصطناعي</h1>
-      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.22</b></div>
+      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.23</b></div>
     </div>
     <div class="hd-right">
       <span class="pill" id="clock">—</span>
@@ -270,6 +270,20 @@
     </div>
     <div class="card">
       <div class="flex-between">
+        <h3>📓 سجل القرارات — ذاكرتك الاستثمارية</h3>
+        <span class="small muted" id="jr-count"></span>
+      </div>
+      <p class="small muted" style="line-height:1.8;margin-bottom:10px">اكتب ليه اشتريت أو بعت قبل ما يتناسى: القرار المشروح بيتذاكر لما تراجع محفظتك بعد كده. السجل محفوظ على جهازك وبيروح مع أي نسخة احتياطية.</p>
+      <div class="row" style="align-items:flex-end;gap:8px">
+        <div class="field" style="margin:0"><label>السهم</label><select id="jr-sym"></select></div>
+        <div class="field" style="margin:0"><label>القرار</label><select id="jr-act"><option value="شراء">🟢 شراء</option><option value="بيع">🔴 بيع</option><option value="إضافة">➕ إضافة على السهم</option><option value="تخفيض">➖ تخفيض</option><option value="ملاحظة">👀 ملاحظة / مراقبة</option><option value="وقوف">🛑 وقف خسارة / هدف</option></select></div>
+        <div class="field" style="margin:0;flex:1;min-width:180px"><label>السبب</label><input id="jr-why" placeholder="مثال: تقاطع ذهبي + سيولة عالية + توصية الشراء" /></div>
+        <button class="btn primary mini" id="jr-add">📓 سجّل القرار</button>
+      </div>
+      <div id="jr-list" style="margin-top:12px"></div>
+    </div>
+    <div class="card">
+      <div class="flex-between">
         <h3>🏦 صناديق الاستثمار (تتبع يدوي)</h3>
         <button class="btn primary mini" id="btn-add-fund">＋ إضافة صندوق</button>
       </div>
@@ -382,7 +396,7 @@
         <li>💼 <b>محفظتك</b> وبياناتك كلها محفوظة في متصفحك (localStorage) ولا تُرسل لأي سيرفر سوى مزوّد الـ AI الذي تختاره بنفسك.</li>
         <li>⚠️ هذا التطبيق لاستخدام شخصي تعليمي — <b>ليس نصيحة استثمارية</b>.</li>
       </ul>
-      <div class="small muted">إصدار 3.22 · صنع بحُب لمستثمر مصري 🇪🇬</div>
+      <div class="small muted">إصدار 3.23 · صنع بحُب لمستثمر مصري 🇪🇬</div>
     </div>
   </section>
 
@@ -1749,7 +1763,7 @@ function showLGB(box,m){
 }
 
 /* ═════════════════════════ 12.10) 💾 النسخ الاحتياطي والاستعادة — كل بياناتك في ملف واحد على أي جهاز ═════════════════════════ */
-const BK_KEYS=["egx_holdings","egx_funds","egx_watch2","egx_picks3","egx_ml_db","egx_prefs","egx_ai_cfg"];
+const BK_KEYS=["egx_holdings","egx_funds","egx_watch2","egx_picks3","egx_ml_db","egx_prefs","egx_ai_cfg","egx_journal"];
 function bkData(){
   const o={app:"aqqar-egx",v:1,at:new Date().toISOString()};
   BK_KEYS.forEach(function(k){const v=store.get(k,null);if(v!=null)o[k]=v});
@@ -1837,6 +1851,40 @@ function runMK(o){
   o.innerHTML=h;
 }
 
+/* ═════════════════════════ 12.12) 📓 سجل القرارات — اكتب ليه قررت ═════════════════════════ */
+function jrGet(){return store.get("egx_journal",[])}
+function jrSet(a){store.set("egx_journal",a)}
+function renderJournal(){
+  const box=$("journal-card");if(!box)return;
+  const sel=$("jr-sym");
+  if(sel&&!sel.options.length){
+    const held=HOLDINGS.map(h=>h.t);
+    const syms=[...new Set(held.concat(SHARIA))].filter(Boolean);
+    sel.innerHTML=syms.map(s=>'<option value="'+s+'">'+s+(BYSYM[s]?" — "+BYSYM[s].n:"")+'</option>').join("");
+  }
+  $("jr-add").onclick=function(){jrAdd()};
+  const a=jrGet();
+  $("jr-count").textContent=a.length?a.length+" قرار مسجّل":"";
+  if(!a.length){$("jr-list").innerHTML='<div class="small muted">لسه مفيش قرارات — أول قرار تكتبه هنا هيفيدك في مراجعة أدائك بعدين.</div>';return}
+  $("jr-list").innerHTML='<div class="scroll-x"><table><thead><tr><th>التاريخ</th><th>السهم</th><th>القرار</th><th>السبب</th><th></th></tr></thead><tbody>'
+   +a.slice().reverse().map((x,i)=>'<tr><td class="num">'+new Date(x.t).toLocaleDateString("ar-EG")+'</td><td><b>'+(BYSYM[x.sym]?BYSYM[x.sym].n:x.sym)+'</b> <span class="sect-tag">'+x.sym+'</span></td><td>'+x.act+'</td><td style="white-space:normal;min-width:160px">'+(x.why||"—")+'</td><td><button class="btn mini danger" onclick="jrDel('+i+')">🗑️</button></td></tr>').join("")
+   +'</tbody></table></div>';
+}
+function jrAdd(){
+  const sym=$("jr-sym").value,act=$("jr-act").value,why=$("jr-why").value.trim();
+  if(!sym){toast("اختار السهم الأول");return}
+  if(!why){toast("اكتب سبب القرار ولو كلمة واحدة — ده أهم حاجة في السجل");return}
+  const a=jrGet();a.push({t:Date.now(),sym:sym,act:act,why:why});jrSet(a);
+  $("jr-why").value="";
+  toast("📓 القرار اتحط في السجل");
+  renderJournal();
+}
+function jrDel(i){
+  const a=jrGet();const idx=a.length-1-i;
+  if(idx<0||idx>=a.length)return;
+  a.splice(idx,1);jrSet(a);renderJournal();
+}
+
 /* ═════════════════════════ 13) الإعدادات والتفضيلات ═════════════════════════ */
 function loadSettings(){
   $("ai-url").value=CFG.ai.url||"";$("ai-key").value=CFG.ai.key||"";$("ai-model").value=CFG.ai.model||"";
@@ -1914,6 +1962,7 @@ function switchTab(name){
   if(name==="sharia")renderSharia();
   if(name==="portfolio")renderPortfolio();
   if(name==="portfolio")renderQuant();
+  if(name==="portfolio")renderJournal();
   if(name==="picks")renderPicks();
   if(name==="picks")renderML();
   if(name==="picks")renderLGB();
