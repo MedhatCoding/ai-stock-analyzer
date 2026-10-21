@@ -1,4 +1,4 @@
-start 2026-10-20T23:21:25.067597+00:00
+start 2026-10-21T20:58:37.392639+00:00
 ACGC samples: 1145
 ETEL samples: 1145
 OCDI samples: 1145
@@ -50,17 +50,4 @@ TAQA samples: 0
 MNHD fetch failed: <HTTPError 404: 'Not Found'>
 MNHD samples: 0
 total: 50389 symbols: 44
-ERROR: Traceback (most recent call last):
-  File "/home/runner/work/ai-stock-analyzer/ai-stock-analyzer/train_model.py", line 127, in main
-    booster = lgb.train(params, lgb.Dataset(Xtr, label=Ytr), num_boost_round=300, valid_sets=[lgb.Dataset(Xte, label=Yte)], callbacks=[lgb.early_stopping(30, verbose=False)])
-              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/lightgbm/engine.py", line 296, in train
-    booster = Booster(params=params, train_set=train_set)
-              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/lightgbm/basic.py", line 3758, in __init__
-    train_set.construct()
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/lightgbm/basic.py", line 2574, in construct
-    self._lazy_init(
-  File "/opt/hostedtoolcache/Python/3.11.17/x64/lib/python3.11/site-packages/lightgbm/basic.py", line 2179, in _lazy_init
-    raise TypeError("Data list can only be of ndarray or Sequence")
-TypeError: Data list can only be of ndarray or Sequence
+model v2 written - trees: 60 nodes: 3660 acc: 56.2 auc: 0.571 cal buckets: 4
