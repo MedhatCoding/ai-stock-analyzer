@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
-# تدريب نموذج LightGBM لأسهم الشريعة في البورصة المصرية - إصدار 5
-# الإصدار 5: لوج تشخيصي كامل يتكتب في train_log.txt وبيترفع للريبو تلقائيًا،
+# تدريب نموذج LightGBM لأسهم الشريعة في البورصة المصرية - إصدار 6
+# الإصدار 6: لوج تشخيصي كامل يتكتب في train_log.txt وبيترفع للريبو تلقائيًا،
 # حارس على قسمة AUC، وثبات النسخة على ubuntu-24.04 في الـ workflow.
 # صيغة ملف الأوزان (version: 2) زي ما التطبيق في المتصفح متوقعها.
 import json, math, time, datetime, traceback
 import urllib.request, http.cookiejar
+import numpy as np
 
 try:
     import lightgbm as lgb
@@ -124,9 +125,13 @@ def main():
         Xtr, Ytr = X[:cut], Y[:cut]
         Xte, Yte = X[cut:], Y[cut:]
         params = {"objective": "binary", "learning_rate": 0.05, "num_leaves": 31, "min_data_in_leaf": 50, "feature_fraction": 0.8, "bagging_fraction": 0.8, "bagging_freq": 1, "verbose": -1, "seed": 42}
-        booster = lgb.train(params, lgb.Dataset(Xtr, label=Ytr), num_boost_round=300, valid_sets=[lgb.Dataset(Xte, label=Yte)], callbacks=[lgb.early_stopping(30, verbose=False)])
+        Xtr_np = np.asarray(Xtr, dtype=float)
+        Ytr_np = np.asarray(Ytr, dtype=float)
+        Xte_np = np.asarray(Xte, dtype=float)
+        Yte_np = np.asarray(Yte, dtype=float)
+        booster = lgb.train(params, lgb.Dataset(Xtr_np, label=Ytr_np), num_boost_round=300, valid_sets=[lgb.Dataset(Xte_np, label=Yte_np)], callbacks=[lgb.early_stopping(30, verbose=False)])
         best = getattr(booster, "best_iteration", None) or booster.num_trees()
-        probs = booster.predict(Xte, num_iteration=best)
+        probs = booster.predict(Xte_np, num_iteration=best)
         acc = sum(1 for p, y in zip(probs, Yte) if (1 if p >= 0.5 else 0) == y) / len(Yte)
         ones = sum(Yte)
         base = max(ones, len(Yte) - ones) / len(Yte)
