@@ -125,7 +125,7 @@
     <div class="logo">🕌</div>
     <div>
       <h1>عقار — محلل البورصة المصرية بالذكاء الاصطناعي</h1>
-      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.23</b></div>
+      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.24</b></div>
     </div>
     <div class="hd-right">
       <span class="pill" id="clock">—</span>
@@ -310,6 +310,7 @@
       <div id="picks-ai" style="margin-top:12px"></div>
       <div id="ml-card" style="margin-top:12px"></div>
       <div id="lgb-card" style="margin-top:12px"></div>
+      <div id="paper-card" style="margin-top:12px"></div>
       <div id="sharia-funds"></div>
     </div>
   </section>
@@ -396,7 +397,7 @@
         <li>💼 <b>محفظتك</b> وبياناتك كلها محفوظة في متصفحك (localStorage) ولا تُرسل لأي سيرفر سوى مزوّد الـ AI الذي تختاره بنفسك.</li>
         <li>⚠️ هذا التطبيق لاستخدام شخصي تعليمي — <b>ليس نصيحة استثمارية</b>.</li>
       </ul>
-      <div class="small muted">إصدار 3.23 · صنع بحُب لمستثمر مصري 🇪🇬</div>
+      <div class="small muted">إصدار 3.24 · صنع بحُب لمستثمر مصري 🇪🇬</div>
     </div>
   </section>
 
@@ -1174,6 +1175,7 @@ async function runScan(){
   $("scan-bar-wrap").classList.add("hide");
   $("btn-scan").disabled=false;
   safe("لقطة التعلم الآلي",()=>{mlDaily();renderML();});
+  safe("المتداول الوهمي",()=>{botTick();renderPaper();});
   if(arr.length)toast("✨ اكتمل فحص "+arr.length+" سهمًا");else toast("⚠️ تعذر الاتصال بمصدر الأسعار — الأسعار على الكروت قديمة",6000);
 }
 $("btn-scan").onclick=runScan;
@@ -1204,13 +1206,19 @@ function autoPicksLLM(){
   if(Date.now()-last>30*60*1000){store.set("egx_pickllm_ts",Date.now());safe("ملخص الفرص",()=>llmPicks());}
 }
 function PICKSOK(){return !!store.get("egx_picks3",null)}
+/* نسبة العائد المتوقع إلى المخاطرة لكل توصية — (المستهدف - السعر) ÷ (السعر - الوقف) */
+function pickRR(x){
+  const d=x.price-x.v.stop;
+  const r=d>0?(x.v.t1-x.price)/d:0;
+  return '<span class="badge '+(r>=2?"b-buy":"b-hold")+'" title="العائد المتوقع مقارنة بالمخاطرة عند الوقف الفني">⚖️ عائد/مخاطرة 1:'+r.toFixed(1)+'</span>';
+}
 function renderPicks(p=PICKS){
   if(!p||(!p.buys&&!p.sells)){$("picks-grid").innerHTML='<div class="empty"><span class="spin"></span> جارٍ فحص السوق تلقائيًا لتوليد توصيات اليوم — من غير أي زر</div>';return}
   const card=(x,isBuy)=>`<div class="card" style="background:var(--card2)">
     <div class="row" style="gap:10px"><b style="font-size:17px">${x.n||x.sym}</b><span class="sect-tag">${x.sym}</span>${SHARIA.includes(x.sym)?'<span class="badge b-sharia">☪️ شريعة</span>':""}<span class="badge ${isBuy?"b-buy":"b-sell"}">${x.chg>=0?"+":""}${x.chg.toFixed(2)}%</span><span style="margin-inline-start:auto" class="stars">${"★".repeat(x.v.stars)}${"☆".repeat(5-x.v.stars)}</span></div>
     <div class="row" style="gap:8px;margin:8px 0"><span class="rec-badge ${x.v.cls}" style="font-size:14px;padding:7px 12px">${x.v.em} ${x.v.rec}</span><span class="small muted">ثقة ${x.v.conf}%</span><span class="small muted">السعر ${NF(x.price)}</span></div>
     <ul class="reasons small">${x.v.rs.filter(r=>r[0]!=="ℹ️").slice(0,3).map(r=>`<li>${r[0]} ${r[1]}</li>`).join("")}</ul>
-    <div class="row small" style="gap:12px;margin-top:6px"><span class="sharia-green">دعم ${NF(x.v.sup)}</span><span class="down">مقاومة ${NF(x.v.res)}</span><span style="color:var(--amber)">وقف ${NF(x.v.stop)}</span><span style="color:var(--accent2)">هدف ${NF(x.v.t1)}</span></div>
+    <div class="row small" style="gap:12px;margin-top:6px"><span class="sharia-green">دعم ${NF(x.v.sup)}</span><span class="down">مقاومة ${NF(x.v.res)}</span><span style="color:var(--amber)">وقف ${NF(x.v.stop)}</span><span style="color:var(--accent2)">هدف ${NF(x.v.t1)}</span> ${pickRR(x)}</div>
     <button class="btn mini" style="margin-top:8px" onclick="openStock('${x.sym}')">📊 التحليل الكامل</button>
   </div>`;
   const fresh=p.time&&Date.now()-p.time<24*60*60*1000;
@@ -1763,7 +1771,7 @@ function showLGB(box,m){
 }
 
 /* ═════════════════════════ 12.10) 💾 النسخ الاحتياطي والاستعادة — كل بياناتك في ملف واحد على أي جهاز ═════════════════════════ */
-const BK_KEYS=["egx_holdings","egx_funds","egx_watch2","egx_picks3","egx_ml_db","egx_prefs","egx_ai_cfg","egx_journal"];
+const BK_KEYS=["egx_holdings","egx_funds","egx_watch2","egx_picks3","egx_ml_db","egx_prefs","egx_ai_cfg","egx_journal","egx_paper"];
 function bkData(){
   const o={app:"aqqar-egx",v:1,at:new Date().toISOString()};
   BK_KEYS.forEach(function(k){const v=store.get(k,null);if(v!=null)o[k]=v});
@@ -1885,6 +1893,163 @@ function jrDel(i){
   a.splice(idx,1);jrSet(a);renderJournal();
 }
 
+/* ═════════════════════════ 12.13) 🤖 المتداول الوهمي — محفظة تدريب بعملة وهمية تختبر التوصيات بصدق ═════════════════════════ */
+const PAPER_KEY="egx_paper";
+const PAPER_START=100000;
+const PAPER_MAX=5;
+function paperGet(){
+  let w=store.get(PAPER_KEY,null);
+  if(!w||typeof w.cash!=="number"||!Array.isArray(w.pos)||!Array.isArray(w.hist)||!Array.isArray(w.curve)){
+    w={cash:PAPER_START,start:PAPER_START,pos:[],hist:[],curve:[],day:""};
+    store.set(PAPER_KEY,w);
+  }
+  return w;
+}
+function paperToday(){
+  const d=new Date();
+  const m=("0"+(d.getMonth()+1)).slice(-2);
+  const dd=("0"+d.getDate()).slice(-2);
+  return d.getFullYear()+"-"+m+"-"+dd;
+}
+function paperValue(w){
+  let v=w.cash;
+  for(let i=0;i<w.pos.length;i++){
+    const p=w.pos[i];
+    const d=WATCH_CACHE[p.s];
+    v+=p.q*((d&&d.price)||p.b);
+  }
+  return v;
+}
+function botTick(manual){
+  const w=paperGet();
+  const acted=[];
+  /* 1) البيع عند الهدف أو الوقف — بأسعار طازجة فقط (أحدث من ٣ أيام) */
+  for(let i=w.pos.length-1;i>=0;i--){
+    const p=w.pos[i];
+    const d=WATCH_CACHE[p.s];
+    const cur=d&&d.price;
+    const age=d&&d.t?Date.now()-d.t:9e12;
+    if(cur==null||age>3*86400000)continue;
+    if(cur>=p.t){
+      w.cash+=p.q*cur;
+      w.hist.push({s:p.s,q:p.q,b:p.b,sp:cur,ret:(cur-p.b)/p.b*100,d:p.d,dd:Date.now(),r:"هدف"});
+      w.pos.splice(i,1);
+      acted.push("🎯 باع "+p.s+" عند الهدف "+NF(cur));
+    }else if(cur<=p.sl){
+      w.cash+=p.q*cur;
+      w.hist.push({s:p.s,q:p.q,b:p.b,sp:cur,ret:(cur-p.b)/p.b*100,d:p.d,dd:Date.now(),r:"وقف"});
+      w.pos.splice(i,1);
+      acted.push("⛔ باع "+p.s+" عند الوقف "+NF(cur));
+    }
+  }
+  if(w.hist.length>200)w.hist=w.hist.slice(-200);
+  /* 2) الشراء مرة واحدة كل يوم من أقوى توصيات الفحص الأخير */
+  const pk=store.get("egx_picks3",null);
+  const today=paperToday();
+  const fresh=pk&&pk.buys&&pk.buys.length&&pk.time&&Date.now()-pk.time<26*60*60*1000;
+  if(fresh&&w.day!==today){
+    const held={};
+    for(let i=0;i<w.pos.length;i++)held[w.pos[i].s]=1;
+    for(let i=0;i<pk.buys.length;i++){
+      if(w.pos.length>=PAPER_MAX)break;
+      const x=pk.buys[i];
+      if(held[x.sym])continue;
+      const d=WATCH_CACHE[x.sym];
+      const cur=d&&d.price;
+      if(cur==null||cur<=0)continue;
+      const budget=Math.min(w.cash,w.start*0.2);
+      if(budget<1000)break;
+      const q=Math.floor(budget/cur);
+      if(q<1)continue;
+      const gr=(x.v&&x.v.t1&&x.price)?x.v.t1/x.price:1.08;
+      const gs=(x.v&&x.v.stop&&x.price)?x.v.stop/x.price:0.94;
+      w.cash-=q*cur;
+      w.pos.push({s:x.sym,q:q,b:cur,t:cur*gr,sl:cur*gs,d:Date.now(),sc:x.v?x.v.sc:0,n:x.n});
+      held[x.sym]=1;
+      acted.push("📈 اشترى "+x.sym+" — "+q+" سهم بـ"+NF(cur));
+    }
+    w.day=today;
+  }
+  /* 3) نقطة يومية في منحنى المحفظة */
+  const val=paperValue(w);
+  const cl=w.curve.length?w.curve[w.curve.length-1]:null;
+  if(!cl||cl.d!==today)w.curve.push({d:today,v:val});
+  if(w.curve.length>400)w.curve=w.curve.slice(-400);
+  store.set(PAPER_KEY,w);
+  if(acted.length)toast("🤖 المتداول الوهمي: "+acted.join(" · "));
+  else if(manual)toast("🤖 مفيش حركة جديدة — الأسعار لسه ما وصلتش مستهدف ولا وقف، وشراء اليوم خلاص اتنفذ أو مفيش رصيد/توصيات جديدة");
+  return w;
+}
+window.paperRun=function(){safe("دورة المتداول الوهمي",function(){botTick(true);renderPaper();})};
+window.paperReset=function(){
+  if(!confirm("تصفير محفظة المتداول الوهمي وبدء رحلة جديدة من ١٠٠٬٠٠٠ ج.م؟"))return;
+  store.set(PAPER_KEY,{cash:PAPER_START,start:PAPER_START,pos:[],hist:[],curve:[],day:""});
+  renderPaper();
+  toast("♻️ المحفظة الوهمية اتصفّرت");
+};
+function renderPaper(){
+  const box=$("paper-card");
+  if(!box)return;
+  const w=paperGet();
+  const val=paperValue(w);
+  const pl=val-w.start;
+  const plp=pl/w.start*100;
+  const n=w.hist.length;
+  const wins=n?w.hist.filter(function(h){return h.ret>0}).length:0;
+  const wr=n?Math.round(wins/n*100):null;
+  const avg=n?w.hist.reduce(function(a,h){return a+h.ret},0)/n:null;
+  const best=n?Math.max.apply(null,w.hist.map(function(h){return h.ret})):null;
+  const worst=n?Math.min.apply(null,w.hist.map(function(h){return h.ret})):null;
+  const colPl=pl>=0?"var(--green)":"var(--red)";
+  const colWr=wr==null?"var(--muted)":(wr>=50?"var(--green)":"var(--red)");
+  const colAvg=avg==null?"var(--muted)":(avg>=0?"var(--green)":"var(--red)");
+  let spark="";
+  if(w.curve.length>=2){
+    const vs=w.curve.map(function(c){return c.v});
+    const mn=Math.min.apply(null,vs),mx=Math.max.apply(null,vs),rg=(mx-mn)||1;
+    const sy=Math.max(2,Math.min(58,55-((w.start-mn)/rg*46)));
+    const pts=[];
+    for(let i=0;i<vs.length;i++)pts.push((i/(vs.length-1)*280).toFixed(1)+","+(55-((vs[i]-mn)/rg*46)).toFixed(1));
+    const col=vs[vs.length-1]>=vs[0]?"#2ecc8f":"#ff5c72";
+    spark='<svg viewBox="0 0 280 60" style="width:100%;max-width:430px;height:62px"><polyline points="'+pts.join(" ")+'" fill="none" stroke="'+col+'" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><line x1="0" y1="'+sy.toFixed(1)+'" x2="280" y2="'+sy.toFixed(1)+'" stroke="#8da3c9" stroke-width="1" stroke-dasharray="4 4"/></svg><div class="small muted" style="margin-top:3px">منحنى قيمة المحفظة الوهمية (الخط المتقطع = رأس المال البداية ١٠٠٬٠٠٠)</div>';
+  }
+  const prows=w.pos.map(function(p){
+    const d=WATCH_CACHE[p.s];
+    const cur=(d&&d.price)||p.b;
+    const up=(cur-p.b)/p.b*100;
+    const den=(p.t-p.b)||1e-9;
+    const prog=Math.max(0,Math.min(100,(cur-p.b)/den*100));
+    return '<tr class="click" onclick="openStock(&quot;'+p.s+'&quot;)"><td><b>'+(BYSYM[p.s]?BYSYM[p.s].n:p.s)+'</b> <span class="sect-tag">'+p.s+'</span></td><td class="num">'+p.q+'</td><td class="num">'+NF(p.b)+'</td><td class="num" style="color:var(--accent2)">'+NF(p.t)+'</td><td class="num" style="color:var(--amber)">'+NF(p.sl)+'</td><td class="num">'+NF(cur)+'</td><td class="'+(up>=0?"up":"down")+'">'+(up>=0?"+":"")+up.toFixed(1)+'%</td><td style="min-width:80px"><div class="bar"><div style="width:'+prog.toFixed(0)+'%"></div></div></td></tr>';
+  }).join("");
+  const crows=w.hist.slice(-12).reverse().map(function(h){
+    const days=Math.max(1,Math.round((h.dd-h.d)/86400000));
+    const why=h.r==="هدف"?"🎯 وصل المستهدف":(h.r==="وقف"?"⛔ لمس الوقف":(h.r||"—"));
+    return '<tr><td><b>'+(BYSYM[h.s]?BYSYM[h.s].n:h.s)+'</b> <span class="sect-tag">'+h.s+'</span></td><td class="num">'+NF(h.b)+'</td><td class="num">'+NF(h.sp)+'</td><td class="'+(h.ret>=0?"up":"down")+'"><b>'+(h.ret>=0?"+":"")+h.ret.toFixed(1)+'%</b></td><td>'+why+'</td><td class="num">'+days+' يوم</td></tr>';
+  }).join("");
+  let h='<div class="card"><h3>🤖 المتداول الوهمي — محفظة تدريب بعملة وهمية تختبر التوصيات بصدق</h3>'
+   +'<p class="small muted" style="line-height:1.8;margin-bottom:10px">روبوت تجريبي بيبدأ بـ<b>١٠٠٬٠٠٠ ج.م وهمية</b> (مش فلوس حقيقية نهائيًا): كل يوم بياخد <b>أقوى توصيات الماسح الذكي</b> ويشتري منها (٥ مراكز حد أقصى — كل مركز بحد أقصى ٢٠٪ من المحفظة)، وبيبيع تلقائيًا لما السعر يوصل <b>المستهدف الفني 🎯</b> أو <b>الوقف ⛔</b>. الدورة بتشتغل لما تفتح التطبيق أو يعمل فحص جديد — والنتيجة تحت هي ميزان حقيقي لجودة التوصيات: المحفظة وصلت لفين؟</p>'
+   +'<div class="metrics">'
+   +'<div class="metric"><div class="lbl">قيمة المحفظة الوهمية</div><div class="val">'+NF(val)+' <span class="small muted">ج.م</span></div></div>'
+   +'<div class="metric"><div class="lbl">إجمالي الربح / الخسارة</div><div class="val" style="color:'+colPl+'">'+(pl>=0?"+":"")+NF(pl)+' ('+(plp>=0?"+":"")+plp.toFixed(1)+'%)</div></div>'
+   +'<div class="metric"><div class="lbl">الرصيد النقدي المتاح</div><div class="val">'+NF(w.cash)+'</div></div>'
+   +'<div class="metric"><div class="lbl">مراكز مفتوحة / صفقات مقفولة</div><div class="val">'+w.pos.length+' / '+n+'</div></div>'
+   +'<div class="metric"><div class="lbl">نسبة الصفقات الرابحة</div><div class="val" style="color:'+colWr+'">'+(wr==null?"—":wr+"%")+'</div></div>'
+   +'<div class="metric"><div class="lbl">متوسط عائد الصفقة</div><div class="val" style="color:'+colAvg+'">'+(avg==null?"—":(avg>=0?"+":"")+avg.toFixed(1)+"%")+'</div></div>'
+   +'<div class="metric"><div class="lbl">أفضل صفقة</div><div class="val" style="color:var(--green)">'+(best==null?"—":"+"+best.toFixed(1)+"%")+'</div></div>'
+   +'<div class="metric"><div class="lbl">أسوأ صفقة</div><div class="val" style="color:var(--red)">'+(worst==null?"—":worst.toFixed(1)+"%")+'</div></div>'
+   +'</div>'
+   +'<div style="margin:10px 0">'+(spark||'<div class="small muted">منحنى المحفظة هيرسم هنا أول ما تتجمع أيام كفاية — نقطة كل يوم.</div>')+'</div>'
+   +'<h3 class="small" style="margin:12px 0 6px">📂 المراكز المفتوحة الآن</h3>'
+   +(w.pos.length?'<div class="scroll-x"><table><thead><tr><th>السهم</th><th>الكمية</th><th>سعر الشراء</th><th>المستهدف 🎯</th><th>الوقف ⛔</th><th>السعر الآن</th><th>العائد العائم</th><th>التقدم للهدف</th></tr></thead><tbody>'+prows+'</tbody></table></div>':'<div class="small muted">مفيش مراكز مفتوحة — المتداول هيشتري أقوى التوصيات أول ما يعمل فحص جديد.</div>')
+   +'<h3 class="small" style="margin:12px 0 6px">📜 آخر الصفقات المقفولة</h3>'
+   +(n?'<div class="scroll-x"><table><thead><tr><th>السهم</th><th>سعر الشراء</th><th>سعر البيع</th><th>العائد</th><th>سبب الإغلاق</th><th>المدة</th></tr></thead><tbody>'+crows+'</tbody></table></div>':'<div class="small muted">لسه مفيش صفقات مقفولة — أول ما سعر مركز يلمس مستهدفه أو وقفه هيتسجل هنا فورًا.</div>')
+   +'<div class="row" style="margin-top:12px"><button class="btn mini primary" onclick="paperRun()">▶️ شغّل دورة المتداول الآن</button><button class="btn mini danger" onclick="paperReset()">♻️ تصفير المحفظة والبدء من جديد</button></div>'
+   +'<div class="small muted" style="margin-top:8px;line-height:1.7">⚖️ القواعد: شراء مرة كل يوم من أقوى توصيات الفحص · ٥ مراكز حد أقصى · ٢٠٪ من المحفظة للمركز الواحد · بيع تلقائي عند المستهدف أو الوقف الفني. أداة تقييم للتوصيات ومش محاكاة دقيقة للعمولات والسيولة.</div>'
+   +'<div class="warn-box" style="margin-top:8px">⚠️ المحفظة دي <b>وهمية بالكامل</b> بعملة تدريبية — مفيش أي فلوس حقيقية بتتحرك، وده مش نصيحة استثمارية.</div>'
+   +'</div>';
+  box.innerHTML=h;
+}
+
 /* ═════════════════════════ 13) الإعدادات والتفضيلات ═════════════════════════ */
 function loadSettings(){
   $("ai-url").value=CFG.ai.url||"";$("ai-key").value=CFG.ai.key||"";$("ai-model").value=CFG.ai.model||"";
@@ -1966,6 +2131,7 @@ function switchTab(name){
   if(name==="picks")renderPicks();
   if(name==="picks")renderML();
   if(name==="picks")renderLGB();
+  if(name==="picks")renderPaper();
   if(name==="settings")loadSettings();
   window.scrollTo({top:0});
 }
@@ -1998,6 +2164,7 @@ function init(){
   safe("التحديث التلقائي",setupAutoRefresh);
   safe("كتالوج الصناديق",renderFundCatalog);
   safe("صناديق الشريعة",renderShariaFunds);
+  safe("المتداول الوهمي",function(){botTick();});
   safe("عرض السوق",()=>renderMarket());
   safe("ملخص المحفظة",renderPortfolioMini);
   /* التشغيل التلقائي: فحص السوق يشتغل من نفسه إذا كانت النتائج أقدم من 24 ساعة */
