@@ -1,0 +1,16 @@
+{
+  "name": "سهمي — محلل البورصة المصرية بالذكاء الاصطناعي",
+  "short_name": "سهمي",
+  "description": "تحليل فني وتوصيات ذكية لأسهم البورصة المصرية بالذكاء الاصطناعي",
+  "start_url": "/ai-stock-analyzer/",
+  "scope": "/ai-stock-analyzer/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0f1c",
+  "theme_color": "#0a0f1c",
+  "lang": "ar",
+  "dir": "rtl",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
