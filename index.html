@@ -125,7 +125,7 @@
     <div class="logo">🕌</div>
     <div>
       <h1>عقار — محلل البورصة المصرية بالذكاء الاصطناعي</h1>
-      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.24</b></div>
+      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.25</b></div>
     </div>
     <div class="hd-right">
       <span class="pill" id="clock">—</span>
@@ -397,7 +397,7 @@
         <li>💼 <b>محفظتك</b> وبياناتك كلها محفوظة في متصفحك (localStorage) ولا تُرسل لأي سيرفر سوى مزوّد الـ AI الذي تختاره بنفسك.</li>
         <li>⚠️ هذا التطبيق لاستخدام شخصي تعليمي — <b>ليس نصيحة استثمارية</b>.</li>
       </ul>
-      <div class="small muted">إصدار 3.24 · صنع بحُب لمستثمر مصري 🇪🇬</div>
+      <div class="small muted">إصدار 3.25 · صنع بحُب لمستثمر مصري 🇪🇬</div>
     </div>
   </section>
 
@@ -1900,9 +1900,12 @@ const PAPER_MAX=5;
 function paperGet(){
   let w=store.get(PAPER_KEY,null);
   if(!w||typeof w.cash!=="number"||!Array.isArray(w.pos)||!Array.isArray(w.hist)||!Array.isArray(w.curve)){
-    w={cash:PAPER_START,start:PAPER_START,pos:[],hist:[],curve:[],day:""};
+    w={cash:PAPER_START,start:PAPER_START,pos:[],hist:[],curve:[],day:"",bench:[],brefs:{},alerts:[]};
     store.set(PAPER_KEY,w);
   }
+  if(!Array.isArray(w.bench))w.bench=[];
+  if(!w.brefs||typeof w.brefs!=="object")w.brefs={};
+  if(!Array.isArray(w.alerts))w.alerts=[];
   return w;
 }
 function paperToday(){
@@ -1933,16 +1936,19 @@ function botTick(manual){
     if(cur>=p.t){
       w.cash+=p.q*cur;
       w.hist.push({s:p.s,q:p.q,b:p.b,sp:cur,ret:(cur-p.b)/p.b*100,d:p.d,dd:Date.now(),r:"هدف"});
+      w.alerts.push({s:p.s,ret:(cur-p.b)/p.b*100,r:"هدف",dd:Date.now(),seen:0});
       w.pos.splice(i,1);
       acted.push("🎯 باع "+p.s+" عند الهدف "+NF(cur));
     }else if(cur<=p.sl){
       w.cash+=p.q*cur;
       w.hist.push({s:p.s,q:p.q,b:p.b,sp:cur,ret:(cur-p.b)/p.b*100,d:p.d,dd:Date.now(),r:"وقف"});
+      w.alerts.push({s:p.s,ret:(cur-p.b)/p.b*100,r:"وقف",dd:Date.now(),seen:0});
       w.pos.splice(i,1);
       acted.push("⛔ باع "+p.s+" عند الوقف "+NF(cur));
     }
   }
   if(w.hist.length>200)w.hist=w.hist.slice(-200);
+  if(w.alerts.length>50)w.alerts=w.alerts.slice(-50);
   /* 2) الشراء مرة واحدة كل يوم من أقوى توصيات الفحص الأخير */
   const pk=store.get("egx_picks3",null);
   const today=paperToday();
@@ -1970,20 +1976,48 @@ function botTick(manual){
     }
     w.day=today;
   }
-  /* 3) نقطة يومية في منحنى المحفظة */
+  /* 3) نقطة يومية في منحنى المحفظة + نقطة في مؤشر متوسط السوق للمقارنة */
   const val=paperValue(w);
   const cl=w.curve.length?w.curve[w.curve.length-1]:null;
   if(!cl||cl.d!==today)w.curve.push({d:today,v:val});
   if(w.curve.length>400)w.curve=w.curve.slice(-400);
+  const bl=w.bench.length?w.bench[w.bench.length-1]:null;
+  if(!bl||bl.d!==today){
+    let sum=0,cnt=0;
+    for(const k in WATCH_CACHE){
+      const c=WATCH_CACHE[k];
+      const age=c&&c.t?Date.now()-c.t:9e12;
+      const pr=c?(c.price!=null?c.price:null):null;
+      if(pr==null||pr<=0)continue;
+      if(!w.brefs[k])w.brefs[k]=pr;
+      if(age>7*86400000)continue;
+      sum+=pr/w.brefs[k];cnt++;
+    }
+    const bv=cnt>=5?w.start*(sum/cnt):(bl?bl.v:w.start);
+    w.bench.push({d:today,v:bv});
+    if(w.bench.length>400)w.bench=w.bench.slice(-400);
+  }
   store.set(PAPER_KEY,w);
-  if(acted.length)toast("🤖 المتداول الوهمي: "+acted.join(" · "));
+  if(acted.length){toast("🤖 المتداول الوهمي: "+acted.join(" · "));paperNotify(acted.join(" · "));}
   else if(manual)toast("🤖 مفيش حركة جديدة — الأسعار لسه ما وصلتش مستهدف ولا وقف، وشراء اليوم خلاص اتنفذ أو مفيش رصيد/توصيات جديدة");
   return w;
 }
 window.paperRun=function(){safe("دورة المتداول الوهمي",function(){botTick(true);renderPaper();})};
+function paperNotify(msg){
+  try{
+    if(typeof Notification!=="undefined"&&Notification.permission==="granted")new Notification("🤖 المتداول الوهمي",{body:msg,tag:"egx-paper"});
+  }catch(e){}
+}
+window.paperBell=function(){
+  safe("تنبيهات المتداول الوهمي",function(){
+    if(typeof Notification==="undefined"){toast("⚠️ المتصفح ده مش بيدعم تنبيهات النظام");return}
+    if(Notification.permission==="granted"){toast("🔔 تنبيهات المتصفح مفعّلة خلاص");return}
+    Notification.requestPermission().then(function(p){toast(p==="granted"?"🔔 تمام — هتوصلك تنبيهة من المتصفح أول ما صفقة تتقفل":"🔕 التنبيه اترفض — ممكن تفعّله من إعدادات المتصفح لما تحب")}).catch(function(){toast("⚠️ تعذر طلب صلاحية التنبيه من المتصفح")});
+  });
+};
 window.paperReset=function(){
   if(!confirm("تصفير محفظة المتداول الوهمي وبدء رحلة جديدة من ١٠٠٬٠٠٠ ج.م؟"))return;
-  store.set(PAPER_KEY,{cash:PAPER_START,start:PAPER_START,pos:[],hist:[],curve:[],day:""});
+  store.set(PAPER_KEY,{cash:PAPER_START,start:PAPER_START,pos:[],hist:[],curve:[],day:"",bench:[],brefs:{},alerts:[]});
   renderPaper();
   toast("♻️ المحفظة الوهمية اتصفّرت");
 };
@@ -2003,15 +2037,44 @@ function renderPaper(){
   const colPl=pl>=0?"var(--green)":"var(--red)";
   const colWr=wr==null?"var(--muted)":(wr>=50?"var(--green)":"var(--red)");
   const colAvg=avg==null?"var(--muted)":(avg>=0?"var(--green)":"var(--red)");
+  const bmap={};
+  for(let i=0;i<w.bench.length;i++)bmap[w.bench[i].d]=w.bench[i].v;
+  const bLast=w.bench.length?w.bench[w.bench.length-1].v:w.start;
+  const bRet=(bLast/w.start-1)*100;
+  const b0=w.bench.length?w.bench[0].d:null;
+  let v0=null;
+  for(let i=0;i<w.curve.length;i++)if(w.curve[i].d===b0){v0=w.curve[i].v;break}
+  if(v0==null&&w.curve.length)v0=w.curve[0].v;
+  const botB=v0?val/v0*100-100:plp;
+  const alpha=botB-bRet;
+  const colB=bRet>=0?"var(--green)":"var(--red)";
+  const colA=alpha>=0?"var(--green)":"var(--red)";
   let spark="";
   if(w.curve.length>=2){
-    const vs=w.curve.map(function(c){return c.v});
-    const mn=Math.min.apply(null,vs),mx=Math.max.apply(null,vs),rg=(mx-mn)||1;
+    const n=w.curve.length;
+    const bs=[];
+    let lb=null;
+    for(let i=0;i<n;i++){const bv=bmap[w.curve[i].d];if(bv!=null)lb=bv;bs.push(lb);}
+    let mn=Infinity,mx=-Infinity;
+    for(let i=0;i<n;i++){
+      if(w.curve[i].v<mn)mn=w.curve[i].v;
+      if(w.curve[i].v>mx)mx=w.curve[i].v;
+      if(bs[i]!=null){if(bs[i]<mn)mn=bs[i];if(bs[i]>mx)mx=bs[i];}
+    }
+    if(!isFinite(mn)){mn=w.start;mx=w.start}
+    if(w.start<mn)mn=w.start;if(w.start>mx)mx=w.start;
+    const rg=(mx-mn)||1;
     const sy=Math.max(2,Math.min(58,55-((w.start-mn)/rg*46)));
     const pts=[];
-    for(let i=0;i<vs.length;i++)pts.push((i/(vs.length-1)*280).toFixed(1)+","+(55-((vs[i]-mn)/rg*46)).toFixed(1));
-    const col=vs[vs.length-1]>=vs[0]?"#2ecc8f":"#ff5c72";
-    spark='<svg viewBox="0 0 280 60" style="width:100%;max-width:430px;height:62px"><polyline points="'+pts.join(" ")+'" fill="none" stroke="'+col+'" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><line x1="0" y1="'+sy.toFixed(1)+'" x2="280" y2="'+sy.toFixed(1)+'" stroke="#8da3c9" stroke-width="1" stroke-dasharray="4 4"/></svg><div class="small muted" style="margin-top:3px">منحنى قيمة المحفظة الوهمية (الخط المتقطع = رأس المال البداية ١٠٠٬٠٠٠)</div>';
+    for(let i=0;i<n;i++)pts.push((i/(n-1)*280).toFixed(1)+","+(55-((w.curve[i].v-mn)/rg*46)).toFixed(1));
+    const bpts=[];
+    for(let i=0;i<n;i++)if(bs[i]!=null)bpts.push((i/(n-1)*280).toFixed(1)+","+(55-((bs[i]-mn)/rg*46)).toFixed(1));
+    const col=w.curve[n-1].v>=w.curve[0].v?"#2ecc8f":"#ff5c72";
+    spark='<svg viewBox="0 0 280 60" style="width:100%;max-width:430px;height:62px">'
+      +(bpts.length>1?'<polyline points="'+bpts.join(" ")+'" fill="none" stroke="#ffd166" stroke-width="1.8" stroke-dasharray="3 3" stroke-linecap="round" stroke-linejoin="round"/>':"")
+      +'<polyline points="'+pts.join(" ")+'" fill="none" stroke="'+col+'" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'
+      +'<line x1="0" y1="'+sy.toFixed(1)+'" x2="280" y2="'+sy.toFixed(1)+'" stroke="#8da3c9" stroke-width="1" stroke-dasharray="4 4"/></svg>'
+      +'<div class="small muted" style="margin-top:3px">الخط العريض: قيمة محفظة البوت · الخط الذهبي المتقطع: متوسط السوق المتتبَع (مرجع المقارنة) · الخط الرمادي المتقطع: رأس المال البداية ١٠٠٬٠٠٠</div>';
   }
   const prows=w.pos.map(function(p){
     const d=WATCH_CACHE[p.s];
@@ -2026,7 +2089,11 @@ function renderPaper(){
     const why=h.r==="هدف"?"🎯 وصل المستهدف":(h.r==="وقف"?"⛔ لمس الوقف":(h.r||"—"));
     return '<tr><td><b>'+(BYSYM[h.s]?BYSYM[h.s].n:h.s)+'</b> <span class="sect-tag">'+h.s+'</span></td><td class="num">'+NF(h.b)+'</td><td class="num">'+NF(h.sp)+'</td><td class="'+(h.ret>=0?"up":"down")+'"><b>'+(h.ret>=0?"+":"")+h.ret.toFixed(1)+'%</b></td><td>'+why+'</td><td class="num">'+days+' يوم</td></tr>';
   }).join("");
-  let h='<div class="card"><h3>🤖 المتداول الوهمي — محفظة تدريب بعملة وهمية تختبر التوصيات بصدق</h3>'
+  const unseen=w.alerts.filter(function(a){return !a.seen}).length;
+  const arows=unseen?w.alerts.filter(function(a){return !a.seen}).slice(-8).reverse().map(function(a){
+    return '<div style="padding:8px 0;border-bottom:1px dashed var(--border);font-size:13.5px">🔔 الصفقة اتقفلت: <b>'+(BYSYM[a.s]?BYSYM[a.s].n:a.s)+'</b> <span class="sect-tag">'+a.s+'</span> — '+(a.r==="هدف"?"على المستهدف 🎯":"على الوقف ⛔")+' بعائد <b style="color:'+(a.ret>=0?"var(--green)":"var(--red)")+'">'+(a.ret>=0?"+":"")+a.ret.toFixed(1)+'%</b></div>';
+  }).join(""):"";
+  let h='<div class="card"><h3>🤖 المتداول الوهمي — محفظة تدريب بعملة وهمية تختبر التوصيات بصدق'+(unseen?' <span class="badge" style="background:rgba(255,180,84,.16);color:var(--amber)">🔔 '+unseen+' تنبيه جديد</span>':"")+'</h3>'
    +'<p class="small muted" style="line-height:1.8;margin-bottom:10px">روبوت تجريبي بيبدأ بـ<b>١٠٠٬٠٠٠ ج.م وهمية</b> (مش فلوس حقيقية نهائيًا): كل يوم بياخد <b>أقوى توصيات الماسح الذكي</b> ويشتري منها (٥ مراكز حد أقصى — كل مركز بحد أقصى ٢٠٪ من المحفظة)، وبيبيع تلقائيًا لما السعر يوصل <b>المستهدف الفني 🎯</b> أو <b>الوقف ⛔</b>. الدورة بتشتغل لما تفتح التطبيق أو يعمل فحص جديد — والنتيجة تحت هي ميزان حقيقي لجودة التوصيات: المحفظة وصلت لفين؟</p>'
    +'<div class="metrics">'
    +'<div class="metric"><div class="lbl">قيمة المحفظة الوهمية</div><div class="val">'+NF(val)+' <span class="small muted">ج.م</span></div></div>'
@@ -2037,17 +2104,21 @@ function renderPaper(){
    +'<div class="metric"><div class="lbl">متوسط عائد الصفقة</div><div class="val" style="color:'+colAvg+'">'+(avg==null?"—":(avg>=0?"+":"")+avg.toFixed(1)+"%")+'</div></div>'
    +'<div class="metric"><div class="lbl">أفضل صفقة</div><div class="val" style="color:var(--green)">'+(best==null?"—":"+"+best.toFixed(1)+"%")+'</div></div>'
    +'<div class="metric"><div class="lbl">أسوأ صفقة</div><div class="val" style="color:var(--red)">'+(worst==null?"—":worst.toFixed(1)+"%")+'</div></div>'
+   +'<div class="metric"><div class="lbl">عائد متوسط السوق (مرجع)</div><div class="val" style="color:'+colB+'">'+(bRet>=0?"+":"")+bRet.toFixed(1)+'%</div></div>'
+   +'<div class="metric"><div class="lbl">ألفا — تفوق البوت على السوق</div><div class="val" style="color:'+colA+'">'+(alpha>=0?"+":"")+alpha.toFixed(1)+'%</div></div>'
    +'</div>'
    +'<div style="margin:10px 0">'+(spark||'<div class="small muted">منحنى المحفظة هيرسم هنا أول ما تتجمع أيام كفاية — نقطة كل يوم.</div>')+'</div>'
    +'<h3 class="small" style="margin:12px 0 6px">📂 المراكز المفتوحة الآن</h3>'
    +(w.pos.length?'<div class="scroll-x"><table><thead><tr><th>السهم</th><th>الكمية</th><th>سعر الشراء</th><th>المستهدف 🎯</th><th>الوقف ⛔</th><th>السعر الآن</th><th>العائد العائم</th><th>التقدم للهدف</th></tr></thead><tbody>'+prows+'</tbody></table></div>':'<div class="small muted">مفيش مراكز مفتوحة — المتداول هيشتري أقوى التوصيات أول ما يعمل فحص جديد.</div>')
    +'<h3 class="small" style="margin:12px 0 6px">📜 آخر الصفقات المقفولة</h3>'
    +(n?'<div class="scroll-x"><table><thead><tr><th>السهم</th><th>سعر الشراء</th><th>سعر البيع</th><th>العائد</th><th>سبب الإغلاق</th><th>المدة</th></tr></thead><tbody>'+crows+'</tbody></table></div>':'<div class="small muted">لسه مفيش صفقات مقفولة — أول ما سعر مركز يلمس مستهدفه أو وقفه هيتسجل هنا فورًا.</div>')
-   +'<div class="row" style="margin-top:12px"><button class="btn mini primary" onclick="paperRun()">▶️ شغّل دورة المتداول الآن</button><button class="btn mini danger" onclick="paperReset()">♻️ تصفير المحفظة والبدء من جديد</button></div>'
+   +(unseen?'<h3 class="small" style="margin:12px 0 6px">🔔 تنبيهات صفقات جديدة ('+unseen+')</h3>'+arows:"")
+   +'<div class="row" style="margin-top:12px"><button class="btn mini primary" onclick="paperRun()">▶️ شغّل دورة المتداول الآن</button><button class="btn mini" onclick="paperBell()">🔔 تنبيهات المتصفح</button><button class="btn mini danger" onclick="paperReset()">♻️ تصفير المحفظة والبدء من جديد</button></div>'
    +'<div class="small muted" style="margin-top:8px;line-height:1.7">⚖️ القواعد: شراء مرة كل يوم من أقوى توصيات الفحص · ٥ مراكز حد أقصى · ٢٠٪ من المحفظة للمركز الواحد · بيع تلقائي عند المستهدف أو الوقف الفني. أداة تقييم للتوصيات ومش محاكاة دقيقة للعمولات والسيولة.</div>'
    +'<div class="warn-box" style="margin-top:8px">⚠️ المحفظة دي <b>وهمية بالكامل</b> بعملة تدريبية — مفيش أي فلوس حقيقية بتتحرك، وده مش نصيحة استثمارية.</div>'
    +'</div>';
   box.innerHTML=h;
+  if(unseen){w.alerts.forEach(function(a){a.seen=1});store.set(PAPER_KEY,w);}
 }
 
 /* ═════════════════════════ 13) الإعدادات والتفضيلات ═════════════════════════ */
