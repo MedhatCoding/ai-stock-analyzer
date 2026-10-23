@@ -117,6 +117,79 @@
   .mover svg{opacity:.9}
   .pill-auto{background:linear-gradient(135deg,#1b3565,#24488a);border:1px solid #2f4a80;border-radius:999px;padding:6px 12px;font-size:12px;color:#bcd4ff}
   .chart-note{font-size:11.5px;color:var(--muted)}
+  /* ═══ v3.26 — خطوط ومقاسات مرتاحة للعين (موبايل أولًا) ═══ */
+  html{-webkit-text-size-adjust:100%}
+  body{font-size:15.5px;line-height:1.65}
+  h1{font-size:25px}
+  .sub{font-size:13px;line-height:1.7}
+  .card h3{font-size:17px;line-height:1.6}
+  .small{font-size:13px}
+  .btn{font-size:14.5px;padding:11px 18px}
+  .btn.mini{font-size:14px;padding:8px 14px}
+  table{font-size:14.5px}
+  th{font-size:13.5px;padding:10px 12px}
+  td{padding:11px 12px}
+  .metric{padding:13px 14px}
+  .metric .lbl{font-size:13px}
+  .metric .val{font-size:19px}
+  .reasons li{font-size:14.5px;line-height:1.85}
+  .ai-box{font-size:14.5px;line-height:2}
+  .warn-box{font-size:14.5px;line-height:1.9}
+  .pill{font-size:13px;padding:7px 13px}
+  .tag{font-size:12.5px;padding:4px 10px}
+  .badge{font-size:12.5px;padding:4px 12px}
+  .sect-tag{font-size:12px}
+  .ph{font-size:13px}
+  .empty{font-size:15px}
+  .toast{font-size:14.5px;max-width:86vw}
+  .toast-mini{font-size:12.5px}
+  .chart-note{font-size:12.5px}
+  .field label{font-size:13.5px}
+  input,select,textarea{font-size:16px;padding:12px 14px}
+  .rec-badge{font-size:18px}
+  .idx-card .v{font-size:24px}
+  .mover .mp{font-size:19px}
+  .stars{font-size:16px}
+  .scroll-x{-webkit-overflow-scrolling:touch}
+  /* ——— الهواتف: تخانة أكبر وأزرار مريحة للإصبع ——— */
+  @media (max-width:760px){
+    .wrap{padding:14px 12px 128px}
+    header{gap:10px}
+    .logo{width:46px;height:46px;font-size:23px;border-radius:13px}
+    h1{font-size:22px}
+    .sub{font-size:12.5px}
+    .hd-right{width:100%;justify-content:flex-start}
+    nav{padding:6px 2px calc(6px + env(safe-area-inset-bottom,0px))}
+    .tab{font-size:12px;gap:3px;padding:9px 1px}
+    .tab .ico{font-size:27px}
+    .card{padding:14px 12px;border-radius:14px}
+    .card h3{font-size:17.5px}
+    .metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .metric .val{font-size:19px}
+    .metric .lbl{font-size:13.5px}
+    table{font-size:15px}
+    th{font-size:13.5px}
+    td{padding:12px}
+    .btn{font-size:15px;padding:13px 20px;border-radius:12px}
+    .btn.mini{font-size:14px;padding:10px 15px}
+    .grid2{gap:12px}
+    .mover-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+    .mover{padding:12px}
+    .idx-card{padding:14px 12px}
+    .idx-card .v{font-size:26px}
+    .rec-badge{font-size:19px;padding:12px 20px}
+    .modal .inner{padding:16px 14px}
+    .toast{left:12px;right:12px;bottom:116px;text-align:center;padding:13px 16px}
+    input,select,textarea{font-size:16px}
+    .warn-box{font-size:14.5px;line-height:1.9}
+    .small{font-size:13.5px}
+    .ai-box{font-size:15px;line-height:2}
+    .reasons li{font-size:15px;line-height:1.9}
+    .stars{font-size:16.5px}
+    footer{font-size:13px!important}
+    .metric .val[style*="font-size:13px"]{font-size:15px!important}
+    div[style*="padding:8px 0;border-bottom:1px dashed var(--border);font-size:13.5px"]{font-size:15px!important}
+  }
 </style>
 </head>
 <body>
@@ -125,7 +198,7 @@
     <div class="logo">🕌</div>
     <div>
       <h1>عقار — محلل البورصة المصرية بالذكاء الاصطناعي</h1>
-      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.25</b></div>
+      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.26</b></div>
     </div>
     <div class="hd-right">
       <span class="pill" id="clock">—</span>
@@ -397,7 +470,7 @@
         <li>💼 <b>محفظتك</b> وبياناتك كلها محفوظة في متصفحك (localStorage) ولا تُرسل لأي سيرفر سوى مزوّد الـ AI الذي تختاره بنفسك.</li>
         <li>⚠️ هذا التطبيق لاستخدام شخصي تعليمي — <b>ليس نصيحة استثمارية</b>.</li>
       </ul>
-      <div class="small muted">إصدار 3.25 · صنع بحُب لمستثمر مصري 🇪🇬</div>
+      <div class="small muted">إصدار 3.26 · صنع بحُب لمستثمر مصري 🇪🇬</div>
     </div>
   </section>
 
