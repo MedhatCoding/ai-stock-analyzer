@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#0a0f1c" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <title>عقار — محلل البورصة المصرية بالذكاء الاصطناعي</title>
 <style>
   :root{
@@ -190,6 +194,60 @@
     .metric .val[style*="font-size:13px"]{font-size:15px!important}
     div[style*="padding:8px 0;border-bottom:1px dashed var(--border);font-size:13.5px"]{font-size:15px!important}
   }
+  /* ═══ v3.27 — وضع التطبيق: خطوط ضخمة وأزرار كبيرة وشريط تنقل زي تطبيقات الموبايل ═══ */
+  @media (max-width:760px){
+    body{font-size:17.5px;line-height:1.75;overscroll-behavior-y:contain}
+    h1{font-size:23px}
+    .sub{font-size:14px;line-height:1.8}
+    .logo{width:52px;height:52px;font-size:26px;border-radius:14px}
+    .pill{font-size:15px;padding:9px 15px}
+    .hd-right{gap:10px}
+    .hd-right .btn.mini{font-size:15px;padding:12px 18px}
+    nav{padding:8px 6px calc(8px + env(safe-area-inset-bottom,0px))}
+    .tab{font-size:13.5px;font-weight:600;gap:4px;padding:10px 2px;border-radius:14px}
+    .tab .ico{font-size:30px}
+    .tab.active{background:rgba(34,211,165,.13)}
+    .wrap{padding:14px 12px 170px}
+    .card{padding:17px 14px;border-radius:18px;margin-bottom:16px}
+    .card h3{font-size:19px}
+    .small{font-size:15px}
+    .btn{font-size:17px;padding:16px 22px;border-radius:14px}
+    .btn.mini{font-size:16px;padding:13px 18px}
+    .card .row{gap:12px}
+    .card .row>.btn{flex:1 1 auto}
+    table{font-size:16.5px}
+    th{font-size:15px}
+    td{padding:14px 14px}
+    td b{font-size:17.5px}
+    .metrics{gap:12px}
+    .metric{padding:14px}
+    .metric .lbl{font-size:15px;margin-bottom:6px}
+    .metric .val{font-size:21px}
+    .badge{font-size:14px;padding:5px 13px}
+    .tag{font-size:14px;padding:5px 12px}
+    .sect-tag{font-size:14px}
+    .reasons li{font-size:16.5px;line-height:2;padding:10px 0}
+    .ai-box{font-size:16.5px;line-height:2.1;padding:16px}
+    .warn-box{font-size:16px;line-height:2}
+    .empty{font-size:16.5px}
+    .toast{font-size:16.5px;left:10px;right:10px;bottom:150px;padding:15px 18px;line-height:1.9}
+    .toast-mini{font-size:14px}
+    .chart-note{font-size:14px}
+    .ph{font-size:14.5px}
+    .field label{font-size:15.5px}
+    input,select,textarea{font-size:17px;padding:14px 16px}
+    .rec-badge{font-size:21px;padding:14px 22px}
+    .idx-card{padding:16px 14px}
+    .idx-card .v{font-size:30px}
+    .mover{padding:14px}
+    .mover .mp{font-size:22px}
+    .stars{font-size:18px}
+    .modal .inner{padding:18px 16px}
+    .grid2{gap:14px}
+    footer{font-size:15px!important}
+    .metric .val[style*="font-size:13px"]{font-size:16px!important}
+    div[style*="padding:8px 0;border-bottom:1px dashed var(--border);font-size:13.5px"]{font-size:16.5px!important;padding:11px 0}
+  }
 </style>
 </head>
 <body>
@@ -198,7 +256,7 @@
     <div class="logo">🕌</div>
     <div>
       <h1>عقار — محلل البورصة المصرية بالذكاء الاصطناعي</h1>
-      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.26</b></div>
+      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.27</b></div>
     </div>
     <div class="hd-right">
       <span class="pill" id="clock">—</span>
@@ -470,7 +528,7 @@
         <li>💼 <b>محفظتك</b> وبياناتك كلها محفوظة في متصفحك (localStorage) ولا تُرسل لأي سيرفر سوى مزوّد الـ AI الذي تختاره بنفسك.</li>
         <li>⚠️ هذا التطبيق لاستخدام شخصي تعليمي — <b>ليس نصيحة استثمارية</b>.</li>
       </ul>
-      <div class="small muted">إصدار 3.26 · صنع بحُب لمستثمر مصري 🇪🇬</div>
+      <div class="small muted">إصدار 3.27 · صنع بحُب لمستثمر مصري 🇪🇬</div>
     </div>
   </section>
 
