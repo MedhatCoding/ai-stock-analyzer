@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-title" content="سهمي" />
 <link rel="manifest" href="manifest.json" />
 <link rel="icon" type="image/svg+xml" href="icon.svg" />
-<link rel="apple-touch-icon" href="icon.svg" />
+<link rel="apple-touch-icon" href="icon-180.png" />
 <title>سهمي — محلل البورصة المصرية بالذكاء الاصطناعي</title>
 <style>
   :root{
@@ -261,7 +261,7 @@
     <div class="logo">🕌</div>
     <div>
       <h1>سهمي — محلل البورصة المصرية بالذكاء الاصطناعي</h1>
-      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.29</b></div>
+      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.30</b></div>
     </div>
     <div class="hd-right">
       <span class="pill" id="clock">—</span>
@@ -310,6 +310,20 @@
           <div id="top-losers" class="mover-grid"></div>
         </div>
       </div>
+    </div>
+    <div class="card">
+      <div class="flex-between">
+        <h3>🗺️ خريطة حرارية للقطاعات</h3>
+        <span class="small muted">متوسط تغير أسهم كل قطاع النهاردة</span>
+      </div>
+      <div id="sector-heat" class="row" style="gap:8px"></div>
+    </div>
+    <div class="card">
+      <div class="flex-between">
+        <h3>📰 أخبار السوق المصري</h3>
+        <button class="btn mini" id="btn-news">🔄 تحديث</button>
+      </div>
+      <div id="news-body"></div>
     </div>
     <div class="card">
       <div class="flex-between">
@@ -396,6 +410,20 @@
       </div>
       <div id="holdings-table-wrap" class="scroll-x"></div>
       <div class="grid3" id="holdings-summary" style="margin-top:14px"></div>
+    </div>
+    <div class="card">
+      <div class="flex-between">
+        <h3>🚨 تنبيهات سعرية</h3>
+        <span class="small muted" id="al-count"></span>
+      </div>
+      <p class="small muted" style="line-height:1.8;margin-bottom:10px">حدد سعر هدف لأي سهم — أول ما السعر يوصل أو ينزل تحته توصلك إشعار متصفح وتليجرام فورًا. التنبيهات بتتفحص كل دقيقة طول ما التطبيق فاتح، والأسعار بتجيلك من نفس مصدر Yahoo.</p>
+      <div class="row" style="align-items:flex-end;gap:8px">
+        <div class="field" style="margin:0"><label>السهم</label><select id="al-sym"></select></div>
+        <div class="field" style="margin:0"><label>الشرط</label><select id="al-dir"><option value="above">⬆️ يوصل أو يعلى عن</option><option value="below">⬇️ ينزل أو يقل عن</option></select></div>
+        <div class="field" style="margin:0"><label>السعر (ج.م)</label><input id="al-price" type="number" step="0.01" style="width:120px"></div>
+        <button class="btn primary mini" id="al-add">🚨 فعّل التنبيه</button>
+      </div>
+      <div id="al-list" style="margin-top:12px"></div>
     </div>
     <div class="card">
       <div class="flex-between">
@@ -560,7 +588,7 @@
         <li>💼 <b>محفظتك</b> وبياناتك كلها محفوظة في متصفحك (localStorage) ولا تُرسل لأي سيرفر سوى مزوّد الـ AI الذي تختاره بنفسك.</li>
         <li>⚠️ هذا التطبيق لاستخدام شخصي تعليمي — <b>ليس نصيحة استثمارية</b>.</li>
       </ul>
-      <div class="small muted">إصدار 3.29 · صنع بحُب لمستثمر مصري 🇪🇬</div>
+      <div class="small muted">إصدار 3.30 · صنع بحُب لمستثمر مصري 🇪🇬</div>
     </div>
   </section>
 
@@ -1338,6 +1366,7 @@ async function runScan(){
   if(arr.length)store.set("egx_picks3",outp);
   else{const prev=store.get("egx_picks3",null);if(prev&&prev.buys&&prev.buys.length){outp.buys=prev.buys;outp.sells=prev.sells||[];outp.time=prev.time}outp.stale=true}
   if(arr.length)safe("سجل التوصيات",()=>{recLogPicks(outp);recEval();renderRecLog();});
+  if(arr.length)safe("خريطة القطاعات والتنبيهات",()=>{renderSectors();alertsCheck();});
   renderPicks(outp);
   $("scan-status").textContent=arr.length?("تم فحص "+arr.length+" سهمًا — "+new Date().toLocaleTimeString("ar-EG")):"⚠️ فشل جلب الأسعار المباشرة — جرّب إعادة الفحص";
   $("scan-bar-wrap").classList.add("hide");
@@ -1956,7 +1985,7 @@ function showLGB(box,m){
 }
 
 /* ═════════════════════════ 12.10) 💾 النسخ الاحتياطي والاستعادة — كل بياناتك في ملف واحد على أي جهاز ═════════════════════════ */
-const BK_KEYS=["egx_holdings","egx_funds","egx_watch2","egx_picks3","egx_ml_db","egx_prefs","egx_ai_cfg","egx_journal","egx_paper","egx_reclog","egx_tg"];
+const BK_KEYS=["egx_holdings","egx_funds","egx_watch2","egx_picks3","egx_ml_db","egx_prefs","egx_ai_cfg","egx_journal","egx_paper","egx_reclog","egx_tg","egx_pricealerts"];
 function bkData(){
   const o={app:"aqqar-egx",v:1,at:new Date().toISOString()};
   BK_KEYS.forEach(function(k){const v=store.get(k,null);if(v!=null)o[k]=v});
@@ -2426,6 +2455,144 @@ $("tg-test").onclick=async function(){
   o.innerHTML=ok?'<span class="up">✅ وصلت — ابص على تليجرام</span>':'<span class="down">❌ فشل الإرسال — راجع التوكن والـ Chat ID</span>';
 };
 
+/* ═════════════════════════ 12.19) 🗺️ خريطة حرارية للقطاعات ═════════════════════════ */
+function renderSectors(){
+  const box=$("sector-heat");if(!box)return;
+  const acc={};
+  Object.values(WATCH_CACHE).forEach(function(c){
+    if(!c||c.chg==null||!c.sym)return;
+    const st=BYSYM[c.sym];if(!st||!st.s)return;
+    (acc[st.s]=acc[st.s]||[]).push(c.chg);
+  });
+  const rows=Object.entries(acc).map(function(e){return {s:e[0],avg:e[1].reduce(function(x,y){return x+y},0)/e[1].length,n:e[1].length}}).sort(function(a,b){return b.avg-a.avg});
+  if(!rows.length){box.innerHTML='<div class="small muted">اعمل «فحص السوق» من تبويب التوصيات وهتلاقي القطاعات ملونتي هنا فورًا.</div>';return}
+  box.innerHTML=rows.map(function(r){
+    const pos=r.avg>=0;
+    const alpha=Math.min(.78,Math.abs(r.avg)*.14+.14);
+    const bg=pos?"rgba(46,204,143,"+alpha+")":"rgba(255,92,114,"+alpha+")";
+    return '<div title="'+r.n+' سهم" style="background:'+bg+';border:1px solid '+(pos?"#2ecc8f55":"#ff5c7255")+';border-radius:12px;padding:10px 12px;min-width:120px;flex:1 1 120px;max-width:200px">'
+      +'<div style="font-size:12.5px;font-weight:600">'+r.s+'</div>'
+      +'<div class="num" style="font-size:16px;font-weight:800;direction:ltr;text-align:right">'+(pos?"▲":"▼")+' '+Math.abs(r.avg).toFixed(2)+'%</div>'
+      +'<div style="font-size:10.5px;opacity:.8">'+r.n+' سهم</div></div>';
+  }).join("");
+}
+
+/* ═════════════════════════ 12.20) 📰 أخبار السوق — RSS عبر البروكسيات ═════════════════════════ */
+const RAW_PROXIES=[
+  {name:"AllOrigins",make:u=>"https://api.allorigins.win/raw?url="+encodeURIComponent(u)},
+  {name:"codetabs",make:u=>"https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(u)},
+  {name:"cors.lol",make:u=>"https://api.cors.lol/?url="+encodeURIComponent(u)},
+  {name:"cors.workers",make:u=>"https://test.cors.workers.dev/?"+u},
+  {name:"thingsproxy",make:u=>"https://thingsproxy.com/?url="+encodeURIComponent(u)}
+];
+const NEWS_URL="https://news.google.com/rss/search?q="+encodeURIComponent('"البورصة المصرية" OR EGX OR "بورصة مصر"')+"&hl=ar&gl=EG&ceid=EG:ar";
+async function fetchText(url,ms=9000){
+  let err;
+  for(const p of RAW_PROXIES){
+    try{
+      const bust=url+(url.includes("?")?"&":"?")+"_cb="+Date.now();
+      const res=await withTimeout(fetch(p.make(bust),{headers:{}}),ms);
+      if(!res.ok)throw new Error("HTTP "+res.status);
+      const t=await res.text();
+      if(t&&t.includes("<item"))return t;
+      throw new Error("رد غير متوقع");
+    }catch(e){err=e}
+  }
+  throw err||new Error("كل مصادر الأخبار فشلت");
+}
+async function loadNews(force){
+  const box=$("news-body");if(!box)return;
+  const cache=store.get("egx_news2",null);
+  if(!force&&cache&&cache.items&&cache.items.length&&Date.now()-cache.t<60*60*1000){renderNews(cache.items,cache.t);return}
+  if(!cache||force)box.innerHTML='<div class="small"><span class="spin"></span>جارٍ جلب آخر أخبار البورصة المصرية...</div>';
+  try{
+    const xml=await fetchText(NEWS_URL);
+    const doc=new DOMParser().parseFromString(xml,"text/xml");
+    const items=[...doc.querySelectorAll("item")].slice(0,10).map(function(it){
+      return {
+        t:(it.querySelector("title")||{}).textContent||"",
+        l:(it.querySelector("link")||{}).textContent||"",
+        d:(it.querySelector("pubDate")||{}).textContent||""
+      };
+    }).filter(function(x){return x.t&&x.l});
+    if(!items.length)throw new Error("مفيش أخبار في الرد");
+    store.set("egx_news2",{t:Date.now(),items:items});
+    renderNews(items,Date.now());
+  }catch(e){
+    if(cache&&cache.items){renderNews(cache.items,cache.t);box.insertAdjacentHTML("beforeend",'<div class="small muted" style="margin-top:6px">⚠️ تعذر التحديث الآن — دي آخر أخبار محفوظة.</div>')}
+    else box.innerHTML='<div class="warn-box">⚠️ تعذر جلب الأخبار دلوقتي (البروكسيات مزدحمة) — جرّب زر 🔄 تحديث بعد شوية.</div>';
+  }
+}
+function renderNews(items,t){
+  const box=$("news-body");
+  box.innerHTML='<div class="small muted" style="margin-bottom:8px">آخر تحديث: '+new Date(t).toLocaleTimeString("ar-EG")+' · المصدر: Google News</div>'
+   +items.map(function(x){
+      const ago=x.d?Math.round((Date.now()-new Date(x.d).getTime())/3600000):null;
+      return '<a href="'+x.l+'" target="_blank" rel="noopener" style="display:block;text-decoration:none;color:inherit;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:9px 12px;margin-bottom:7px">'
+        +'<div class="small" style="line-height:1.7">'+x.t+'</div>'
+        +'<div class="small muted" style="font-size:10.5px;margin-top:3px">'+(ago!=null&&isFinite(ago)?(ago<1?"منذ أقل من ساعة":"منذ "+ago+" ساعة"):"")+'</div></a>';
+    }).join("");
+}
+$("btn-news").onclick=()=>{toast("🔄 جارٍ تحديث الأخبار...");loadNews(true)};
+
+/* ═════════════════════════ 12.21) 🚨 تنبيهات سعرية ═════════════════════════ */
+const ALERTS_KEY="egx_pricealerts";
+function alGet(){return store.get(ALERTS_KEY,[])}
+function renderAlerts(){
+  const box=$("al-list");if(!box)return;
+  const a=alGet();
+  const cnt=$("al-count");
+  if(cnt)cnt.textContent=a.length?("نشط: "+a.filter(r=>!r.hit).length+" من "+a.length):"";
+  if(!a.length){box.innerHTML='<div class="empty">مفيش تنبيهات — حدد سهم وسعر فوق وهناديلك أول ما يوصل.</div>';return}
+  box.innerHTML='<div class="scroll-x"><table><thead><tr><th>السهم</th><th>الشرط</th><th>السعر</th><th>آخر سعر</th><th>الحالة</th><th></th></tr></thead><tbody>'
+   +a.map(function(r,i){
+      const c=WATCH_CACHE[r.sym];
+      const cur=(c&&c.price!=null)?c.price:null;
+      return '<tr><td><b>'+(BYSYM[r.sym]?BYSYM[r.sym].n:r.sym)+'</b> <span class="sect-tag">'+r.sym+'</span></td>'
+       +'<td class="small">'+(r.dir==="above"?"⬆️ يعلى عن":"⬇️ ينزل عن")+'</td>'
+       +'<td class="num">'+NF(r.price)+'</td>'
+       +'<td class="num">'+(cur!=null?NF(cur):"—")+'</td>'
+       +'<td>'+(r.hit?'<span class="badge b-buy">تم التنبيه ✅</span>':'<span class="badge b-hold">برصد 🔔</span>')+'</td>'
+       +'<td><button class="btn mini danger" onclick="alDel('+i+')">🗑️</button></td></tr>';
+    }).join("")+'</tbody></table></div>';
+}
+window.alDel=function(i){const a=alGet();a.splice(i,1);store.set(ALERTS_KEY,a);renderAlerts();toast("🗑️ اتشال التنبيه")};
+$("al-add").onclick=function(){
+  const sym=$("al-sym").value,dir=$("al-dir").value,price=+$("al-price").value;
+  if(!sym||!price||price<=0){toast("⚠️ اختار السهم واكتب سعر صحيح");return}
+  const a=alGet();
+  if(a.some(r=>r.sym===sym&&r.dir===dir&&Math.abs(r.price-price)<0.001&&!r.hit)){toast("ℹ️ التنبيه ده موجود بالفعل");return}
+  a.push({t:Date.now(),sym:sym,dir:dir,price:price,hit:0});
+  store.set(ALERTS_KEY,a);
+  $("al-price").value="";
+  renderAlerts();
+  toast("🚨 التنبيه اتفعل — أول ما "+(BYSYM[sym]?BYSYM[sym].n:sym)+" "+(dir==="above"?"يعلى عن":"ينزل عن")+" "+NF(price)+" ج.م هناديلك");
+};
+function alertsCheck(){
+  const a=alGet();let ch=false;
+  a.forEach(function(r){
+    if(r.hit)return;
+    const c=WATCH_CACHE[r.sym];
+    if(!c||c.price==null)return;
+    const met=r.dir==="above"?c.price>=r.price:c.price<=r.price;
+    if(met){
+      r.hit=1;r.hitAt=Date.now();r.hitPrice=c.price;ch=true;
+      const msg="🚨 تنبيه سعري: "+(BYSYM[r.sym]?BYSYM[r.sym].n:r.sym)+" ("+r.sym+") بقى "+NF(c.price)+" ج.م — "+(r.dir==="above"?"وصل أو علا عن":"نزل عن")+" "+NF(r.price);
+      toast("🚨 "+msg,8000);
+      if(typeof Notification!=="undefined"&&Notification.permission==="granted")new Notification("🚨 سهمي — تنبيه سعري",{body:msg,tag:"egx-alert-"+r.sym});
+      safe("تنبيه تليجرام",function(){tgSend(msg)});
+    }
+  });
+  if(ch){store.set(ALERTS_KEY,a);renderAlerts()}
+}
+function alertsTick(){
+  const a=alGet().filter(r=>!r.hit);
+  if(!a.length)return;
+  const syms=[...new Set(a.map(r=>r.sym))];
+  safe("فحص التنبيهات السعرية",async()=>{await queue(syms,s=>getStock(s),3);alertsCheck()});
+}
+setInterval(alertsTick,60*1000);
+
 /* ═════════════════════════ 12.18) ⚙️ Service Worker — تثبيت كتطبيق حقيقي + شغل أوفلاين ═════════════════════════ */
 if("serviceWorker" in navigator&&location.protocol.indexOf("http")===0){
   navigator.serviceWorker.register("sw.js").catch(function(){});
@@ -2510,6 +2677,7 @@ function switchTab(name){
   if(name==="portfolio")renderPortfolio();
   if(name==="portfolio")renderQuant();
   if(name==="portfolio")renderJournal();
+  if(name==="portfolio")renderAlerts();
   if(name==="picks")renderPicks();
   if(name==="picks")renderML();
   if(name==="picks")renderLGB();
@@ -2538,6 +2706,7 @@ function init(){
     const sectors=[...new Set(S.map(x=>x.s))].sort();
     $("stock-filter").innerHTML='<option value="all">كل القطاعات</option>'+sectors.map(s=>`<option>${s}</option>`).join("");
     $("hold-sym").innerHTML=S.map(x=>`<option value="${x.t}">${x.t} — ${x.n}</option>`).join("");
+    $("al-sym").innerHTML=S.map(x=>`<option value="${x.t}">${x.t} — ${x.n}</option>`).join("");
     $("stock-search").addEventListener("input",renderStocksTable);
     $("stock-filter").addEventListener("change",renderStocksTable);
     $("sharia-filter").addEventListener("change",renderStocksTable);
@@ -2548,6 +2717,9 @@ function init(){
   safe("كتالوج الصناديق",renderFundCatalog);
   safe("صناديق الشريعة",renderShariaFunds);
   safe("المتداول الوهمي",function(){botTick();});
+  safe("التنبيهات السعرية",function(){renderAlerts();});
+  safe("خريطة القطاعات",renderSectors);
+  safe("أخبار السوق",()=>loadNews());
   safe("عرض السوق",()=>renderMarket());
   safe("ملخص المحفظة",renderPortfolioMini);
   /* التشغيل التلقائي: فحص السوق يشتغل من نفسه إذا كانت النتائج أقدم من 24 ساعة */
