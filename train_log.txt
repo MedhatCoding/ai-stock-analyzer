@@ -1,53 +1,58 @@
-start 2026-10-21T20:58:37.392639+00:00
-ACGC samples: 1145
-ETEL samples: 1145
-OCDI samples: 1145
-PHDC samples: 1145
-SKPC samples: 1145
-TMGH samples: 1145
-ETRS samples: 1145
-IFAP samples: 1145
-LCSW samples: 1145
-MASR samples: 1145
-MPCO samples: 1145
-ORWE samples: 1145
-SAUD samples: 1145
-MCQE samples: 1145
-AMOC samples: 1145
-EGAS samples: 1146
-FAIT samples: 1145
-ATQA samples: 1145
-CIRA samples: 1145
-EGAL samples: 1145
-FAITA samples: 1145
-JUFO samples: 1145
-ORHD samples: 1145
-ADIB samples: 1147
-ARCC samples: 1145
-ORAS samples: 1147
-EFID samples: 1145
-OLFI samples: 1145
-MTIE samples: 1147
-RACC samples: 1145
-ICFC samples: 1145
-ISPH samples: 1145
-RMDA samples: 1145
-EFIH samples: 1147
+start 2026-10-23T21:32:49.589458+00:00
+ACGC samples: 1142
+ETEL samples: 1142
+OCDI samples: 1142
+PHDC samples: 1142
+SKPC samples: 1142
+TMGH samples: 1142
+ETRS samples: 1142
+IFAP samples: 1142
+LCSW samples: 1142
+MASR samples: 1142
+MPCO samples: 1142
+ORWE samples: 1142
+SAUD samples: 1142
+MCQE samples: 1142
+AMOC samples: 1142
+EGAS samples: 1143
+FAIT samples: 1142
+ATQA samples: 1142
+CIRA samples: 1142
+EGAL samples: 1142
+FAITA samples: 1142
+JUFO samples: 1142
+ORHD samples: 1142
+ADIB samples: 1144
+ARCC samples: 1142
+ORAS samples: 1144
+EFID samples: 1142
+OLFI samples: 1142
+MTIE samples: 1144
+RACC samples: 1142
+ICFC samples: 1142
+ISPH samples: 1142
+RMDA samples: 1142
+EFIH samples: 1144
 GOUR fetch failed: <HTTPError 404: 'Not Found'>
 GOUR samples: 0
-CLHO samples: 1145
-ABUK samples: 1145
-SWDY samples: 1145
-MFPC samples: 1145
-FWRY samples: 1145
-POUL samples: 1145
-EGCH samples: 1145
-EGTS samples: 1145
-ELKA samples: 1145
-EMFD samples: 1145
+CLHO samples: 1142
+ABUK samples: 1142
+SWDY samples: 1142
+MFPC samples: 1142
+FWRY samples: 1142
+POUL samples: 1142
+EGCH samples: 1142
+EGTS samples: 1142
+ELKA samples: 1142
+EMFD samples: 1142
 TAQA fetch failed: <HTTPError 404: 'Not Found'>
 TAQA samples: 0
 MNHD fetch failed: <HTTPError 404: 'Not Found'>
 MNHD samples: 0
-total: 50389 symbols: 44
-model v2 written - trees: 60 nodes: 3660 acc: 56.2 auc: 0.571 cal buckets: 4
+total: 50257 symbols: 44 span: 2022-01-16 -> 2026-10-07
+walk-forward fold 1: auc=0.573 train_n=10051 test_n=10051
+walk-forward fold 2: auc=0.491 train_n=20102 test_n=10051
+walk-forward fold 3: auc=0.546 train_n=30153 test_n=10051
+walk-forward fold 4: auc=0.542 train_n=40204 test_n=10051
+walk-forward mean auc: 0.538
+model v3 written - trees: 40 nodes: 2440 acc: 54.1 auc: 0.542 wf_auc: 0.538 cal buckets: 4
