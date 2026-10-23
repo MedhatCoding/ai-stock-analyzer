@@ -261,7 +261,7 @@
     <div class="logo">🕌</div>
     <div>
       <h1>سهمي — محلل البورصة المصرية بالذكاء الاصطناعي</h1>
-      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.30</b></div>
+      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.31</b></div>
     </div>
     <div class="hd-right">
       <span class="pill" id="clock">—</span>
@@ -588,7 +588,7 @@
         <li>💼 <b>محفظتك</b> وبياناتك كلها محفوظة في متصفحك (localStorage) ولا تُرسل لأي سيرفر سوى مزوّد الـ AI الذي تختاره بنفسك.</li>
         <li>⚠️ هذا التطبيق لاستخدام شخصي تعليمي — <b>ليس نصيحة استثمارية</b>.</li>
       </ul>
-      <div class="small muted">إصدار 3.30 · صنع بحُب لمستثمر مصري 🇪🇬</div>
+      <div class="small muted">إصدار 3.31 · صنع بحُب لمستثمر مصري 🇪🇬</div>
     </div>
   </section>
 
@@ -1958,7 +1958,7 @@ function showLGB(box,m){
    +'<div class="metrics">'
    +'<div class="metric"><div class="lbl">دقة عينة الاختبار</div><div class="val" style="color:'+(m.test_acc>=m.naive_base?"var(--green)":"var(--amber)")+'">'+m.test_acc+'%</div></div>'
    +'<div class="metric"><div class="lbl">AUC</div><div class="val">'+m.auc+'</div></div>'
-   +(m.wf_auc?'<div class="metric"><div class="lbl">AUC (walk-forward زمني)</div><div class="val" style="color:var(--violet)">'+m.wf_auc+'</div></div>':'')'
+   +(m.wf_auc?'<div class="metric"><div class="lbl">AUC (walk-forward زمني)</div><div class="val" style="color:var(--violet)">'+m.wf_auc+'</div></div>':'')
    +'<div class="metric"><div class="lbl">حد التخمين الساذج</div><div class="val">'+m.naive_base+'%</div></div>'
    +'<div class="metric"><div class="lbl">عينات التدريب</div><div class="val">'+m.n_train.toLocaleString("en-US")+'</div></div>'
    +'<div class="metric"><div class="lbl">عدد الأشجار</div><div class="val">'+m.n_trees+'</div></div>'
