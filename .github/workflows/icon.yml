@@ -1,0 +1,33 @@
+name: Generate PNG icons
+on:
+  push:
+    branches: [main]
+    paths: ["icon.svg", ".github/workflows/icon.yml"]
+  workflow_dispatch:
+
+jobs:
+  png:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install sharp
+        run: npm install sharp
+      - name: Rasterize icon.svg to PNG sizes
+        run: |
+          node -e "const sharp=require('sharp');Promise.all([180,192,512].map(s=>sharp('icon.svg',{density:300}).resize(s,s).png().toFile('icon-'+s+'.png'))).then(()=>console.log('PNG icons generated')).catch(e=>{console.error(e);process.exit(1)})"
+      - name: Commit icons
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add icon-180.png icon-192.png icon-512.png
+          if git diff --cached --quiet; then
+            echo "no icon changes"
+          else
+            git commit -m "أيقونات PNG للآيفون والأندرويد من icon.svg"
+            git push
+          fi
