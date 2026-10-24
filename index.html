@@ -261,7 +261,7 @@
     <div class="logo">🕌</div>
     <div>
       <h1>سهمي — محلل البورصة المصرية بالذكاء الاصطناعي</h1>
-      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.33</b></div>
+      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.34</b></div>
     </div>
     <div class="hd-right">
       <span class="pill" id="clock">—</span>
@@ -486,6 +486,7 @@
       <div class="bar hide" id="scan-bar-wrap" style="margin:10px 0"><div id="scan-bar" style="width:0%"></div></div>
       <div class="grid2" id="picks-grid"></div>
       <div id="picks-ai" style="margin-top:12px"></div>
+      <div id="engine-bt" style="margin-top:12px"></div>
       <div id="reclog-card" style="margin-top:12px"></div>
       <div id="ml-card" style="margin-top:12px"></div>
       <div id="lgb-card" style="margin-top:12px"></div>
@@ -588,7 +589,7 @@
         <li>💼 <b>محفظتك</b> وبياناتك كلها محفوظة في متصفحك (localStorage) ولا تُرسل لأي سيرفر سوى مزوّد الـ AI الذي تختاره بنفسك.</li>
         <li>⚠️ هذا التطبيق لاستخدام شخصي تعليمي — <b>ليس نصيحة استثمارية</b>.</li>
       </ul>
-      <div class="small muted">إصدار 3.33 · صنع بحُب لمستثمر مصري 🇪🇬</div>
+      <div class="small muted">إصدار 3.34 · صنع بحُب لمستثمر مصري 🇪🇬</div>
     </div>
   </section>
 
@@ -1433,6 +1434,7 @@ async function runScan(){
   else{const prev=store.get("egx_picks3",null);if(prev&&prev.buys&&prev.buys.length){outp.buys=prev.buys;outp.sells=prev.sells||[];outp.time=prev.time}outp.stale=true}
   if(arr.length)safe("سجل التوصيات",()=>{recLogPicks(outp);recEval();renderRecLog();});
   if(arr.length)safe("خريطة القطاعات والتنبيهات",()=>{renderSectors();alertsCheck();});
+  if(arr.length)safe("شهادة المحرك",()=>{engineBT();renderEngineBT();});
   renderPicks(outp);
   $("scan-status").textContent=arr.length?("تم فحص "+arr.length+" سهمًا — "+new Date().toLocaleTimeString("ar-EG")):"⚠️ فشل جلب الأسعار المباشرة — جرّب إعادة الفحص";
   $("scan-bar-wrap").classList.add("hide");
@@ -1483,6 +1485,67 @@ function pickRR(x){
   const r=d>0?(x.v.t1-x.price)/d:0;
   return '<span class="badge '+(r>=2?"b-buy":"b-hold")+'" title="العائد المتوقع مقارنة بالمخاطرة عند الوقف الفني">⚖️ عائد/مخاطرة 1:'+r.toFixed(1)+'</span>';
 }
+/* ═══ 🏛️ شهادة المحرك — التطبيق بيحاكم نفسه: شغّل توصياته على آخر سنة تاريخية وشوف النتيجة ═══ */
+const EBT_KEY="egx_enginebt";
+function engineBT(force){
+  const cached=store.get(EBT_KEY,null);
+  if(!force&&cached&&cached.r&&Date.now()-cached.t<7*864e5)return cached.r;
+  const H=15,STEP=5,T0=80; /* أفق ١٥ جلسة، نقطة تقييم كل ٥ جلسات (~أسبوع)، أول نقطة بعد ٨٠ جلسة */
+  const closes={};
+  SHARIA.forEach(function(s){const w=WATCH_CACHE[s];if(w&&w.verdict&&w.verdict.closes&&w.verdict.closes.length>=T0+H+1)closes[s]=w.verdict.closes});
+  /* وسيط السوق عند كل نقطة تقييم — عشان نقيس التفوق النسبي مش الصعود العام */
+  const fwdAll={};
+  Object.keys(closes).forEach(function(s){
+    const c=closes[s];
+    for(let t=T0;t+H<c.length;t+=STEP)(fwdAll[t]=fwdAll[t]||[]).push((c[t+H]-c[t])/c[t]*100);
+  });
+  const med={};
+  Object.keys(fwdAll).forEach(function(t){const a=fwdAll[t].slice().sort(function(x,y){return x-y});if(a.length>=5)med[t]=a[Math.floor(a.length/2)]});
+  const recs=[];
+  Object.keys(closes).forEach(function(s){
+    const c=closes[s];
+    for(let t=T0;t+H<c.length;t+=STEP){
+      /* تاريخ صناعي من الإغلاقات زي اللي الفحص الحقيقي بيعمله بالظبط — المحاكاة على نفس شروط التشغيل */
+      const hist=[];for(let i=0;i<=t;i++){const o=i?c[i-1]:c[i];hist.push({d:null,o:o,h:Math.max(o,c[i]),l:Math.min(o,c[i]),c:c[i],v:0})}
+      const v=analyze(hist);if(!v||v.sc<1.5)continue;
+      const entry=c[t];let st="timeout",exit=c[t+H];
+      for(let j=t+1;j<=t+H;j++){if(c[j]>=v.t1){st="win";exit=v.t1;break}if(c[j]<=v.stop){st="loss";exit=v.stop;break}}
+      const fwd=(exit-entry)/entry*100;
+      recs.push({sym:s,st:st,fwd:fwd,rel:med[t]!=null?fwd-med[t]:null});
+    }
+  });
+  const n=recs.length;
+  const wins=recs.filter(function(r){return r.st==="win"}).length;
+  const losses=recs.filter(function(r){return r.st==="loss"}).length;
+  const rels=recs.filter(function(r){return r.rel!=null});
+  const avgFwd=n?recs.reduce(function(a,b){return a+b.fwd},0)/n:null;
+  const avgRel=rels.length?rels.reduce(function(a,b){return a+b.rel},0)/rels.length:null;
+  const beat=rels.filter(function(r){return r.rel>0}).length;
+  const r={n:n,wins:wins,losses:losses,timeouts:n-wins-losses,
+    winPct:n?wins/n*100:null,lossPct:n?losses/n*100:null,
+    avgFwd:avgFwd,avgRel:avgRel,beatPct:rels.length?beat/rels.length*100:null,
+    syms:Object.keys(closes).length,at:Date.now()};
+  if(n>=10)store.set(EBT_KEY,{t:Date.now(),r:r});
+  return r;
+}
+function renderEngineBT(){
+  const box=$("engine-bt");if(!box)return;
+  const c=store.get(EBT_KEY,null);
+  if(!c||!c.r){box.innerHTML='<div class="card"><h3>🏛️ شهادة المحرك — توصياته متجربة على سنة تاريخية</h3><div class="empty">اعمل «فحص السوق» الأول وبعد ما يتجمع تاريخ سنة كاملة لأسهم الشريعة، المحرك هيتحاكم على نفسه تلقائيًا: هنشغل توصياته على الماضي ونشوف كام واحدة وصلت هدفها فعلًا وكام واحدة ضربت وقفها — الميزان مش كلام.</div></div>';return}
+  const r=c.r;
+  const m=(lbl,val,cls)=>'<div class="metric"><div class="lbl">'+lbl+'</div><div class="val '+(cls||"")+'">'+val+'</div></div>';
+  box.innerHTML='<div class="card"><div class="flex-between"><h3>🏛️ شهادة المحرك — توصياته متجربة على سنة تاريخية</h3><button class="btn mini" onclick="engineBTRun()">🔁 إعادة المحاكاة</button></div>'
+   +'<div class="metrics" style="margin-top:10px">'
+   +m("توصيات متجربة",r.n)
+   +m("وصلت للهدف",(r.winPct!=null?r.winPct.toFixed(0):"—")+"٪","up")
+   +m("ضربت الوقف",(r.lossPct!=null?r.lossPct.toFixed(0):"—")+"٪","down")
+   +m("متوسط العائد النسبي",(r.avgRel!=null?(r.avgRel>=0?"+":"")+r.avgRel.toFixed(1)+"٪":"—"),r.avgRel!=null?(r.avgRel>=0?"up":"down"):"")
+   +m("تفوقت على وسيط السوق",(r.beatPct!=null?r.beatPct.toFixed(0)+"٪":"—"),r.beatPct!=null?(r.beatPct>=50?"up":"down"):"")
+   +m("أسهم شملتها المحاكاة",r.syms)
+   +'</div>'
+   +'<p class="small muted" style="margin-top:10px;line-height:1.8">دي محاكاة صادقة: نفس محرك التوصيات الحالي اتشغل على إغلاقات آخر سنة لأسهم الشريعة، نقطة تقييم كل أسبوع، أفق ١٥ جلسة، بوقف ٢×ATR وهدف ٣×ATR — والمقارنة نسبية ضد وسيط كل السوق (يعني الصعود العام مبيحسبش للمحرك). بتتحدث كل أسبوع لوحدها، ولو الأرقام وحشة هتلاقيها مكتوبة زي ما هي. <span class="ph">آخر محاكاة: '+(c.t?new Date(c.t).toLocaleDateString("ar-EG"):"—")+'</span></p></div>';
+}
+window.engineBTRun=function(){toast("🏛️ جارٍ محاكاة سنة كاملة...");safe("شهادة المحرك",function(){engineBT(true);renderEngineBT();toast("✅ المحاكاة خلصت — ابص على الأرقام زي ما هي")})};
 function renderPicks(p=PICKS){
   if(!p||(!p.buys&&!p.sells)){$("picks-grid").innerHTML='<div class="empty"><span class="spin"></span> جارٍ فحص السوق تلقائيًا لتوليد توصيات اليوم — من غير أي زر</div>';return}
   const card=(x,isBuy)=>`<div class="card" style="background:var(--card2)">
@@ -2787,6 +2850,7 @@ function switchTab(name){
   if(name==="picks")renderLGB();
   if(name==="picks")renderPaper();
   if(name==="picks")renderRecLog();
+  if(name==="picks")renderEngineBT();
   if(name==="settings")loadSettings();
   window.scrollTo({top:0});
 }
