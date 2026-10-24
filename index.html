@@ -261,7 +261,7 @@
     <div class="logo">🕌</div>
     <div>
       <h1>سهمي — محلل البورصة المصرية بالذكاء الاصطناعي</h1>
-      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.31</b></div>
+      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.32</b></div>
     </div>
     <div class="hd-right">
       <span class="pill" id="clock">—</span>
@@ -588,7 +588,7 @@
         <li>💼 <b>محفظتك</b> وبياناتك كلها محفوظة في متصفحك (localStorage) ولا تُرسل لأي سيرفر سوى مزوّد الـ AI الذي تختاره بنفسك.</li>
         <li>⚠️ هذا التطبيق لاستخدام شخصي تعليمي — <b>ليس نصيحة استثمارية</b>.</li>
       </ul>
-      <div class="small muted">إصدار 3.31 · صنع بحُب لمستثمر مصري 🇪🇬</div>
+      <div class="small muted">إصدار 3.32 · صنع بحُب لمستثمر مصري 🇪🇬</div>
     </div>
   </section>
 
@@ -1985,7 +1985,7 @@ function showLGB(box,m){
 }
 
 /* ═════════════════════════ 12.10) 💾 النسخ الاحتياطي والاستعادة — كل بياناتك في ملف واحد على أي جهاز ═════════════════════════ */
-const BK_KEYS=["egx_holdings","egx_funds","egx_watch2","egx_picks3","egx_ml_db","egx_prefs","egx_ai_cfg","egx_journal","egx_paper","egx_reclog","egx_tg","egx_pricealerts"];
+const BK_KEYS=["egx_holdings","egx_funds","egx_watch2","egx_picks3","egx_ml_db","egx_prefs","egx_ai_cfg","egx_journal","egx_paper","egx_reclog","egx_tg","egx_pricealerts","egx_news2"];
 function bkData(){
   const o={app:"aqqar-egx",v:1,at:new Date().toISOString()};
   BK_KEYS.forEach(function(k){const v=store.get(k,null);if(v!=null)o[k]=v});
@@ -2564,6 +2564,7 @@ $("al-add").onclick=function(){
   if(a.some(r=>r.sym===sym&&r.dir===dir&&Math.abs(r.price-price)<0.001&&!r.hit)){toast("ℹ️ التنبيه ده موجود بالفعل");return}
   a.push({t:Date.now(),sym:sym,dir:dir,price:price,hit:0});
   store.set(ALERTS_KEY,a);
+  if(typeof Notification!=="undefined"&&Notification.permission==="default")safe("طلب إذن الإشعارات",function(){Notification.requestPermission().catch(function(){})});
   $("al-price").value="";
   renderAlerts();
   toast("🚨 التنبيه اتفعل — أول ما "+(BYSYM[sym]?BYSYM[sym].n:sym)+" "+(dir==="above"?"يعلى عن":"ينزل عن")+" "+NF(price)+" ج.م هناديلك");
@@ -2586,10 +2587,11 @@ function alertsCheck(){
   if(ch){store.set(ALERTS_KEY,a);renderAlerts()}
 }
 function alertsTick(){
+  if(document.hidden)return;
   const a=alGet().filter(r=>!r.hit);
   if(!a.length)return;
   const syms=[...new Set(a.map(r=>r.sym))];
-  safe("فحص التنبيهات السعرية",async()=>{await queue(syms,s=>getStock(s),3);alertsCheck()});
+  safe("فحص التنبيهات السعرية",async()=>{await queue(syms,s=>getStock(s,{force:true}),3);alertsCheck()});
 }
 setInterval(alertsTick,60*1000);
 
