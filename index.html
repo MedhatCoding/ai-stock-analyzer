@@ -261,7 +261,7 @@
     <div class="logo">🕌</div>
     <div>
       <h1>سهمي — محلل البورصة المصرية بالذكاء الاصطناعي</h1>
-      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.32</b></div>
+      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.33</b></div>
     </div>
     <div class="hd-right">
       <span class="pill" id="clock">—</span>
@@ -588,7 +588,7 @@
         <li>💼 <b>محفظتك</b> وبياناتك كلها محفوظة في متصفحك (localStorage) ولا تُرسل لأي سيرفر سوى مزوّد الـ AI الذي تختاره بنفسك.</li>
         <li>⚠️ هذا التطبيق لاستخدام شخصي تعليمي — <b>ليس نصيحة استثمارية</b>.</li>
       </ul>
-      <div class="small muted">إصدار 3.32 · صنع بحُب لمستثمر مصري 🇪🇬</div>
+      <div class="small muted">إصدار 3.33 · صنع بحُب لمستثمر مصري 🇪🇬</div>
     </div>
   </section>
 
@@ -748,6 +748,25 @@ function boll(c,n=20,k=2){const mid=sma(c,n),up=[],lo=[];for(let i=0;i<c.length;
 function atr(d,n=14){const t=[];for(let i=1;i<d.length;i++)t.push(Math.max(d[i].h-d[i].l,Math.abs(d[i].h-d[i-1].c),Math.abs(d[i].l-d[i-1].c)));return t.length<n?null:t.slice(-n).reduce((a,b)=>a+b,0)/n}
 
 /* ═════════════════════════ 4) محرك التحليل الذكي ═════════════════════════ */
+/* 🔬 أوزان مصادر الإشارات — بتتعدل لوحدها من الدقة الفعلية المسجلة في سجل التوصيات (recLog) */
+let SIGW={t20:1,x50:1,rsi:1,macd:1,hi52:1};
+function rlWeights(){
+  const keys=["t20","x50","rsi","macd","hi52"];
+  const W={t20:1,x50:1,rsi:1,macd:1,hi52:1};
+  try{
+    const a=rlGet().filter(r=>r&&r.closed&&r.last!=null&&Array.isArray(r.sig)&&r.sig.length>=5);
+    keys.forEach(function(k,i){
+      const f=a.filter(r=>r.sig[i]===1);
+      if(f.length>=8){
+        const hit=f.filter(r=>r.status==="hit"||(r.status==="d14"&&r.last>=r.price)).length;
+        const rate=hit/f.length;
+        W[k]=rate>=0.6?1.15:(rate>=0.45?1:0.7);
+      }
+    });
+  }catch(e){}
+  return W;
+}
+function rlRefreshW(){SIGW=rlWeights()}
 function analyze(hist){ // hist: [{d,o,h,l,c,v}]
   const c=hist.map(x=>x.c);
   if(c.length<60)return null;
@@ -756,7 +775,7 @@ function analyze(hist){ // hist: [{d,o,h,l,c,v}]
   const rv=lastOf(r),mv=lastOf(m.line),sv=lastOf(m.sig),hv=lastOf(m.hist);
   const bU=lastOf(b.up),bL=lastOf(b.lo),bM=lastOf(b.mid);
   const hi52=Math.max(...hist.map(x=>x.h)),lo52=Math.min(...hist.map(x=>x.l));
-  const a=atr(hist), pos=(p-lo52)/(hi52-lo52||1);
+  const a=atr(hist), ag=(a&&a>0)?a:p*0.02, pos=(p-lo52)/(hi52-lo52||1);
   const rec20=hist.slice(-20);
   const sup=Math.min(...rec20.map(x=>x.l),bL||Infinity);
   const res=Math.max(...rec20.map(x=>x.h),bU||-Infinity);
@@ -764,12 +783,12 @@ function analyze(hist){ // hist: [{d,o,h,l,c,v}]
   const vDn=hist.slice(-10).filter(x=>x.c<x.o).reduce((s,x)=>s+x.v,0);
   let sc=0; const rs=[];
   const s20v=lastOf(s20.filter(x=>x!=null)),s50v=lastOf(s50.filter(x=>x!=null));
-  if(p>s20v){sc+=1.2;rs.push(["✅","السعر فوق متوسط 20 جلسة — زخم قصير المدى إيجابي"])}else{sc-=1.2;rs.push(["⚠️","السعر تحت متوسط 20 جلسة — ضغط هابط قصير المدى"])}
-  if(s20v>s50v){sc+=1.3;rs.push(["✅","تقاطع ذهبي: SMA20 فوق SMA50 — الاتجاه المتوسط صاعد"])}else{sc-=1.3;rs.push(["⚠️","تقاطع هابط: SMA20 تحت SMA50 — الاتجاه المتوسط سلبي"])}
-  if(rv<30){sc+=2;rs.push(["✅","RSI في تشبع بيعي ("+NF(rv,1)+") — ارتداد محتمل"])}
-  else if(rv>70){sc-=2;rs.push(["⚠️","RSI في تشبع شرائي ("+NF(rv,1)+") — خطر تصحيح"])}
+  if(p>s20v){sc+=1.2*SIGW.t20;rs.push(["✅","السعر فوق متوسط 20 جلسة — زخم قصير المدى إيجابي"])}else{sc-=1.2*SIGW.t20;rs.push(["⚠️","السعر تحت متوسط 20 جلسة — ضغط هابط قصير المدى"])}
+  if(s20v>s50v){sc+=1.3*SIGW.x50;rs.push(["✅","تقاطع ذهبي: SMA20 فوق SMA50 — الاتجاه المتوسط صاعد"])}else{sc-=1.3*SIGW.x50;rs.push(["⚠️","تقاطع هابط: SMA20 تحت SMA50 — الاتجاه المتوسط سلبي"])}
+  if(rv<30){sc+=2*SIGW.rsi;rs.push(["✅","RSI في تشبع بيعي ("+NF(rv,1)+") — ارتداد محتمل"])}
+  else if(rv>70){sc-=2*SIGW.rsi;rs.push(["⚠️","RSI في تشبع شرائي ("+NF(rv,1)+") — خطر تصحيح"])}
   else{sc+=(rv-50)/25;rs.push(["ℹ️","RSI عند "+NF(rv,1)+" — زخم "+(rv>55?"إيجابي":rv<45?"سلبي":"محايد")])}
-  if(mv>sv){sc+=1.5;rs.push(["✅","MACD فوق خط الإشارة — زخم شرائي"])}else{sc-=1.5;rs.push(["⚠️","MACD تحت خط الإشارة — فقدان الزخم"])}
+  if(mv>sv){sc+=1.5*SIGW.macd;rs.push(["✅","MACD فوق خط الإشارة — زخم شرائي"])}else{sc-=1.5*SIGW.macd;rs.push(["⚠️","MACD تحت خط الإشارة — فقدان الزخم"])}
   const hPrev=m.hist[m.hist.length-2];
   if(hv>0&&hv>hPrev)rs.push(["✅","هيستوجرام MACD يتزايد موجبًا — تسارع صاعد"]);
   if(hv<0&&hv<hPrev)rs.push(["⚠️","هيستوجرام MACD يتزايد سالبًا — تسارع هابط"]);
@@ -778,7 +797,7 @@ function analyze(hist){ // hist: [{d,o,h,l,c,v}]
   else rs.push(["ℹ️","داخل نطاق بولنجر — تقلب "+(((bU-bL)/bM*100)>25?"مرتفع":"طبيعي")]);
   if(vUp>vDn*1.2){sc+=0.8;rs.push(["✅","حجم التداول مع أيام الصعود — تجميع"])}
   else if(vDn>vUp*1.2){sc-=0.8;rs.push(["⚠️","حجم التداول مع أيام الهبوط — توزيع"])}
-  if(pos>0.85){sc+=0.6;rs.push(["✅","قرب قمة 52 أسبوعًا ("+NF(pos*100,0)+"%) — قوة اتجاه"])}
+  if(pos>0.85){sc+=0.6*SIGW.hi52;rs.push(["✅","قرب قمة 52 أسبوعًا ("+NF(pos*100,0)+"%) — قوة اتجاه"])}
   else if(pos<0.2){sc-=0.4;rs.push(["ℹ️","قرب قاع 52 أسبوعًا ("+NF(pos*100,0)+"%) — فرصة قيمة أو ضعف مستمر"])}
   let rec,cls,em,stars;
   if(sc>=4.5){rec="شراء قوي";cls="rec-strongbuy";em="🚀";stars=5}
@@ -788,7 +807,8 @@ function analyze(hist){ // hist: [{d,o,h,l,c,v}]
   else{rec="بيع قوي";cls="rec-strongsell";em="🔻";stars=1}
   const pn=rs.filter(x=>x[0]==="✅").length,nn=rs.filter(x=>x[0]==="⚠️").length;
   const conf=Math.min(94,Math.round(52+Math.abs(sc)*4.5+Math.abs(pn-nn)/(pn+nn||1)*18));
-  return {sc,rec,cls,em,stars,conf,rs,sup,res,rsi:rv,macd:mv,sig:sv,bU,bL,bM,s20:s20v,s50:s50v,hi52,lo52,atr:a,pos,stop:sup*0.97,t1:p+(p-sup)*0.8,t2:res,sma20:s20,sma50:s50,rsiArr:r,macdArr:m,closes:c};
+  return {sc,rec,cls,em,stars,conf,rs,sup,res,rsi:rv,macd:mv,sig:sv,bU,bL,bM,s20:s20v,s50:s50v,hi52,lo52,atr:a,atrPct:ag/p*100,pos,/* ⚖️ إدارة مخاطر ATR: وقف ٢×ATR وهدف ٣×ATR — نسبة عائد/مخاطرة ثابتة ١:١٫٥ */
+    stop:Math.round((p-2*ag)*1000)/1000,t1:Math.round((p+3*ag)*1000)/1000,t2:Math.max(res,p+5*ag),sma20:s20,sma50:s50,rsiArr:r,macdArr:m,closes:c};
 }
 
 /* ═════════════════════════ 5) طبقة البيانات: Yahoo + بروكسيات ═════════════════════════ */
@@ -1329,6 +1349,46 @@ $("fund-save").onclick=()=>{
 };
 
 /* ═════════════════════════ 11) توصيات اليوم ═════════════════════════ */
+/* 🧭 حالة السوق: EGX30 فوق/تحت متوسطه 200 جلسة — بتتحسب من بيانات حقيقية وبتتخزن 12 ساعة
+   في النظام الهابط عتبة الشراء بترتفع: التوصية لازم تكون قوية (نقاط ≥ 2) عشان تعدي */
+async function marketRegime(){
+  const cached=store.get("egx_regime",null);
+  if(cached&&Date.now()-cached.t<12*3600*1000)return cached;
+  try{
+    const sp=await yahooSpark(["^CASE30","^EGX30.CA"],"2y");
+    let s=null;
+    ["^CASE30","^EGX30.CA"].forEach(k=>{if(!s&&sp&&sp[k]&&sp[k].hist&&sp[k].hist.length>=210)s=sp[k]});
+    if(!s)return (cached&&Date.now()-cached.t<7*864e5)?cached:null;
+    const c=s.hist.map(x=>x.c).filter(v=>v!=null);
+    if(c.length<210)return (cached&&Date.now()-cached.t<7*864e5)?cached:null;
+    const sma=c.slice(-200).reduce((a,b)=>a+b,0)/200;
+    const price=c[c.length-1];
+    const reg={t:Date.now(),price:price,sma200:sma,dist:(price/sma-1)*100,regime:price>=sma?"bull":"bear"};
+    store.set("egx_regime",reg);
+    return reg;
+  }catch(e){return (cached&&Date.now()-cached.t<7*864e5)?cached:null}
+}
+/* 💧 فلتر السيولة: توصية مش هتنفذ ملهاش قيمة — أقل متوسط تداول يومي مقبول مليون ج.م
+   لو متوفر حجم حقيقي من آخر ٢٠ جلسة بنحسب منه، وإلا نرجع لقائمة الأسهم السائلة المعروفة */
+function liquidOK(sym,price){
+  const w=WATCH_CACHE[sym];
+  if(w&&w.hist&&w.hist.length>25){
+    const vols=w.hist.slice(-20).map(x=>x&&x.v).filter(v=>v>0);
+    if(vols.length>=10){
+      const avg=vols.reduce((a,b)=>a+b,0)/vols.length*(price||w.price||0);
+      return {ok:avg>=1e6,turn:avg};
+    }
+  }
+  return {ok:LIQUID.includes(sym),turn:null};
+}
+/* 🧠 إشارة ML موحدة: متوسط اللوجستي المحلي و LightGBM لو متاحين — إشارة مؤيدة بس مش قرار */
+function mlBlend(sym){
+  let p=null,g=null;
+  try{p=mlProb(sym)}catch(e){}
+  try{g=lgbProb(sym)}catch(e){}
+  if(p!=null&&g!=null)return (p+g)/2;
+  return p!=null?p:(g!=null?g:null);
+}
 async function runScan(){
   $("btn-scan").disabled=true;
   $("scan-bar-wrap").classList.remove("hide");
@@ -1359,10 +1419,16 @@ async function runScan(){
   }
   const arr=Object.values(out).filter(x=>x&&x.verdict).map(x=>({sym:x.sym,n:BYSYM[x.sym]?.n,price:x.price,chg:x.chg,v:x.verdict}));
   const pool=arr.filter(x=>SHARIA.includes(x.sym));
-  const buys=[...pool].sort((a,b)=>b.v.sc-a.v.sc).slice(0,6);
+  /* 💧 السيولة ثم 🧭 حالة السوق ثم 🧠 إشارة ML — طبقة جودة القرار */
+  const liq=pool.map(x=>({x:x,ok:liquidOK(x.sym,x.price).ok}));
+  const poolL=liq.filter(r=>r.ok).map(r=>r.x);
+  const noliq=pool.length-poolL.length;
+  const REG=await marketRegime();
+  const ranked=[...poolL].sort((a,b)=>b.v.sc-a.v.sc);
+  const buys=(REG&&REG.regime==="bear"?ranked.filter(x=>x.v.sc>=2):ranked).slice(0,6).map(x=>Object.assign({},x,{ml:mlBlend(x.sym)}));
   const buySyms=new Set(buys.map(x=>x.sym));
   const sells=[...pool].sort((a,b)=>a.v.sc-b.v.sc).filter(x=>!buySyms.has(x.sym)).slice(0,6);
-  const outp={time:Date.now(),buys,sells,count:arr.length};
+  const outp={time:Date.now(),buys,sells,count:arr.length,regime:REG||null,noliq:noliq};
   if(arr.length)store.set("egx_picks3",outp);
   else{const prev=store.get("egx_picks3",null);if(prev&&prev.buys&&prev.buys.length){outp.buys=prev.buys;outp.sells=prev.sells||[];outp.time=prev.time}outp.stale=true}
   if(arr.length)safe("سجل التوصيات",()=>{recLogPicks(outp);recEval();renderRecLog();});
@@ -1375,7 +1441,10 @@ async function runScan(){
   safe("المتداول الوهمي",()=>{botTick();renderPaper();});
   if(arr.length)toast("✨ اكتمل فحص "+arr.length+" سهمًا");else toast("⚠️ تعذر الاتصال بمصدر الأسعار — الأسعار على الكروت قديمة",6000);
   if(arr.length&&outp.buys&&outp.buys.length)safe("تنبيه تليجرام",async()=>{
-    const ok=await tgSend("🕌 سهمي — فرص "+new Date().toLocaleDateString("ar-EG")+"\n"+outp.buys.slice(0,3).map((b,i)=>(i+1)+". "+(b.n||b.sym)+" ("+b.sym+") — "+b.v.rec+" · سعر "+NF(b.price)+" ج.م · هدف "+NF(b.v.t1)).join("\n"));
+    const ok=await tgSend("🕌 سهمي — فرص "+new Date().toLocaleDateString("ar-EG")
+      +(REG&&REG.regime?("\n"+(REG.regime==="bull"?"📈 نظام السوق: صاعد":"📉 نظام السوق: هابط — عتبة الشراء مرفوعة")):"")
+      +(noliq>0?("\n🚫 استُبعد "+noliq+" سهم قليل السيولة"):"")
+      +"\n"+outp.buys.slice(0,3).map((b,i)=>(i+1)+". "+(b.n||b.sym)+" ("+b.sym+") — "+b.v.rec+" · سعر "+NF(b.price)+" ج.م · هدف "+NF(b.v.t1)+" · وقف "+NF(b.v.stop)).join("\n"));
     if(!ok)return;
     toast("📨 اتأكدت التوصيات على تليجرام");
   });
@@ -1396,7 +1465,7 @@ async function llmPicks(){
   try{
     const p=store.get("egx_picks3",null);
     if(!p||!p.buys||!p.buys.length)throw new Error("لا نتائج فحص بعد — انتظر انتهاء الفحص");
-    const lite=x=>({sym:x.sym,company:x.n,score:+x.v.sc.toFixed(1),rec:x.v.rec,price:+x.price.toFixed(2),chg_1d:+x.chg.toFixed(2),conf:x.v.conf,sharia:SHARIA.includes(x.sym)});
+    const lite=x=>({sym:x.sym,company:x.n,score:+x.v.sc.toFixed(1),rec:x.v.rec,price:+x.price.toFixed(2),chg_1d:+x.chg.toFixed(2),conf:x.v.conf,sharia:SHARIA.includes(x.sym),ml_prob_4w:(typeof x.ml==="number")?+x.ml.toFixed(2):null,stop:+x.v.stop.toFixed(2),target:+x.v.t1.toFixed(2),regime:(p&&p.regime&&p.regime.regime)||null});
     const txt=await callLLM(SYS,"اكتب ملخصًا موجزًا (150 كلمة كحد أقصى) لفرص اليوم في البورصة المصرية من نتائج الفحص التالية (العميل مهتم بالاستثمار المتوافق مع الشريعة): اذكر أقوى فرصتين شراء مع السبب، وأهم تحذير، ونصيحة إدارة مخاطر واحدة:\nفرص شراء:\n"+JSON.stringify(p.buys.map(lite),null,1)+"\nتحذيرات بيع:\n"+JSON.stringify((p.sells||[]).map(lite),null,1));
     box.innerHTML=`<div class="ai-box">🤖 <b>ملخص الفرص — ${CFG.ai.model}</b><br><br>${mdLite(txt)}</div>`;
   }catch(e){box.innerHTML=`<div class="ai-box" style="color:var(--red)">⚠️ ${e.message}</div>`}
@@ -1418,7 +1487,7 @@ function renderPicks(p=PICKS){
   if(!p||(!p.buys&&!p.sells)){$("picks-grid").innerHTML='<div class="empty"><span class="spin"></span> جارٍ فحص السوق تلقائيًا لتوليد توصيات اليوم — من غير أي زر</div>';return}
   const card=(x,isBuy)=>`<div class="card" style="background:var(--card2)">
     <div class="row" style="gap:10px"><b style="font-size:17px">${x.n||x.sym}</b><span class="sect-tag">${x.sym}</span>${SHARIA.includes(x.sym)?'<span class="badge b-sharia">☪️ شريعة</span>':""}<span class="badge ${isBuy?"b-buy":"b-sell"}">${x.chg>=0?"+":""}${x.chg.toFixed(2)}%</span><span style="margin-inline-start:auto" class="stars">${"★".repeat(x.v.stars)}${"☆".repeat(5-x.v.stars)}</span></div>
-    <div class="row" style="gap:8px;margin:8px 0"><span class="rec-badge ${x.v.cls}" style="font-size:14px;padding:7px 12px">${x.v.em} ${x.v.rec}</span><span class="small muted">ثقة ${x.v.conf}%</span><span class="small muted">السعر ${NF(x.price)}</span></div>
+    <div class="row" style="gap:8px;margin:8px 0"><span class="rec-badge ${x.v.cls}" style="font-size:14px;padding:7px 12px">${x.v.em} ${x.v.rec}</span><span class="small muted">ثقة ${x.v.conf}%</span><span class="small muted">السعر ${NF(x.price)}</span>${isBuy&&x.ml!=null?'<span class="badge '+(x.ml>=0.55?"b-buy":x.ml<=0.45?"b-sell":"b-neu")+'" title="احتمال تفوق السهم على أقرانه خلال ٤ أسابيع حسب نموذجي ML — إشارة مؤيدة فقط مش قرار">🧠 ML '+(x.ml*100).toFixed(0)+'%</span>':""}</div>
     <ul class="reasons small">${x.v.rs.filter(r=>r[0]!=="ℹ️").slice(0,3).map(r=>`<li>${r[0]} ${r[1]}</li>`).join("")}</ul>
     <div class="row small" style="gap:12px;margin-top:6px"><span class="sharia-green">دعم ${NF(x.v.sup)}</span><span class="down">مقاومة ${NF(x.v.res)}</span><span style="color:var(--amber)">وقف ${NF(x.v.stop)}</span><span style="color:var(--accent2)">هدف ${NF(x.v.t1)}</span> ${pickRR(x)}</div>
     <button class="btn mini" style="margin-top:8px" onclick="openStock('${x.sym}')">📊 التحليل الكامل</button>
@@ -1426,7 +1495,7 @@ function renderPicks(p=PICKS){
   const fresh=p.time&&Date.now()-p.time<24*60*60*1000;
   const ageMin=p.time?Math.round((Date.now()-p.time)/60000):null;
   const stale=p.stale||!fresh;
-  const hdr=`<div class="row small" style="gap:10px;align-items:center;margin-bottom:10px">${stale?'<span class="badge b-sell">⚠️ أسعار قديمة</span>':'<span class="badge b-buy">🟢 أسعار مباشرة</span>'}<span class="muted">آخر تحديث أسعار: ${p.time?new Date(p.time).toLocaleString("ar-EG"):"—"}${ageMin!=null?" (قبل "+ageMin+" دقيقة)":""}</span>${stale?'<button class="btn mini" onclick="runScan()">🔄 حاول تحديث الأسعار</button>':""}</div>`;
+  const hdr=`<div class="row small" style="gap:10px;align-items:center;margin-bottom:10px">${stale?'<span class="badge b-sell">⚠️ أسعار قديمة</span>':'<span class="badge b-buy">🟢 أسعار مباشرة</span>'}${p.regime&&p.regime.regime==="bull"?'<span class="badge b-buy" title="EGX30 فوق متوسطه 200 جلسة">🐂 نظام سوق صاعد — المؤشر فوق متوسطه '+Math.abs(p.regime.dist).toFixed(1)+'٪</span>':p.regime?'<span class="badge b-sell" title="EGX30 تحت متوسطه 200 جلسة — التوصيات الضعيفة مستبعدة">🐻 نظام سوق هابط — المؤشر '+Math.abs(p.regime.dist).toFixed(1)+'٪ تحت متوسط ٢٠٠ جلسة · عتبة الشراء مرفوعة</span>':""}<span class="muted">آخر تحديث أسعار: ${p.time?new Date(p.time).toLocaleString("ar-EG"):"—"}${ageMin!=null?" (قبل "+ageMin+" دقيقة)":""}</span>${stale?'<button class="btn mini" onclick="runScan()">🔄 حاول تحديث الأسعار</button>':""}</div>${p.noliq>0?'<div class="small muted" style="margin:-4px 0 10px">🚫 استُبعد '+p.noliq+' سهم قليل السيولة (أقل من مليون ج.م تداول يومي متوسط) من فرص الشراء.</div>':""}`;
   $("picks-grid").innerHTML=hdr+`
     <div><h3 class="small" style="margin-bottom:8px">🟢 أقوى فرص الشراء</h3>${p.buys.map(x=>card(x,true)).join("")||'<div class="empty">لا فرص واضحة الآن</div>'}</div>
     <div><h3 class="small" style="margin-bottom:8px">🔴 تحذيرات / فرص بيع</h3>${(p.sells||[]).map(x=>card(x,false)).join("")||'<div class="empty">لا تحذيرات قوية الآن</div>'}</div>`;
@@ -1608,13 +1677,13 @@ function mlFeatures(c,v){
   return [ret(5),ret(10),ret(20),(last/s20-1)*100,(s20/sma(50)-1)*100,rsi,(last-lo)/((hi-lo)||1e-9)*100,std20/last*100,vr,r120,macdH,bollZ,(last/sma(50)-1)*100,r60,rsi7,slope];
 }
 const ML_FEATS=["عائد ٥ جلسات","عائد ١٠ جلسات","عائد ٢٠ جلسة","الموقع من SMA20","تقاطع SMA20/50","RSI","الموقع من مدى ١٢٠ جلسة","التقلب","نسبة السيولة ٥/٢٠","زخم ٦ شهور"];
-/* بناء العينات من تاريخ سنة كاملة: السمات من اليوم t والعلامة = هل صعد خلال ١٠ جلسات بعده؟ */
+/* بناء العينات من تاريخ سنة كاملة: السمات من اليوم t والعلامة = هل صعد خلال ٢٠ جلسة بعده؟ */
 function mlSamples(){
   const X=[],Y=[];
   SHARIA.forEach(s=>{const w=WATCH_CACHE[s];if(!w)return;
     const cv=mlCV(w),h=cv.h,vols=cv.v;
     if(h.length<65)return;
-    for(let t=55;t<h.length-10;t++){const f=mlFeatures(h.slice(0,t+1),vols.slice(0,t+1));if(f){X.push(f);Y.push(h[t+10]>h[t]?1:0)}}
+    for(let t=55;t<h.length-20;t++){const f=mlFeatures(h.slice(0,t+1),vols.slice(0,t+1));if(f){X.push(f);Y.push(h[t+20]>h[t]?1:0)}}
   });
   return {X:X,Y:Y};
 }
@@ -1644,7 +1713,7 @@ function mlTrain(){
   const db=mlGet();db.model=model;store.set(ML_KEY,db);
   return {model:model};
 }
-/* احتمالية صعود السهم خلال ١٠ جلسات حسب النموذج المحفوظ */
+/* احتمالية صعود السهم خلال ٢٠ جلسة حسب النموذج المحفوظ */
 function mlProb(sym){
   const db=mlGet();if(!db.model||!db.model.w)return null;
   const w=WATCH_CACHE[sym];if(!w)return null;
@@ -1657,8 +1726,8 @@ function mlProb(sym){
 function renderML(){
   const box=$("ml-card");if(!box)return;
   const db=mlGet(),nDays=Object.keys(db.days||{}).length;
-  box.innerHTML='<div class="card"><h3>🧠 محرك التعلم الآلي — توقعات العشر جلسات القادمة</h3>'
-   +'<p class="small muted" style="line-height:1.8;margin-bottom:10px">نموذج <b>انحدار لوجستي</b> بيتدرّب جوّه المتصفح من غير أي خدمة خارجية ولا حدود API: بيتعلم من ١٦ سمة فنية (زخم العوائد · المتوسطات · RSI · الموقع من المدى · التقلب · نسبة السيولة ٥/٢٠ · زخم ٦ شهور · MACD · بولنجر · ميل الاتجاه) على تاريخ سنة كاملة لكل سهم من الأسهم المتوافقة مع الشريعة، ويقدّر احتمالية صعود كل سهم خلال ١٠ جلسات قادمة.</p>'
+  box.innerHTML='<div class="card"><h3>🧠 محرك التعلم الآلي — توقعات الأربع أسابيع القادمة</h3>'
+   +'<p class="small muted" style="line-height:1.8;margin-bottom:10px">نموذج <b>انحدار لوجستي</b> بيتدرّب جوّه المتصفح من غير أي خدمة خارجية ولا حدود API: بيتعلم من ١٦ سمة فنية (زخم العوائد · المتوسطات · RSI · الموقع من المدى · التقلب · نسبة السيولة ٥/٢٠ · زخم ٦ شهور · MACD · بولنجر · ميل الاتجاه) على تاريخ سنة كاملة لكل سهم من الأسهم المتوافقة مع الشريعة، ويقدّر احتمالية صعود كل سهم خلال ٢٠ جلسة قادمة.</p>'
    +'<div class="row" style="gap:8px"><button class="btn primary mini" id="btn-ml-train">🎓 درّب النموذج الآن</button><span class="small muted">📸 قاعدة البيانات اليومية: '+nDays+' لقطة محفوظة — بتكبر تلقائيًا مع كل فحص سوق</span></div>'
    +'<div id="ml-out" style="margin-top:12px"></div></div>';
   $("btn-ml-train").onclick=()=>{
@@ -1681,7 +1750,7 @@ function mlShow(o,m){
    +'</div>';
   if(m.acc<m.base)html+='<div class="warn-box" style="margin-top:8px">⚠️ النموذج لسه مش أقوى من التخمين البسيط — ده طبيعي مع بداية تجميع البيانات. القاعدة اليومية بتكبر كل يوم، وكل إعادة تدريب بتتحسن.</div>';
   if(rows.length){
-    html+='<div class="scroll-x" style="margin-top:10px"><table><thead><tr><th>السهم</th><th>احتمالية الصعود (١٠ جلسات)</th><th>السعر</th><th>تغير اليوم</th></tr></thead><tbody>'
+    html+='<div class="scroll-x" style="margin-top:10px"><table><thead><tr><th>السهم</th><th>احتمالية الصعود (٢٠ جلسة)</th><th>السعر</th><th>تغير اليوم</th></tr></thead><tbody>'
      +rows.map(x=>'<tr class="click" onclick="openStock(&quot;'+x.s+'&quot;)"><td><b>'+(BYSYM[x.s]?BYSYM[x.s].n:x.s)+'</b> <span class="sect-tag">'+x.s+'</span></td><td><div class="bar" style="min-width:110px;display:inline-block;vertical-align:middle"><div style="width:'+(x.p*100).toFixed(0)+'%"></div></div> <b class="'+(x.p>=0.6?"up":"muted")+'">'+(x.p*100).toFixed(0)+'%</b></td><td class="num">'+(x.w?NF(x.w.price!=null?x.w.price:x.w.p):"—")+'</td><td class="num '+(x.w&&x.w.chg>=0?"up":"down")+'">'+(x.w?PCT(x.w.chg):"—")+'</td></tr>').join("")
      +'</tbody></table></div>';
     const fi=m.w.map((v,i)=>({v:v,i:i})).sort((a,b)=>Math.abs(b.v)-Math.abs(a.v)).slice(0,4);
@@ -1840,11 +1909,11 @@ function deepData(){
   if(p&&p.buys)out.today_scan={top_buys:(p.buys||[]).slice(0,6).map(deepLite),warnings:(p.sells||[]).slice(0,6).map(deepLite),scan_age_hours:p.time?Math.round((Date.now()-p.time)/3600000):null};
   if(HOLDINGS&&HOLDINGS.length){
     const t=calcTotals();
-    out.portfolio={current_value:Math.round(t.val),profit_loss:Math.round(t.pl),pl_pct:+t.plP.toFixed(1),holdings:HOLDINGS.map(function(h){const s=snap(h.t);if(!s)return null;const mp=mlProb(h.t);return {symbol:h.t,qty:h.qty,avg_cost:h.avg,last_price:s.price,chg_1d_pct:s.chg_1d,tech_score:s.technical_score,engine_rec:s.engine_recommendation,ml_prob_up_10d:mp!=null?+mp.toFixed(2):null}}).filter(Boolean)};
+    out.portfolio={current_value:Math.round(t.val),profit_loss:Math.round(t.pl),pl_pct:+t.plP.toFixed(1),holdings:HOLDINGS.map(function(h){const s=snap(h.t);if(!s)return null;const mp=mlProb(h.t);return {symbol:h.t,qty:h.qty,avg_cost:h.avg,last_price:s.price,chg_1d_pct:s.chg_1d,tech_score:s.technical_score,engine_rec:s.engine_recommendation,ml_prob_up_20d:mp!=null?+mp.toFixed(2):null}}).filter(Boolean)};
   } else out.portfolio="فاضية — حلّل على أساس الفرص المقترحة واقترح محفظة بداية متوافقة مع الشريعة";
   const db=mlGet();
   if(db.model){
-    out.ml_model={trained_at:new Date(db.model.at).toLocaleDateString("ar-EG"),samples:db.model.n,test_accuracy_pct:+db.model.acc.toFixed(1),naive_baseline_pct:+db.model.base.toFixed(1),top_features:db.model.w.map(function(v,i){return {feature:ML_FEATS[i],weight:+v.toFixed(3)}}).sort(function(a,b){return Math.abs(b.weight)-Math.abs(a.weight)}).slice(0,4),top_predictions:SHARIA.map(function(s){return {s:s,p:mlProb(s)}}).filter(function(x){return x.p!=null}).sort(function(a,b){return b.p-a.p}).slice(0,8).map(function(x){return {symbol:x.s,prob_up_10d:+x.p.toFixed(2)}})};
+    out.ml_model={trained_at:new Date(db.model.at).toLocaleDateString("ar-EG"),samples:db.model.n,test_accuracy_pct:+db.model.acc.toFixed(1),naive_baseline_pct:+db.model.base.toFixed(1),top_features:db.model.w.map(function(v,i){return {feature:ML_FEATS[i],weight:+v.toFixed(3)}}).sort(function(a,b){return Math.abs(b.weight)-Math.abs(a.weight)}).slice(0,4),top_predictions:SHARIA.map(function(s){return {s:s,p:mlProb(s)}}).filter(function(x){return x.p!=null}).sort(function(a,b){return b.p-a.p}).slice(0,8).map(function(x){return {symbol:x.s,prob_up_20d:+x.p.toFixed(2)}})};
   } else out.ml_model="النموذج المحلي لسه متدربش — علّق على ده في التقرير";
   const corr=deepCorr();
   if(corr)out.correlation=corr;
@@ -1938,7 +2007,9 @@ function lgbProb(sym){
   const f=mlFeatures(cv.h,cv.v);if(!f)return null;
   const raw=lgbScore(LGB,f);
   if(raw==null||!isFinite(raw))return null;
-  return 1/(1+Math.exp(-Math.max(-30,Math.min(30,raw))));
+  let z=raw;
+  if(LGB.cal_platt&&isFinite(LGB.cal_platt.a)&&isFinite(LGB.cal_platt.b))z=LGB.cal_platt.a*raw+LGB.cal_platt.b; /* معايرة Platt: الأرقام تبقى احتمالات حقيقية */
+  return 1/(1+Math.exp(-Math.max(-30,Math.min(30,z))));
 }
 async function renderLGB(){
   const box=$("lgb-card");if(!box)return;
@@ -1954,18 +2025,20 @@ async function renderLGB(){
 function showLGB(box,m){
   const rows=SHARIA.map(function(s){return {s:s,p:lgbProb(s),q:mlProb(s),w:WATCH_CACHE[s]}}).filter(function(x){return x.p!=null}).map(function(x){x.e=x.q!=null?(x.p+x.q)/2:x.p;return x}).sort(function(a,b){return b.e-a.e}).slice(0,10);
   let h='<div class="card"><h3>🌲 محرك LightGBM الخارجي — تعلم حقيقي مدرَّب على السيرفر</h3>'
-   +'<p class="small muted" style="line-height:1.8;margin-bottom:10px">نموذج <b>LightGBM</b> (تدرّج شجري معزّز) بيتدرب أسبوعيًا على <b>GitHub Actions</b> مجانًا على تاريخ ٥ سنوات من Yahoo Finance لأسهم الشريعة، وبيوصل هنا مجرد أوزان جاهزة — كل التوقع بيحصل في متصفحك من غير أي طلب خارجي. المقارنة جنب نموذج اللوجستي المحلي بتقولك هما متفقين على سهم ولا متعارضين — والتعارض نفسه معلومة مهمة.</p>'
+   +'<p class="small muted" style="line-height:1.8;margin-bottom:10px">نموذج <b>LightGBM</b> (تدرّج شجري معزّز) بيتدرب أسبوعيًا على <b>GitHub Actions</b> مجانًا على تاريخ ٥ سنوات من Yahoo Finance لأسهم الشريعة، وبيوصل هنا مجرد أوزان جاهزة — كل التوقع بيحصل في متصفحك من غير أي طلب خارجي. التسمية <b>نسبية</b>: السهم بيتوقع يتفوق على متوسط أقرانه خلال ٤ أسابيع مش بس يطلع — وده بيشيل تأثير صعود السوق كله من التوقعات. المقارنة جنب نموذج اللوجستي المحلي بتقولك هما متفقين على سهم ولا متعارضين — والتعارض نفسه معلومة مهمة.</p>'
    +'<div class="metrics">'
    +'<div class="metric"><div class="lbl">دقة عينة الاختبار</div><div class="val" style="color:'+(m.test_acc>=m.naive_base?"var(--green)":"var(--amber)")+'">'+m.test_acc+'%</div></div>'
    +'<div class="metric"><div class="lbl">AUC</div><div class="val">'+m.auc+'</div></div>'
    +(m.wf_auc?'<div class="metric"><div class="lbl">AUC (walk-forward زمني)</div><div class="val" style="color:var(--violet)">'+m.wf_auc+'</div></div>':'')
+   +(m.cal_platt?'<div class="metric"><div class="lbl">معايرة Platt</div><div class="val" style="color:var(--green);font-size:15px">✅ مفعّلة</div></div>':'')
+   +(m.horizon_days?'<div class="metric"><div class="lbl">أفق التوقع</div><div class="val">'+m.horizon_days+' جلسة</div></div>':'')
    +'<div class="metric"><div class="lbl">حد التخمين الساذج</div><div class="val">'+m.naive_base+'%</div></div>'
    +'<div class="metric"><div class="lbl">عينات التدريب</div><div class="val">'+m.n_train.toLocaleString("en-US")+'</div></div>'
    +'<div class="metric"><div class="lbl">عدد الأشجار</div><div class="val">'+m.n_trees+'</div></div>'
    +'<div class="metric"><div class="lbl">تاريخ التدريب</div><div class="val" style="font-size:13px">'+m.trained_at+'</div></div>'
    +'</div>';
   if(rows.length){
-    h+='<div class="scroll-x" style="margin-top:10px"><table><thead><tr><th>السهم</th><th>LightGBM (١٠ جلسات)</th><th>اللوجستي المحلي</th><th>الدمج المرجّح</th><th>الاتفاق</th><th>السعر</th></tr></thead><tbody>'
+    h+='<div class="scroll-x" style="margin-top:10px"><table><thead><tr><th>السهم</th><th>LightGBM (٤ أسابيع · نسبي)</th><th>اللوجستي المحلي</th><th>الدمج المرجّح</th><th>الاتفاق</th><th>السعر</th></tr></thead><tbody>'
      +rows.map(function(x){
         const ag=(x.p>=0.6&&x.q!=null&&x.q>=0.6)?'<span class="up">✅ متفقان على الصعود</span>':((x.p<0.5&&x.q!=null&&x.q<0.5)?'<span class="muted">✅ متفقان على الحذر</span>':'<span style="color:var(--amber)">⚡ تعارض — راجع بيدك</span>');
         return '<tr class="click" onclick="openStock(&quot;'+x.s+'&quot;)"><td><b>'+(BYSYM[x.s]?BYSYM[x.s].n:x.s)+'</b> <span class="sect-tag">'+x.s+'</span></td><td><div class="bar" style="min-width:100px;display:inline-block;vertical-align:middle"><div style="width:'+(x.p*100).toFixed(0)+'%"></div></div> <b class="'+(x.p>=0.6?"up":"muted")+'">'+(x.p*100).toFixed(0)+'%</b></td><td>'+(x.q!=null?'<b class="'+(x.q>=0.6?"up":"muted")+'">'+(x.q*100).toFixed(0)+'%</b>':'—')+'</td><td><b class="'+(x.e>=0.6?"up":"muted")+'">'+(x.e*100).toFixed(0)+'%</b></td><td>'+ag+'</td><td class="num">'+(x.w?NF(x.w.price!=null?x.w.price:x.w.p):"—")+'</td></tr>';
@@ -2380,7 +2453,10 @@ function recLogPicks(p){
   const a=rlGet();let n=0;
   (p.buys||[]).forEach(function(b){
     if(a.some(r=>r.sym===b.sym&&r.status==="open"&&Date.now()-r.t<5*864e5))return;
-    a.unshift({t:Date.now(),sym:b.sym,n:b.n,price:+b.price.toFixed(3),t1:+b.v.t1.toFixed(3),stop:+b.v.stop.toFixed(3),rec:b.v.rec,conf:b.v.conf,status:"open",last:null});
+    a.unshift({t:Date.now(),sym:b.sym,n:b.n,price:+b.price.toFixed(3),t1:+b.v.t1.toFixed(3),stop:+b.v.stop.toFixed(3),rec:b.v.rec,conf:b.v.conf,status:"open",last:null,
+      /* 🔬 لقطة مصادر الإشارة وقت التوصية — عشان نحسب دقة كل مصدر بعدين */
+      sig:[(b.price>b.v.s20?1:0),(b.v.s20>b.v.s50?1:0),(b.v.rsi<30?1:0),(b.v.macd>b.v.sig?1:0),(b.v.pos>0.85?1:0)],
+      ml:(typeof b.ml==="number"&&isFinite(b.ml))?+b.ml.toFixed(2):null});
     n++;
   });
   if(n)store.set(RECLOG_KEY,a.slice(0,200));
@@ -2396,7 +2472,32 @@ function recEval(){
     else if(r.last<=r.stop){r.status="stop";r.closed=Date.now();ch=true}
     else if(Date.now()-r.t>=14*864e5){r.status="d14";r.closed=Date.now();ch=true}
   });
-  if(ch)store.set(RECLOG_KEY,a);
+  if(ch){store.set(RECLOG_KEY,a);SIGW=rlWeights();}
+}
+/* 🔬 جدول دقة مصادر الإشارات — من سجل التوصيات المقفولة فعليًا: كل مصدر بنشوف نسبة نجاح توصياته اللي شارك فيها */
+function rlSourceRows(){
+  const a=rlGet().filter(r=>r&&r.closed&&r.last!=null&&Array.isArray(r.sig)&&r.sig.length>=5);
+  if(!a.length)return "";
+  const names=["السعر فوق SMA20","تقاطع ذهبي SMA20/50","RSI تشبع بيعي","MACD شرائي","قرب قمة 52 أسبوعًا"];
+  const keys=["t20","x50","rsi","macd","hi52"];
+  const win=r=>r.status==="hit"||(r.status==="d14"&&r.last>=r.price);
+  const h='<h3 class="small" style="margin:16px 0 6px">🔬 دقة مصادر الإشارة — من سجلك الفعلي</h3><div class="scroll-x"><table><thead><tr><th>المصدر</th><th>توصياته</th><th>نسبة نجاحها</th><th>وزنه في المحرك</th></tr></thead><tbody>'
+   +names.map(function(nm,i){
+      const f=a.filter(r=>r.sig[i]===1);
+      const w=SIGW[keys[i]]||1;
+      if(!f.length)return '<tr><td>'+nm+'</td><td class="num">0</td><td class="num muted">—</td><td class="num">'+w.toFixed(2)+'</td></tr>';
+      const rate=f.filter(win).length/f.length*100;
+      return '<tr><td>'+nm+'</td><td class="num">'+f.length+'</td><td class="num '+(rate>=55?"up":rate<45?"down":"")+'">'+rate.toFixed(0)+'٪</td><td class="num '+(w<1?"down":w>1?"up":"")+'">'+w.toFixed(2)+'</td></tr>';
+    }).join("")
+   +(function(){
+      const f=a.filter(r=>typeof r.ml==="number"&&r.ml>=0.55);
+      if(!f.length)return '<tr><td>🧠 نموذج ML (≥55٪)</td><td class="num">0</td><td class="num muted">—</td><td class="num">1.00</td></tr>';
+      const rate=f.filter(win).length/f.length*100;
+      return '<tr><td>🧠 نموذج ML (≥55٪)</td><td class="num">'+f.length+'</td><td class="num '+(rate>=55?"up":rate<45?"down":"")+'">'+rate.toFixed(0)+'٪</td><td class="num">—</td></tr>';
+    })()
+   +'</tbody></table></div>'
+   +'<p class="small muted" style="margin-top:6px;line-height:1.7">كل مصدر بنحسب نسبة نجاح التوصيات اللي أطلق فيها إشارة شراء (وصلت هدفها أو اتقفلت على ربح). لما يتجمع ٨ توصيات مقفولة لمصدر، وزنه في محرك التقييم بيتعدل لوحده: ١٫١٥ لو دقته فوق ٦٠٪، و٠٫٧ لو تحت ٤٥٪ — يعني المصدر اللي بيرتب بيتقل تأثيره فعلًا مش كلام.</p>';
+  return h;
 }
 function renderRecLog(){
   const box=$("reclog-card");if(!box)return;
@@ -2415,7 +2516,8 @@ function renderRecLog(){
   box.innerHTML='<h3 class="small" style="margin:16px 0 6px">📉 سجل التوصيات — الدقة الفعلية على أرض الواقع</h3>'
    +(closed.length?'<div class="row" style="gap:8px;margin-bottom:10px"><span class="badge b-buy">نسبة النجاح: '+(wins/closed.length*100).toFixed(0)+'٪ ('+wins+' من '+closed.length+')</span><span class="badge '+(avg>=0?"b-buy":"b-sell")+'">متوسط العائد: '+PCT(avg)+'</span><span class="badge b-hold">أفضل توصية: '+PCT(best)+'</span></div>':'')
    +'<div class="scroll-x"><table><thead><tr><th>السهم</th><th>التاريخ</th><th>سعر التوصية</th><th>الهدف</th><th>الوقف</th><th>آخر سعر</th><th>العائد</th><th>الحالة</th></tr></thead><tbody>'+a.slice(0,30).map(row).join("")+'</tbody></table></div>'
-   +'<p class="small muted" style="margin-top:8px;line-height:1.7">كل توصية شراء بتتسجل مرة واحدة لكل سهم، وبتتقيم أوتوماتيك: ✅ لو السعر وصل الهدف · ❌ لو ضرب الوقف · ⏱️ ولو عدّى ١٤ يوم بتتقفل على السعر الحالي. ده قياس حقيقي لمحرك التوصيات مش وعود.</p>';
+   +rlSourceRows()
+   +'<p class="small muted" style="margin-top:8px;line-height:1.7">كل توصية شراء بتتسجل مرة واحدة لكل سهم، وبتتقيم أوتوماتيك: ✅ لو السعر وصل الهدف · ❌ لو ضرب الوقف · ⏱️ ولو عدّى ١٤ يوم بتتقفل على السعر الحالي. الوقف والهدف دلوقتي مبنيين على ATR (وقف ٢×ATR وهدف ٣×ATR) — نسبة عائد/مخاطرة ثابتة ١:١٫٥ مهما كان تقلب السهم. ده قياس حقيقي لمحرك التوصيات مش وعود.</p>';
 }
 
 /* ═════════════════════════ 12.16) 🧮 حاسبة العائد الصافي ═════════════════════════ */
@@ -2720,6 +2822,7 @@ function init(){
   safe("صناديق الشريعة",renderShariaFunds);
   safe("المتداول الوهمي",function(){botTick();});
   safe("التنبيهات السعرية",function(){renderAlerts();});
+  safe("أوزان مصادر الإشارات",rlRefreshW);
   safe("خريطة القطاعات",renderSectors);
   safe("أخبار السوق",()=>loadNews());
   safe("عرض السوق",()=>renderMarket());

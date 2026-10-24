@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-# سهمي — تدريب نموذج LightGBM لأسهم الشريعة في البورصة المصرية - إصدار 7
-# الإصدار 7: 16 خاصية (إضافة MACD وبولنجر واتجاه SMA وRSI7 وعائد 60 يوم)،
-# وتقييم walk-forward زمني صادق (تدريب على الماضي واختبار على المستقبل في 4 طيات)
-# بدل القسمة الثابتة، وثبات صيغة الأوزان المتوقعة في المتصفح (version: 3).
+# سهمي — تدريب نموذج LightGBM لأسهم الشريعة في البورصة المصرية - إصدار 8
+# الإصدار 8: تسمية نسبية صادقة — السهم بيتوقع إنه يتفوق على وسيط أقرانه في نفس اليوم
+# خلال 20 جلسة (4 أسابيع) بدل "طلع ولا نزل" المطلق، + معايرة Platt على توقعات
+# walk-forward عشان أرقام النموذج تبقى احتمالات حقيقية (cal_platt: a,b).
+# (الإصدار 7: 16 خاصية + تقييم walk-forward زمني 4 طيات + صيغة أوزان version: 3)
 import json, math, time, datetime, traceback
 import urllib.request, http.cookiejar
 import numpy as np
@@ -19,7 +20,7 @@ def L(s):
     LOG.append(str(s))
 
 SYMS = ["ACGC","ETEL","OCDI","PHDC","SKPC","TMGH","ETRS","IFAP","LCSW","MASR","MPCO","ORWE","SAUD","MCQE","AMOC","EGAS","FAIT","ATQA","CIRA","EGAL","FAITA","JUFO","ORHD","ADIB","ARCC","ORAS","EFID","OLFI","MTIE","RACC","ICFC","ISPH","RMDA","EFIH","GOUR","CLHO","ABUK","SWDY","MFPC","FWRY","POUL","EGCH","EGTS","ELKA","EMFD","TAQA","MNHD"]
-LOOK = 10
+LOOK = 20
 MINF = 60
 FEATS = ["ret5", "ret10", "ret20", "pos_sma20", "sma_cross", "rsi14", "range120_pos", "vol20", "vol_ratio_5_20", "ret120", "macd_hist", "boll_z", "pos_sma50", "ret60", "rsi7", "sma20_slope"]
 
@@ -140,6 +141,26 @@ def auc_of(probs, ys):
     nneg = float(len(ys) - ones)
     return (sum(ranks[i] for i in range(len(ys)) if ys[i] == 1) - npos * (npos + 1) / 2) / (npos * nneg)
 
+def platt_fit(probs, ys):
+    # معايرة Platt: انحدار لوجستي 1-بعد على لوجيت توقعات walk-forward خارج العينة
+    if len(probs) < 300:
+        return None
+    if len(set(ys)) < 2:
+        return None
+    zs = []
+    for p in probs:
+        p = min(max(float(p), 1e-6), 1 - 1e-6)
+        zs.append(max(-10.0, min(10.0, math.log(p / (1 - p)))))
+    zsa = np.asarray(zs, dtype=float)
+    ysa = np.asarray([float(y) for y in ys], dtype=float)
+    a, b = 1.0, 0.0
+    for _ in range(1000):
+        pr = 1.0 / (1.0 + np.exp(-np.clip(a * zsa + b, -30, 30)))
+        g = pr - ysa
+        a -= 0.1 * float(np.mean(g * zsa))
+        b -= 0.1 * float(np.mean(g))
+    return {"a": round(float(a), 4), "b": round(float(b), 4)}
+
 def train_booster(Xtr, Ytr, Xval, Yval):
     params = {"objective": "binary", "learning_rate": 0.05, "num_leaves": 31, "min_data_in_leaf": 50, "feature_fraction": 0.8, "bagging_fraction": 0.8, "bagging_freq": 1, "verbose": -1, "seed": 42}
     dtr = lgb.Dataset(np.asarray(Xtr, dtype=float), label=np.asarray(Ytr, dtype=float))
@@ -165,17 +186,27 @@ def main():
                     f = features(closes, vols, mh, t)
                     if f is None:
                         continue
-                    y = 1 if closes[t + LOOK] > closes[t] else 0
-                    recs.append((ts[t] if t < len(ts) else t * 86400, s, f, y))
+                    fwd = (closes[t + LOOK] - closes[t]) / closes[t] * 100
+                    recs.append((ts[t] if t < len(ts) else t * 86400, s, f, fwd))
                     cnt += 1
             if cnt:
                 ok.append(s)
             L(s + " samples: " + str(cnt))
             time.sleep(1.2)
         recs.sort(key=lambda r: r[0])
-        X = [r[2] for r in recs]
-        Y = [r[3] for r in recs]
-        L("total: " + str(len(X)) + " symbols: " + str(len(ok)) + " span: " + (datetime.datetime.utcfromtimestamp(recs[0][0]).strftime("%Y-%m-%d") + " -> " + datetime.datetime.utcfromtimestamp(recs[-1][0]).strftime("%Y-%m-%d") if recs else "n/a"))
+        # ─── التسمية النسبية: العلامة = هل السهم تفوق على وسيط كل الأسهم في نفس اليوم خلال 20 جلسة؟ ───
+        by_date = {}
+        for r in recs:
+            by_date.setdefault(r[0], []).append(r[3])
+        med = {}
+        for d, vals in by_date.items():
+            if len(vals) >= 10:
+                sv = sorted(vals)
+                med[d] = sv[len(sv) // 2]
+        kept = [r for r in recs if r[0] in med]
+        X = [r[2] for r in kept]
+        Y = [1 if r[3] > med[r[0]] else 0 for r in kept]
+        L("total: " + str(len(X)) + " (relative-median label, kept " + str(len(kept)) + "/" + str(len(recs)) + ") symbols: " + str(len(ok)) + " span: " + (datetime.datetime.utcfromtimestamp(kept[0][0]).strftime("%Y-%m-%d") + " -> " + datetime.datetime.utcfromtimestamp(kept[-1][0]).strftime("%Y-%m-%d") if kept else "n/a"))
         if len(X) < 3000:
             L("insufficient data - no model written this run")
             return
@@ -183,6 +214,8 @@ def main():
         NF = 4
         fs = len(X) // (NF + 1)
         aucs = []
+        oof_p = []
+        oof_y = []
         for k in range(1, NF + 1):
             tr_end = fs * k
             te_lo, te_hi = tr_end, min(tr_end + fs, len(X))
@@ -193,9 +226,13 @@ def main():
             probs = booster.predict(np.asarray(X[te_lo:te_hi], dtype=float))
             a = auc_of(probs, Y[te_lo:te_hi])
             aucs.append(a)
+            oof_p.extend(float(p) for p in probs)
+            oof_y.extend(Y[te_lo:te_hi])
             L("walk-forward fold " + str(k) + ": auc=" + str(round(a, 3)) + " train_n=" + str(tr_end) + " test_n=" + str(te_hi - te_lo))
         wf_auc = round(sum(aucs) / len(aucs), 3) if aucs else None
         L("walk-forward mean auc: " + str(wf_auc))
+        cal_platt = platt_fit(oof_p, oof_y)
+        L("platt calibration: " + (json.dumps(cal_platt) if cal_platt else "not enough oof samples"))
         # ─── الموديل النهائي: تدريب على أول 85٪ زمنيًا واختبار صادق على آخر 15٪ ───
         cut = int(len(X) * 0.85)
         Xtr, Ytr = X[:cut], Y[:cut]
@@ -230,10 +267,10 @@ def main():
             nodes[idx2] = [f, thr, left, right, 0.0]
             return idx2
         roots = [walk(t["tree_structure"]) for t in dm["tree_info"]]
-        out = {"version": 3, "kind": "lightgbm-egx-sharia-10d", "trained_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d"), "feature_names": FEATS, "n_train": len(Xtr), "n_test": len(Xte), "test_acc": round(acc * 100, 1), "naive_base": round(base * 100, 1), "auc": round(auc, 3), "wf_auc": wf_auc, "wf_folds": len(aucs), "n_trees": len(roots), "n_symbols": len(ok), "symbols": ok, "calibration": cal, "roots": roots, "nodes": nodes}
+        out = {"version": 3, "kind": "lightgbm-egx-sharia-4w-rel", "label": "rel_median_20d", "horizon_days": LOOK, "trained_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d"), "feature_names": FEATS, "n_train": len(Xtr), "n_test": len(Xte), "test_acc": round(acc * 100, 1), "naive_base": round(base * 100, 1), "auc": round(auc, 3), "wf_auc": wf_auc, "wf_folds": len(aucs), "n_trees": len(roots), "n_symbols": len(ok), "symbols": ok, "calibration": cal, "cal_platt": cal_platt, "roots": roots, "nodes": nodes}
         with open("model_weights.json", "w", encoding="utf-8") as fh:
             json.dump(out, fh, ensure_ascii=False, separators=(",", ":"))
-        L("model v3 written - trees: " + str(len(roots)) + " nodes: " + str(len(nodes)) + " acc: " + str(round(acc * 100, 1)) + " auc: " + str(round(auc, 3)) + " wf_auc: " + str(wf_auc) + " cal buckets: " + str(len(cal)))
+        L("model v8 written - trees: " + str(len(roots)) + " nodes: " + str(len(nodes)) + " acc: " + str(round(acc * 100, 1)) + " auc: " + str(round(auc, 3)) + " wf_auc: " + str(wf_auc) + " platt: " + (json.dumps(cal_platt) if cal_platt else "none") + " cal buckets: " + str(len(cal)))
     except Exception:
         L("ERROR: " + traceback.format_exc())
     finally:
