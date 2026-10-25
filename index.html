@@ -261,7 +261,7 @@
     <div class="logo">🕌</div>
     <div>
       <h1>سهمي — محلل البورصة المصرية بالذكاء الاصطناعي</h1>
-      <div class="sub">EGX · أسعار لحظية أثناء الجلسة (oanor) + تحليل فني من Yahoo Finance · توصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.37</b></div>
+      <div class="sub">EGX · أسعار لحظية أثناء الجلسة (oanor) + تحليل فني من Yahoo Finance · توصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.38</b></div>
     </div>
     <div class="hd-right">
       <span class="pill" id="clock">—</span>
@@ -608,7 +608,7 @@
         <li>💼 <b>محفظتك</b> وبياناتك كلها محفوظة في متصفحك (localStorage) ولا تُرسل لأي سيرفر سوى مزوّد الـ AI الذي تختاره بنفسك.</li>
         <li>⚠️ هذا التطبيق لاستخدام شخصي تعليمي — <b>ليس نصيحة استثمارية</b>.</li>
       </ul>
-      <div class="small muted">إصدار 3.37 · صنع بحُب لمستثمر مصري 🇪🇬</div>
+      <div class="small muted">إصدار 3.38 · صنع بحُب لمستثمر مصري 🇪🇬</div>
     </div>
   </section>
 
@@ -757,7 +757,9 @@ const WATCH_TTL=30*60*1000, HIST_TTL=12*3600*1000;
 
 function toast(msg,ms=3500){const d=document.createElement("div");d.className="toast";d.innerHTML=msg;document.body.appendChild(d);setTimeout(()=>d.remove(),ms)}
 function net(ok,txt){$("net-dot").classList.toggle("off",!ok);$("net-status").textContent=txt}
-function egxOpen(){const h=new Date().getUTCHours()+2,d=new Date().getUTCDay();return d>=0&&d<=4&&h>=9&&h<15} // تقريب بتوقيت القاهرة
+/* الجلسة الرسمية للبورصة المصرية: الأحد–الخميس ١٠:٠٠–٢:٣٠ ظهرًا بتوقيت القاهرة —
+   cairoDate بتستخدم منطقة Africa/Cairo الرسمية فالتوقيت الصيفي والشتوي بيتظبطوا تلقائيًا */
+function egxOpen(){const c=cairoDate();const m=c.getHours()*60+c.getMinutes();return c.getDay()<=4&&m>=600&&m<=870}
 
 /* ═════════════════════════ 3) المؤشرات الفنية ═════════════════════════ */
 function sma(a,n){const o=[];let s=0;for(let i=0;i<a.length;i++){s+=a[i];if(i>=n)s-=a[i-n];o.push(i>=n-1?s/n:null)}return o}
@@ -1042,7 +1044,7 @@ function drawMACD(svg,V){
 const MARKET_SYMS=["EGX30→COMI","idx"]; // placeholder
 let MKT_RETRY=0;
 async function renderMarket(force=false){
-  $("market-updated").textContent=egxOpen()?"🟢 الجلسة مفتوحة تقريبًا (٩ص–٣م بتوقيت القاهرة)":"⚪ خارج جلسة التداول";
+  $("market-updated").textContent=egxOpen()?"🟢 الجلسة مفتوحة (١٠ص–٢:٣٠م بتوقيت القاهرة)":"⚪ خارج جلسة التداول";
   // المؤشرات: بيانات حقيقية من Yahoo (رموز مرشحة) ثم اللقطة المدمجة كبديل
   const idxLive={};
   $("idx-cards").innerHTML=IDX_DEF.map(d=>`<div class="idx-card"><div class="lbl small muted">${d.name}</div><div class="v">—</div><div class="small muted">جارٍ الجلب...</div></div>`).join("");
@@ -1820,8 +1822,8 @@ const mlGet=()=>store.get(ML_KEY,{days:{},model:null});
 /* لقطة يومية: إغلاقات النهارده لكل الأسهم المتوافقة — قاعدة بيانات بتكبر تلقائيًا مع كل فحص */
 function mlDaily(){
   const db=mlGet();
-  const now=new Date(),cairo=new Date(now.getTime()+(now.getTimezoneOffset()+120)*60000);
-  const key=cairo.toISOString().slice(0,10);
+  const cairo=cairoDate();
+  const key=cairo.getFullYear()+"-"+String(cairo.getMonth()+1).padStart(2,"0")+"-"+String(cairo.getDate()).padStart(2,"0");
   const p={};
   SHARIA.forEach(s=>{const w=WATCH_CACHE[s];const pr=w?(w.price!=null?w.price:w.p):null;if(pr!=null)p[s]=pr});
   if(Object.keys(p).length<10)return;
@@ -2430,20 +2432,36 @@ function inSession(){
   const c=cairoDate();
   const day=c.getDay();/* 0=الأحد ... 4=الخميس */
   const h=c.getHours();
+  /* ١٠ص–٣م بتوقيت القاهرة: الجلسة الرسمية ١٠:٠٠–٢:٣٠ + نصف ساعة إضافية عشان نبصّط على السعر الختامي */
   return day<=4&&h>=10&&h<15;
 }
+/* 💳 حارس حصة oanor المجانية (12,200 نداء/شهر ≈ 550 لكل يوم تداول):
+   عداد يومي محفوظ في المتصفح + مهلة نص ثانية على الأقل بين كل نداء ونداء على مستوى التطبيق كله
+   (حد الخطة: 2 نداء/ثانية). لو السقف اليومي اتقرب بنسكت وبنكمل على الياهو —
+   فمستحيل التطبيق يخلّص حصة المفتاح في نص الشهر مهما عملت */
+let OA_LAST=0;
+function oaBudget(){
+  const t=new Date().toISOString().slice(0,10);
+  const u=store.get("egx_oanor_use",{d:t,n:0});
+  if(u.d!==t){u.d=t;u.n=0}
+  return u.n>=550?null:u;
+}
+function oaWait(){return new Promise(r2=>{const gap=Date.now()-OA_LAST;gap<600?setTimeout(r2,600-gap):r2()})}
 /* ⚡ أسعار لحظية من oanor — باجي 20 سهم في النداء. ترجع null لو مفيش مفتاح أو الفشل، وساعتها الياهو هو الأساس زي ما هو */
 async function oanorQuote(syms){
   const key=(store.get("egx_oanor",{})||{}).key;
   if(!key)return null;
+  const use=oaBudget();if(!use)return null;
   const s=[...new Set(syms)].filter(Boolean);
   if(!s.length)return null;
   const out={};
   for(let i=0;i<s.length;i+=20){
     const batch=s.slice(i,i+20);
     try{
+      await oaWait();OA_LAST=Date.now();
       const r=await withTimeout(fetch("https://api.oanor.com/egx-api/v1/quote?codes="+encodeURIComponent(batch.join(",")),{headers:{"x-oanor-key":key},cache:"no-store"}),9000);
       if(!r.ok)throw new Error("HTTP "+r.status);
+      use.n++;store.set("egx_oanor_use",use);
       const j=await withTimeout(r.json(),9000);
       const qs=(j&&j.data&&j.data.quotes)||[];
       qs.forEach(function(q){
@@ -2458,9 +2476,12 @@ async function oanorQuote(syms){
 async function oanorIndex(){
   const key=(store.get("egx_oanor",{})||{}).key;
   if(!key)return null;
+  const use=oaBudget();if(!use)return null;
   try{
+    await oaWait();OA_LAST=Date.now();
     const r=await withTimeout(fetch("https://api.oanor.com/egx-api/v1/index?name=EGX30",{headers:{"x-oanor-key":key},cache:"no-store"}),9000);
     if(!r.ok)throw new Error("HTTP "+r.status);
+    use.n++;store.set("egx_oanor_use",use);
     const j=await withTimeout(r.json(),9000);
     const d=j&&j.data;
     if(d&&d.value!=null)return {value:d.value,chg:(d.change_percent!=null?d.change_percent:(d.open?(d.value-d.open)/d.open*100:0))};
@@ -3352,9 +3373,7 @@ $("btn-refresh-all").onclick=()=>{WATCH_CACHE&&store.set("egx_watch2",{});Object
 
 /* الساعة */
 setInterval(()=>{
-  const now=new Date();
-  const cairo=new Date(now.getTime()+(now.getTimezoneOffset()+120)*60000);
-  $("clock").textContent="🕐 "+cairo.toLocaleTimeString("ar-EG",{hour:"2-digit",minute:"2-digit"})+" القاهرة";
+  $("clock").textContent="🕐 "+cairoDate().toLocaleTimeString("ar-EG",{hour:"2-digit",minute:"2-digit"})+" القاهرة";
 },1000);
 
 /* ═════════════════════════ 15) الإقلاع ═════════════════════════ */
