@@ -1,0 +1,46 @@
+# 🤖 ريليه البيانات اللحظية — لقطة أسعار كل 20 دقيقة أثناء جلسة البورصة المصرية
+# بتنزل على فرع live والتطبيق بيقراها من GitHub مباشرة: من غير مفتاح ولا استهلاك من حصة oanor.
+# ⚠️ عشان يشتغل: ضيف مفتاح oanor بتاعك في Settings ← Secrets and variables ← Actions باسم OANOR_KEY
+name: Live Relay
+on:
+  schedule:
+    # كل 20 دقيقة من 7:00 لـ 12:40 UTC — يغطي جلسة القاهرة (١٠ص–٢:٣٠م) صيفًا وشتاءً
+    - cron: "*/20 7-12 * * 0-4"
+  workflow_dispatch: {}
+permissions:
+  contents: write
+jobs:
+  relay:
+    # لو المفتاح السري مش موجود الشغلانة بتتخطى — دي علامة إن OANOR_KEY لسه مضيفتهوش
+    if: ${{ secrets.OANOR_KEY != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: جلب اللقطة اللحظية من oanor
+        env:
+          OANOR_KEY: ${{ secrets.OANOR_KEY }}
+        run: |
+          set -e
+          SYMS="ABUK,ACGC,ADIB,AMOC,ARCC,ATQA,CIEB,CIRA,CLHO,COMI,EAST,EFID,EFIH,EGAL,EGAS,EGCH,EGTS,ELKA,EMFD,ETEL,ETRS,FAIT,FAITA,FWRY,GBCO,GOUR,HDBK,HRHO,ICFC,IFAP,ISPH,JUFO,LCSW,MASR,MBSC,MCQE,MFPC,MNHD,MPCI,MPCO,MTIE,OCDI,OLFI,ORAS,ORHD,ORWE,PHDC,POUL,RACC,RMDA,SAUD,SKPC,SWDY,TAQA,TMGH"
+          QUOTES="[]"
+          IFS=',' read -ra ARR <<< "$SYMS"
+          for ((i=0; i<${#ARR[@]}; i+=20)); do
+            BATCH=$(IFS=,; echo "${ARR[*]:i:20}")
+            PART=$(curl -sf --max-time 20 -H "x-oanor-key: $OANOR_KEY" "https://api.oanor.com/egx-api/v1/quote?codes=$BATCH") || true
+            if [ -n "$PART" ]; then
+              Q2=$(echo "$PART" | jq -c '.data.quotes // []')
+              QUOTES=$(jq -nc --argjson a "$QUOTES" --argjson b "$Q2" '$a + $b')
+            fi
+          done
+          IDX=$(curl -sf --max-time 20 -H "x-oanor-key: $OANOR_KEY" "https://api.oanor.com/egx-api/v1/index?name=EGX30") || echo "null"
+          NOWMS=$(( $(date +%s) * 1000 ))
+          jq -nc --argjson q "$QUOTES" --argjson i "$IDX" --argjson t "$NOWMS" '{t:$t,quotes:$q,idx:$i}' > live.json
+          echo "snapshot: $(jq -c '.quotes | length' live.json) quotes, EGX30=$(jq -c '.idx.data.value // "null"' live.json)"
+      - name: نشر اللقطة على فرع live
+        run: |
+          git config user.name "sahmy-relay"
+          git config user.email "actions@users.noreply.github.com"
+          git switch -C live
+          git add live.json
+          git commit -m "relay $(date -u +%Y-%m-%dT%H:%M)Z"
+          git push origin live --force

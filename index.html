@@ -261,7 +261,7 @@
     <div class="logo">🕌</div>
     <div>
       <h1>سهمي — محلل البورصة المصرية بالذكاء الاصطناعي</h1>
-      <div class="sub">EGX · أسعار لحظية أثناء الجلسة (oanor) + تحليل فني من Yahoo Finance · توصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.38</b></div>
+      <div class="sub">EGX · أسعار لحظية أثناء الجلسة (oanor / 🤖 ريليه GitHub) + تحليل فني من Yahoo Finance · توصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.39</b></div>
     </div>
     <div class="hd-right">
       <span class="pill" id="clock">—</span>
@@ -547,7 +547,7 @@
     </div>
     <div class="card">
       <h3>⚡ البيانات اللحظية (oanor) — اختياري</h3>
-      <p class="small muted" style="line-height:1.8;margin-bottom:10px">مصدر لحظي للبورصة المصرية (سعر فوري + حجم تداول + EGX30 مباشر) — الخطة المجانية <b>12,200 نداء/شهر</b> من غير كارت. سجّل مجانًا على oanor.com، خد مفتاحك من صفحة المفاتيح، والصقه هنا. لو فاضي أو فشل — التطبيق يفضل شغال عادي على Yahoo من غير أي فرق.</p>
+      <p class="small muted" style="line-height:1.8;margin-bottom:10px">مصدر لحظي للبورصة المصرية (سعر فوري + حجم تداول + EGX30 مباشر) — الخطة المجانية <b>12,200 نداء/شهر</b> من غير كارت. سجّل مجانًا على oanor.com، خد مفتاحك من صفحة المفاتيح، والصقه هنا. و🕊️ حتى من غير مفتاح خالص: <b>🤖 ريليه GitHub</b> بيجيب لقطة شبه لحظية كل 20 دقيقة أثناء الجلسة — فميزات اللحظي بتشتغل للكل، والمفتاح بيزودها دقة وطزاجة. ولو فاضي أو فشل — التطبيق يفضل شغال عادي على Yahoo.</p>
       <div class="field"><label>مفتاح oanor API</label><input id="oanor-key" type="password" placeholder="oanor_live_..."></div>
       <div class="row">
         <button class="btn primary" id="oanor-save">💾 حفظ</button>
@@ -608,7 +608,7 @@
         <li>💼 <b>محفظتك</b> وبياناتك كلها محفوظة في متصفحك (localStorage) ولا تُرسل لأي سيرفر سوى مزوّد الـ AI الذي تختاره بنفسك.</li>
         <li>⚠️ هذا التطبيق لاستخدام شخصي تعليمي — <b>ليس نصيحة استثمارية</b>.</li>
       </ul>
-      <div class="small muted">إصدار 3.38 · صنع بحُب لمستثمر مصري 🇪🇬</div>
+      <div class="small muted">إصدار 3.39 · صنع بحُب لمستثمر مصري 🇪🇬</div>
     </div>
   </section>
 
@@ -1050,9 +1050,8 @@ async function renderMarket(force=false){
   $("idx-cards").innerHTML=IDX_DEF.map(d=>`<div class="idx-card"><div class="lbl small muted">${d.name}</div><div class="v">—</div><div class="small muted">جارٍ الجلب...</div></div>`).join("");
   let sparkIdx=null;
   try{sparkIdx=await yahooSpark([...new Set(IDX_DEF.flatMap(d=>d.cands))])}catch(e){sparkIdx=null}
-  /* ⚡ EGX30 اللحظي من oanor: القيمة والتغير الحقيقيين من البورصة نفسها — الياهو بييجيب تغير المؤشر غلط */
-  const hasOaKey=(store.get("egx_oanor",{})||{}).key;
-  const oix=hasOaKey?await oanorIndex():null;
+  /* ⚡ EGX30 اللحظي: القيمة والتغير الحقيقيين من البورصة نفسها (oanor ولا 🤖 الريليه) — الياهو بييجيب تغير المؤشر غلط */
+  const oix=await oanorIndex();
   await Promise.all(IDX_DEF.map(async(d,i)=>{
     idxLive[d.key]=(sparkIdx&&d.cands.map(s=>sparkIdx[s]).find(Boolean))||await getIndexData(d.cands);
     const live=idxLive[d.key],snap=IDX_SNAPSHOT[d.key];
@@ -1084,9 +1083,9 @@ async function renderMarket(force=false){
   let arr=[];
   try{const sp=await yahooSpark(syms);arr=syms.map(s=>sp[s]).filter(Boolean);net(true,"مباشر · "+LAST_PROXY)}catch(e){arr=[]}
   /* ⚡ نبض السوق لحظي: الياهو أثناء الجلسة بيعرض إغلاقات أمس للأسهم الفردية —
-     لو فيه مفتاح oanor بنصحح أسعار وتغيرات الأربع والعشرين سهم من البورصة مباشرة،
+     بنصحح أسعار وتغيرات الأربع والعشرين سهم من المصدر اللحظي (oanor / 🤖 الريليه)،
      فبيبقى الاتساع والصاعد/الهابط على حركة النهاردة فعلًا */
-  if(hasOaKey&&arr.length){
+  if(arr.length){
     const lq=await oanorQuote(syms);
     if(lq)arr=arr.map(d=>(lq[d.sym]&&lq[d.sym].price!=null)?Object.assign({},d,{price:lq[d.sym].price,chg:lq[d.sym].chg}):d);
   }
@@ -1462,12 +1461,10 @@ async function runScan(){
      أثناء الجلسة بيعتبر آخر شمعة إغلاق أمس — بنركّب «شمعة مؤقتة» لليوم (lv:1) ونعيد التحليل الفني عليها.
      كده RSI والمتوسطات والمولنجن والوقف والهدف كلها بتبقى واعية بحركة النهاردة مش واقفة على أمس.
      الشمعة المؤقتة بتتحديث في مكانها لو الفحص اتكرر في نفس اليوم، وبتختفي لوحدها لما الياهو يجيب إغلاق اليوم الرسمي */
-  const hasOa=(store.get("egx_oanor",{})||{}).key;
-  if(hasOa){
-    try{
-      $("scan-status").textContent="جلب الأسعار اللحظية (oanor)...";
-      const lq=await oanorQuote(list);
-      if(lq)list.forEach(function(s){
+  try{
+    $("scan-status").textContent="جلب الأسعار اللحظية (oanor / ريليه)...";
+    const lq=await oanorQuote(list);
+    if(lq)list.forEach(function(s){
         const q=lq[s],o=out[s];
         if(!q||q.price==null)return;
         if(o&&o.verdict){
@@ -1484,8 +1481,7 @@ async function runScan(){
           WATCH_CACHE[s]=o;
         }
       });
-    }catch(e){/* لو oanor فشل بنكمل على الياهو عادي */}
-  }
+    }catch(e){/* لو المصدر اللحظي فشل بنكمل على الياهو عادي */}
   const arr=Object.values(out).filter(x=>x&&x.verdict).map(x=>({sym:x.sym,n:BYSYM[x.sym]?.n,price:x.price,chg:x.chg,v:x.verdict}));
   const pool=arr.filter(x=>SHARIA.includes(x.sym));
   /* 💧 السيولة ثم 🧭 حالة السوق ثم 🧠 إشارة ML — طبقة جودة القرار */
@@ -1510,11 +1506,10 @@ async function runScan(){
       buys=buys.map(up).filter(x=>liquidOK(x.sym,x.price).ok).sort((a,b)=>b.v.sc-a.v.sc);
       noliq2=before-buys.length;
       sells=sells.map(up);
-      /* ⚡ بعد التعميق: بنرجّع طبقة oanor للفرص النهائية — التعميق بيجيب شموع الياهو اللي لسه
+      /* ⚡ بعد التعميق: بنرجّع طبقة اللحظي للفرص النهائية — التعميق بيجيب شموع الياهو اللي لسه
          من غير شمعة النهاردة، فلازم السعر الحي يرجع للوقف والهدف والترتيب قبل العرض */
-      if(hasOa){
-        const lqf=await oanorQuote(finals);
-        if(lqf){
+      const lqf=await oanorQuote(finals);
+      if(lqf){
           const upLive=x=>{
             const q=lqf[x.sym];if(!q||q.price==null)return x;
             const d=deep[x.sym];
@@ -1534,7 +1529,6 @@ async function runScan(){
             return x;
           };
           buys=buys.map(upLive);sells=sells.map(upLive);
-        }
       }
     }catch(e){}
   }
@@ -2447,46 +2441,88 @@ function oaBudget(){
   return u.n>=550?null:u;
 }
 function oaWait(){return new Promise(r2=>{const gap=Date.now()-OA_LAST;gap<600?setTimeout(r2,600-gap):r2()})}
-/* ⚡ أسعار لحظية من oanor — باجي 20 سهم في النداء. ترجع null لو مفيش مفتاح أو الفشل، وساعتها الياهو هو الأساس زي ما هو */
+/* 🤖 ريليه GitHub Actions — لقطة شبه لحظية بتنزل من GitHub نفسه (بتتحدث كل 20 دقيقة أثناء الجلسة):
+   مجانية 100% من غير مفتاح ولا استهلاك من حصة oanor. هي البديل التلقائي في كل حتة لو مفيش مفتاح
+   أو لو المفتاح فشل أو الحصة اليومية قربت تخلص — فالتطبيق عمره ما بيرجع لإغلاقات أمس تاني */
+const RELAY_URL="https://raw.githubusercontent.com/MedhatCoding/ai-stock-analyzer/live/live.json";
+const RELAY_STALE=25*60*1000;
+let RELAY_CACHE={t:0,j:null};
+async function relayFetch(){
+  try{
+    if(RELAY_CACHE.j&&Date.now()-RELAY_CACHE.t<RELAY_STALE)return RELAY_CACHE.j;
+    const r=await withTimeout(fetch(RELAY_URL+"?cb="+Date.now(),{cache:"no-store"}),8000);
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    const j=await withTimeout(r.json(),8000);
+    if(!j||!j.t||Date.now()-j.t>45*60*1000)return null;/* لقطة عتيقة (بعد انتهاء الجلسة) مش بنستخدمها */
+    RELAY_CACHE={t:Date.now(),j:j};
+    return j;
+  }catch(e){return null}
+}
+async function relayQuotes(syms){
+  const j=await relayFetch();
+  if(!j)return null;
+  const out={};
+  (j.quotes||[]).forEach(function(q){
+    if(q&&q.ticker&&q.price!=null)out[q.ticker]={price:q.price,chg:(q.change_percent!=null?q.change_percent:(q.open?(q.change/q.open*100):0)),vol:q.volume??null,t:j.t};
+  });
+  const s=[...new Set(syms)].filter(Boolean);
+  return s.some(x=>out[x])?out:null;
+}
+async function relayIndex(){
+  const j=await relayFetch();
+  const d=j&&j.idx&&j.idx.data;
+  if(!d||d.value==null)return null;
+  return {value:d.value,chg:(d.change_percent!=null?d.change_percent:(d.open?(d.value-d.open)/d.open*100:0))};
+}
+/* ⚡ أسعار لحظية من oanor — باجي 20 سهم في النداء. لو مفيش مفتاح أو المفتاح فشل أو الحصة قربت تخلص:
+   🤖 الريليه من GitHub هو البديل التلقائي — ولو هما الاتنين مش موجودين، الياهو هو الأساس زي ما هو */
 async function oanorQuote(syms){
-  const key=(store.get("egx_oanor",{})||{}).key;
-  if(!key)return null;
-  const use=oaBudget();if(!use)return null;
   const s=[...new Set(syms)].filter(Boolean);
   if(!s.length)return null;
-  const out={};
-  for(let i=0;i<s.length;i+=20){
-    const batch=s.slice(i,i+20);
-    try{
-      await oaWait();OA_LAST=Date.now();
-      const r=await withTimeout(fetch("https://api.oanor.com/egx-api/v1/quote?codes="+encodeURIComponent(batch.join(",")),{headers:{"x-oanor-key":key},cache:"no-store"}),9000);
-      if(!r.ok)throw new Error("HTTP "+r.status);
-      use.n++;store.set("egx_oanor_use",use);
-      const j=await withTimeout(r.json(),9000);
-      const qs=(j&&j.data&&j.data.quotes)||[];
-      qs.forEach(function(q){
-        if(q&&q.ticker&&q.price!=null)out[q.ticker]={price:q.price,chg:(q.change_percent!=null?q.change_percent:(q.open? q.change/q.open*100:0)),vol:q.volume??null,t:Date.now()};
-      });
-    }catch(e){}
+  const key=(store.get("egx_oanor",{})||{}).key;
+  if(key){
+    const use=oaBudget();
+    if(use){
+      const out={};
+      for(let i=0;i<s.length;i+=20){
+        const batch=s.slice(i,i+20);
+        try{
+          await oaWait();OA_LAST=Date.now();
+          const r=await withTimeout(fetch("https://api.oanor.com/egx-api/v1/quote?codes="+encodeURIComponent(batch.join(",")),{headers:{"x-oanor-key":key},cache:"no-store"}),9000);
+          if(!r.ok)throw new Error("HTTP "+r.status);
+          use.n++;store.set("egx_oanor_use",use);
+          const j=await withTimeout(r.json(),9000);
+          const qs=(j&&j.data&&j.data.quotes)||[];
+          qs.forEach(function(q){
+            if(q&&q.ticker&&q.price!=null)out[q.ticker]={price:q.price,chg:(q.change_percent!=null?q.change_percent:(q.open? q.change/q.open*100:0)),vol:q.volume??null,t:Date.now()};
+          });
+        }catch(e){}
+      }
+      if(Object.keys(out).length)return out;
+    }
   }
-  return Object.keys(out).length?out:null;
+  return relayQuotes(s);
 }
 /* ⚡ قيمة EGX30 اللحظية من oanor (المصدر: البورصة المصرية نفسها) — بيصحح قيمة وتغير المؤشر،
    لأن الياهو بييجيب تغير ^CASE30 غلط أغلب الوقت */
 async function oanorIndex(){
   const key=(store.get("egx_oanor",{})||{}).key;
-  if(!key)return null;
-  const use=oaBudget();if(!use)return null;
-  try{
-    await oaWait();OA_LAST=Date.now();
-    const r=await withTimeout(fetch("https://api.oanor.com/egx-api/v1/index?name=EGX30",{headers:{"x-oanor-key":key},cache:"no-store"}),9000);
-    if(!r.ok)throw new Error("HTTP "+r.status);
-    use.n++;store.set("egx_oanor_use",use);
-    const j=await withTimeout(r.json(),9000);
-    const d=j&&j.data;
-    if(d&&d.value!=null)return {value:d.value,chg:(d.change_percent!=null?d.change_percent:(d.open?(d.value-d.open)/d.open*100:0))};
-  }catch(e){}
-  return null;
+  if(key){
+    const use=oaBudget();
+    if(use){
+      try{
+        await oaWait();OA_LAST=Date.now();
+        const r=await withTimeout(fetch("https://api.oanor.com/egx-api/v1/index?name=EGX30",{headers:{"x-oanor-key":key},cache:"no-store"}),9000);
+        if(!r.ok)throw new Error("HTTP "+r.status);
+        use.n++;store.set("egx_oanor_use",use);
+        const j=await withTimeout(r.json(),9000);
+        const d=j&&j.data;
+        if(d&&d.value!=null)return {value:d.value,chg:(d.change_percent!=null?d.change_percent:(d.open?(d.value-d.open)/d.open*100:0))};
+      }catch(e){}
+    }
+  }
+  /* 🤖 الريليه كبديل تلقائي: قيمة وتغير المؤشر من لقطة GitHub */
+  return relayIndex();
 }
 /* إعدادات oanor */
 $("oanor-save").onclick=function(){store.set("egx_oanor",{key:$("oanor-key").value.trim()});toast("✅ تم حفظ مفتاح oanor — الفحص ونبض السوق والتنبيهات والمراجعة كلها هتستخدم اللحظي تلقائيًا")};
@@ -2528,10 +2564,8 @@ async function revalidatePick(sym,quiet){
   try{
     const d=await getStock(sym,{force:true});
     let px=d.price;
-    const key=(store.get("egx_oanor",{})||{}).key;
-    if(key){
-      const live=await oanorQuote([sym]);
-      if(live&&live[sym]){
+    const live=await oanorQuote([sym]);
+    if(live&&live[sym]){
         px=live[sym].price;
         /* شمعة النهاردة المؤقتة — نفس فكرة الفحص: لو السعر الحي بعيد عن آخر إغلاق عند الياهو،
            بنركّب شمعة لليوم ونعيد التحليل عليها، فيبقى الوقف والهدف والـ RSI على آخر حركة فعلية مش أمس */
@@ -2545,7 +2579,6 @@ async function revalidatePick(sym,quiet){
           }
         }
         if(WATCH_CACHE[sym]){WATCH_CACHE[sym].price=px;WATCH_CACHE[sym].chg=live[sym].chg;WATCH_CACHE[sym].live=true;WATCH_CACHE[sym].mkt=Math.floor(Date.now()/1000)}
-      }
     }
     const v=d.verdict;
     const mv=(px-pick.price)/pick.price*100;
@@ -3217,9 +3250,9 @@ function alertsTick(){
   if(!a.length)return;
   const syms=[...new Set(a.map(r=>r.sym))];
   safe("فحص التنبيهات السعرية",async()=>{
-    /* ⚡ لو مفتاح oanor موجود والسوق شغال: السعر اللحظي في نداء واحد — من غير استنى تأخير الياهو */
-    const key=(store.get("egx_oanor",{})||{}).key;
-    if(key&&inSession()){
+    /* ⚡ أثناء الجلسة: السعر اللحظي في نداء واحد (oanor ولا 🤖 الريليه — الاتنين داخلين جوه oanorQuote)
+       من غير استنى تأخير الياهو */
+    if(inSession()){
       const live=await oanorQuote(syms);
       if(live){
         let any=false;
@@ -3238,7 +3271,7 @@ setInterval(alertsTick,60*1000);
    النداءات: 2-3 لكل نبضة × أقل من 30 نبضة في الجلسة = حوالي 75 نداء/يوم — أقل من 1٪ من الخطة المجانية */
 setInterval(function(){
   if(document.hidden)return;
-  if(!(store.get("egx_oanor",{})||{}).key||!inSession())return;
+  if(!inSession())return; /* اللحظي من مفتاحك أو 🤖 الريليه — الاتنين جوه oanorQuote */
   safe("النبضة اللحظية",async()=>{
     const syms=Object.keys(WATCH_CACHE).filter(function(s){return /^[A-Z]+$/.test(s)&&WATCH_CACHE[s]&&WATCH_CACHE[s].verdict});
     if(!syms.length)return;
