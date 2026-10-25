@@ -261,7 +261,7 @@
     <div class="logo">🕌</div>
     <div>
       <h1>سهمي — محلل البورصة المصرية بالذكاء الاصطناعي</h1>
-      <div class="sub">EGX · أسعار لحظية أثناء الجلسة (oanor / 🤖 ريليه GitHub) + تحليل فني من Yahoo Finance · توصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.39</b></div>
+      <div class="sub">EGX · أسعار لحظية أثناء الجلسة (oanor / 🤖 ريليه GitHub) + تحليل فني من Yahoo Finance · توصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.40</b></div>
     </div>
     <div class="hd-right">
       <span class="pill" id="clock">—</span>
@@ -608,7 +608,7 @@
         <li>💼 <b>محفظتك</b> وبياناتك كلها محفوظة في متصفحك (localStorage) ولا تُرسل لأي سيرفر سوى مزوّد الـ AI الذي تختاره بنفسك.</li>
         <li>⚠️ هذا التطبيق لاستخدام شخصي تعليمي — <b>ليس نصيحة استثمارية</b>.</li>
       </ul>
-      <div class="small muted">إصدار 3.39 · صنع بحُب لمستثمر مصري 🇪🇬</div>
+      <div class="small muted">إصدار 3.40 · صنع بحُب لمستثمر مصري 🇪🇬</div>
     </div>
   </section>
 
@@ -711,9 +711,6 @@ const SHARIA_IDX = ["ACGC","ETEL","OCDI","PHDC","SKPC","TMGH","ETRS","IFAP","LCS
 const SHARIA_EXTRA = ["ABUK","SWDY","MFPC","FWRY","POUL","EGCH","EGTS","ELKA","EMFD","TAQA","MNHD"];
 const SHARIA=[...SHARIA_IDX,...SHARIA_EXTRA];
 const PURIFY = {EGAS:0.06,EGAL:0.73,MPCO:0.62,MTIE:0.60,ORAS:0.87,RACC:2.00,ACGC:1.37,ARCC:2.02,ATQA:3.54,ETRS:1.20,MCQE:3.22,CIRA:3.49,ETEL:0.20,ISPH:0.01,ORWE:1.87,SKPC:3.40};
-
-/* لقطة المؤشرات المدمجة (آخر قيم رسمية متاحة وقت التطوير) */
-const IDX_SNAPSHOT = {egx30:{v:52839,c:-0.86},egx70:{v:null,c:null},egx100:{v:26010,c:0.22},egx33:{v:6601.50,c:0.26}};
 
 /* المؤشرات الحقيقية: رموز Yahoo المرشحة لكل مؤشر (تُجرب بالترتيب حتى ينجح أحدها) */
 const IDX_DEF=[
@@ -1045,7 +1042,7 @@ const MARKET_SYMS=["EGX30→COMI","idx"]; // placeholder
 let MKT_RETRY=0;
 async function renderMarket(force=false){
   $("market-updated").textContent=egxOpen()?"🟢 الجلسة مفتوحة (١٠ص–٢:٣٠م بتوقيت القاهرة)":"⚪ خارج جلسة التداول";
-  // المؤشرات: بيانات حقيقية من Yahoo (رموز مرشحة) ثم اللقطة المدمجة كبديل
+  // المؤشرات: بيانات حقيقية من Yahoo (رموز مرشحة) + تصحيح EGX30 لحظي (oanor / 🤖 ريليه)
   const idxLive={};
   $("idx-cards").innerHTML=IDX_DEF.map(d=>`<div class="idx-card"><div class="lbl small muted">${d.name}</div><div class="v">—</div><div class="small muted">جارٍ الجلب...</div></div>`).join("");
   let sparkIdx=null;
@@ -1054,7 +1051,7 @@ async function renderMarket(force=false){
   const oix=await oanorIndex();
   await Promise.all(IDX_DEF.map(async(d,i)=>{
     idxLive[d.key]=(sparkIdx&&d.cands.map(s=>sparkIdx[s]).find(Boolean))||await getIndexData(d.cands);
-    const live=idxLive[d.key],snap=IDX_SNAPSHOT[d.key];
+    const live=idxLive[d.key];
     const lv=(d.key==="egx30"&&oix&&live)?Object.assign({},live,{price:oix.value,chg:oix.chg}):live;
     const el=$("idx-cards").children[i];
     if(lv){
@@ -1062,10 +1059,6 @@ async function renderMarket(force=false){
         <div class="v ${d.key==="egx33"?"sharia-green":""}">${NF(lv.price)} <span class="small ${lv.chg>=0?"up":"down"}">${PCT(lv.chg)}</span></div>
         ${spark(lv.hist,120,34)}
         <div class="small muted">العملة: ${lv.cur==="EGP"?"جنيه مصري":lv.cur||"—"}${lv.verdict?" · اتجاه: "+lv.verdict.rec:""}</div>`;
-    }else if(snap&&snap.v!=null){
-      el.innerHTML=`<div class="lbl small muted">${d.name} <span class="badge b-neu">لقطة مدمجة</span></div>
-        <div class="v ${d.key==="egx33"?"sharia-green":""}">${NF(snap.v)} <span class="small ${snap.c>=0?"up":"down"}">${snap.c!=null?PCT(snap.c):""}</span></div>
-        <div class="small muted">تعذر جلب القيمة المباشرة الآن</div>`;
     }else{
       el.innerHTML=`<div class="lbl small muted">${d.name}</div><div class="v">—</div><div class="small muted">غير متاح — جرب زر 🔄 تحديث</div>`;
     }

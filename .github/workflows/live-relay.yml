@@ -1,46 +1,64 @@
-# 🤖 ريليه البيانات اللحظية — لقطة أسعار كل 20 دقيقة أثناء جلسة البورصة المصرية
-# بتنزل على فرع live والتطبيق بيقراها من GitHub مباشرة: من غير مفتاح ولا استهلاك من حصة oanor.
-# ⚠️ عشان يشتغل: ضيف مفتاح oanor بتاعك في Settings ← Secrets and variables ← Actions باسم OANOR_KEY
-name: Live Relay
+name: 🤖 Live Relay — أسعار EGX اللحظية
 on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/live-relay.yml"]
   schedule:
-    # كل 20 دقيقة من 7:00 لـ 12:40 UTC — يغطي جلسة القاهرة (١٠ص–٢:٣٠م) صيفًا وشتاءً
-    - cron: "*/20 7-12 * * 0-4"
-  workflow_dispatch: {}
+    - cron: "*/20 7-12 * * 0-4"   # كل 20 دقيقة 7:00-12:59 UTC = 9ص-3م بتوقيت القاهرة (يغطي الجلسة صيفًا وشتاءً)، الأحد-الخميس
+  workflow_dispatch:
+
 permissions:
   contents: write
+
+concurrency:
+  group: live-relay
+  cancel-in-progress: true
+
 jobs:
   relay:
-    # لو المفتاح السري مش موجود الشغلانة بتتخطى — دي علامة إن OANOR_KEY لسه مضيفتهوش
-    if: ${{ secrets.OANOR_KEY != '' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: جلب اللقطة اللحظية من oanor
+      - name: ⚡ جلب الأسعار + مؤشر EGX30 من oanor
         env:
           OANOR_KEY: ${{ secrets.OANOR_KEY }}
         run: |
+          if [ -z "$OANOR_KEY" ]; then
+            echo "⚠️ مفيش مفتاح OANOR_KEY — ضيفه من Settings ← Secrets and variables ← Actions ← New repository secret"
+            exit 1
+          fi
           set -e
-          SYMS="ABUK,ACGC,ADIB,AMOC,ARCC,ATQA,CIEB,CIRA,CLHO,COMI,EAST,EFID,EFIH,EGAL,EGAS,EGCH,EGTS,ELKA,EMFD,ETEL,ETRS,FAIT,FAITA,FWRY,GBCO,GOUR,HDBK,HRHO,ICFC,IFAP,ISPH,JUFO,LCSW,MASR,MBSC,MCQE,MFPC,MNHD,MPCI,MPCO,MTIE,OCDI,OLFI,ORAS,ORHD,ORWE,PHDC,POUL,RACC,RMDA,SAUD,SKPC,SWDY,TAQA,TMGH"
+          SYMS="ABUK ACGC ADIB AMOC ARCC ATQA CIEB CIRA CLHO COMI EAST EFID EFIH EGAL EGAS EGCH EGTS ELKA EMFD ETEL ETRS FAIT FAITA FWRY GBCO GOUR HDBK HRHO ICFC IFAP ISPH JUFO LCSW MASR MBSC MCQE MFPC MNHD MPCI MPCO MTIE OCDI OLFI ORAS ORHD ORWE PHDC POUL RACC RMDA SAUD SKPC SWDY TAQA TMGH"
           QUOTES="[]"
-          IFS=',' read -ra ARR <<< "$SYMS"
-          for ((i=0; i<${#ARR[@]}; i+=20)); do
-            BATCH=$(IFS=,; echo "${ARR[*]:i:20}")
-            PART=$(curl -sf --max-time 20 -H "x-oanor-key: $OANOR_KEY" "https://api.oanor.com/egx-api/v1/quote?codes=$BATCH") || true
-            if [ -n "$PART" ]; then
-              Q2=$(echo "$PART" | jq -c '.data.quotes // []')
-              QUOTES=$(jq -nc --argjson a "$QUOTES" --argjson b "$Q2" '$a + $b')
+          BATCH=()
+          IFS=' ' read -ra ARR <<< "$SYMS"
+          for i in "${!ARR[@]}"; do
+            BATCH+=( "${ARR[$i]}" )
+            if [ ${#BATCH[@]} -eq 20 ] || [ $i -eq $(( ${#ARR[@]} - 1 )) ]; then
+              CODES=$(IFS=,; echo "${BATCH[*]}")
+              PART=$(curl -sS --max-time 25 -H "x-oanor-key: $OANOR_KEY" "https://api.oanor.com/egx-api/v1/quote?codes=$CODES" | jq -c '.data.quotes // []')
+              QUOTES=$(jq -c --argjson a "$QUOTES" --argjson b "$PART" '$a + $b')
+              echo "   دفعة: $CODES → $(jq 'length' <<< "$PART") سهم"
+              BATCH=()
+              sleep 1
             fi
           done
-          IDX=$(curl -sf --max-time 20 -H "x-oanor-key: $OANOR_KEY" "https://api.oanor.com/egx-api/v1/index?name=EGX30") || echo "null"
-          NOWMS=$(( $(date +%s) * 1000 ))
-          jq -nc --argjson q "$QUOTES" --argjson i "$IDX" --argjson t "$NOWMS" '{t:$t,quotes:$q,idx:$i}' > live.json
-          echo "snapshot: $(jq -c '.quotes | length' live.json) quotes, EGX30=$(jq -c '.idx.data.value // "null"' live.json)"
-      - name: نشر اللقطة على فرع live
+          N=$(jq 'length' <<< "$QUOTES")
+          if [ -z "$N" ] || [ "$N" -eq 0 ]; then
+            echo "⚠️ oanor ما رجّعش أي أسعار — راجع صلاحية المفتاح"
+            exit 1
+          fi
+          IDX=$(curl -sS --max-time 25 -H "x-oanor-key: $OANOR_KEY" "https://api.oanor.com/egx-api/v1/index?name=EGX30" 2>/dev/null \
+            | jq -c 'if (.data|type)=="object" then . else null end' 2>/dev/null || true)
+          [ -n "$IDX" ] || IDX="null"
+          T=$(date +%s%3N)
+          jq -n --argjson t "$T" --argjson q "$QUOTES" --argjson ix "$IDX" '{t:$t, quotes:$q, idx:$ix}' > live.json
+          echo "✅ جلب $N سهم + مؤشر EGX30 → live.json"
+      - name: 📤 نشر live.json على فرع live
         run: |
-          git config user.name "sahmy-relay"
-          git config user.email "actions@users.noreply.github.com"
-          git switch -C live
-          git add live.json
-          git commit -m "relay $(date -u +%Y-%m-%dT%H:%M)Z"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -C live --orphan
+          git add -f live.json
+          git commit -m "chore: 🤖 تحديث لقطة الأسعار اللحظية [skip ci]"
           git push origin live --force
