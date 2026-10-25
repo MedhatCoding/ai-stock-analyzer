@@ -1,4 +1,4 @@
-# تحديث: إعادة محاولات + تشخيص كامل لنداءات oanor (HTTP code + الرد في اللوج)
+# تحديث: ريليه ذاتي التشخيص — يدفع لوج التشخيص لفرع live لو فشل
 name: 🤖 Live Relay — أسعار EGX اللحظية
 on:
   push:
@@ -21,9 +21,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: ⚡ جلب الأسعار + مؤشر EGX30 من oanor
+        id: fetch
+        continue-on-error: true
         env:
           OANOR_KEY: ${{ secrets.OANOR_KEY }}
         run: |
+          exec > >(tee /tmp/relay.log) 2>&1
+          trap 'echo "❌ فشل عند السطر $LINENO (rc=$?)"' ERR
+          echo "== بيئة التشغيل =="
+          echo "bash: $(bash --version 2>&1 | head -1)"
+          echo "curl: $(curl --version 2>&1 | head -1 || echo غير موجود)"
+          echo "jq: $(jq --version 2>&1 || echo غير موجود)"
+          echo "date: $(date --version 2>&1 | head -1 || echo غير موجود)"
+          echo "== اختبار oanor بدون مفتاح =="
+          probe_rc=0
+          probe_code=$(curl -sS --max-time 15 -o /tmp/probe.json -w "%{http_code}" "https://api.oanor.com/egx-api/v1/quote?codes=COMI" 2>&1) || probe_rc=$?
+          echo "probe: curl_rc=$probe_rc http=$probe_code"
+          echo "probe_body: $(head -c 200 /tmp/probe.json 2>/dev/null || echo فاضي)"
           if [ -z "$OANOR_KEY" ]; then
             echo "⚠️ مفيش مفتاح OANOR_KEY — ضيفه من Settings ← Secrets and variables ← Actions ← New repository secret"
             exit 1
@@ -43,7 +57,7 @@ jobs:
                 return 0
               fi
               echo "⚠️ محاولة $attempt/3 — HTTP=$code — الرد: ${body:-فاضي تمامًا}"
-              sleep 3
+              sleep 2
             done
             return 1
           }
@@ -80,11 +94,24 @@ jobs:
           T=$(date +%s%3N)
           jq -n --argjson t "$T" --argjson q "$QUOTES" --argjson ix "$IDX" '{t:$t, quotes:$q, idx:$ix}' > live.json
           echo "✅ جلب $N سهم + مؤشر EGX30 → live.json"
-      - name: 📤 نشر live.json على فرع live
+      - name: 📤 نشر live.json (أو ملف التشخيص) على فرع live
+        if: always()
         run: |
+          sleep 2
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -C live --orphan
-          git add -f live.json
-          git commit -m "chore: 🤖 تحديث لقطة الأسعار اللحظية [skip ci]"
-          git push origin live --force
+          if [ -f live.json ]; then
+            git add -f live.json
+            git commit -m "chore: 🤖 تحديث لقطة الأسعار اللحظية [skip ci]"
+            git push origin live --force
+            echo "✅ اتنشر live.json على فرع live"
+          else
+            mkdir -p debug
+            if [ -f /tmp/relay.log ]; then cp /tmp/relay.log debug/relay-debug.txt; else echo "مفيش لوج" > debug/relay-debug.txt; fi
+            git add -f debug/relay-debug.txt
+            git commit -m "chore: 🤖 تشخيص فشل الريليه [skip ci]"
+            git push origin live --force
+            echo "🛠️ اتنشر ملف التشخيص على فرع live"
+            exit 1
+          fi
