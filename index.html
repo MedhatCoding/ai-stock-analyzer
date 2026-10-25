@@ -261,7 +261,7 @@
     <div class="logo">🕌</div>
     <div>
       <h1>سهمي — محلل البورصة المصرية بالذكاء الاصطناعي</h1>
-      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.35</b></div>
+      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.36</b></div>
     </div>
     <div class="hd-right">
       <span class="pill" id="clock">—</span>
@@ -546,6 +546,17 @@
       <div class="small muted" style="margin-top:10px;line-height:1.9">بعد الحفظ: أقوى فرص كل فحص وصفقات المتداول الوهمي هتوصلك على تليجرام أوتوماتيك.</div>
     </div>
     <div class="card">
+      <h3>⚡ البيانات اللحظية (oanor) — اختياري</h3>
+      <p class="small muted" style="line-height:1.8;margin-bottom:10px">مصدر لحظي للبورصة المصرية (سعر فوري + حجم تداول + EGX30 مباشر) — الخطة المجانية <b>12,200 نداء/شهر</b> من غير كارت. سجّل مجانًا على oanor.com، خد مفتاحك من صفحة المفاتيح، والصقه هنا. لو فاضي أو فشل — التطبيق يفضل شغال عادي على Yahoo من غير أي فرق.</p>
+      <div class="field"><label>مفتاح oanor API</label><input id="oanor-key" type="password" placeholder="oanor_live_..."></div>
+      <div class="row">
+        <button class="btn primary" id="oanor-save">💾 حفظ</button>
+        <button class="btn" id="oanor-test">🧪 اختبر المفتاح</button>
+        <span id="oanor-out" class="small"></span>
+      </div>
+      <div class="small muted" style="margin-top:10px;line-height:1.9">لما المفتاح يشتغل: التنبيهات السعرية بتفحص السعر اللحظي كل دقيقة أثناء الجلسة، و«مراجعة التوصية قبل التنفيذ» بتقرا سعر السوق دلوقتي بالفعل — مش إغلاق أمس.</div>
+    </div>
+    <div class="card">
       <h3>🧠 التعميق الشامل — Deep Research (اختياري)</h3>
       <p class="small muted" style="line-height:1.8;margin-bottom:12px">خطوة واحدة <b>بيدك فقط</b> — عمرها ما بتشتغل لوحدها: بنجمّع كل مُخرجات التطبيق الكمية (فرص اليوم + محفظتك + توقعات محرك التعلم الآلي + الارتباط والتنويع + مونت كارلو) ونبعتها في طلب واحد للنموذج اللي ربطته فوق، فيكتبلك تقرير بحثي عميق متكامل بيلمّ الصورة كلها ويقولك بصراحة فين الكمية بتتفق مع الفني وفين بتتعارض. استهلاكه أعلى من التحليلات العادية — الحد الأقصى مرة كل ١٠ دقايق.</p>
       <div class="row">
@@ -597,7 +608,7 @@
         <li>💼 <b>محفظتك</b> وبياناتك كلها محفوظة في متصفحك (localStorage) ولا تُرسل لأي سيرفر سوى مزوّد الـ AI الذي تختاره بنفسك.</li>
         <li>⚠️ هذا التطبيق لاستخدام شخصي تعليمي — <b>ليس نصيحة استثمارية</b>.</li>
       </ul>
-      <div class="small muted">إصدار 3.35 · صنع بحُب لمستثمر مصري 🇪🇬</div>
+      <div class="small muted">إصدار 3.36 · صنع بحُب لمستثمر مصري 🇪🇬</div>
     </div>
   </section>
 
@@ -816,7 +827,8 @@ function analyze(hist){ // hist: [{d,o,h,l,c,v}]
   else{rec="بيع قوي";cls="rec-strongsell";em="🔻";stars=1}
   const pn=rs.filter(x=>x[0]==="✅").length,nn=rs.filter(x=>x[0]==="⚠️").length;
   const conf=Math.min(94,Math.round(52+Math.abs(sc)*4.5+Math.abs(pn-nn)/(pn+nn||1)*18));
-  return {sc,rec,cls,em,stars,conf,rs,sup,res,rsi:rv,macd:mv,sig:sv,bU,bL,bM,s20:s20v,s50:s50v,hi52,lo52,atr:a,atrPct:ag/p*100,pos,/* ⚖️ إدارة مخاطر ATR: وقف ٢×ATR وهدف ٣×ATR — نسبة عائد/مخاطرة ثابتة ١:١٫٥ */
+  return {sc,rec,cls,em,stars,conf,rs,sup,res,rsi:rv,macd:mv,sig:sv,bU,bL,bM,s20:s20v,s50:s50v,hi52,lo52,atr:a,atrPct:ag/p*100,pos,/* 🛡️ تصنيف المخاطرة من المدى اليومي الحقيقي (ATR) نسبة للسعر — بيظهر على كروت الفرص */
+    risk:(ag/p*100)>4?"عالية":((ag/p*100)>2.5?"متوسطة":"منخفضة"),/* ⚖️ إدارة مخاطر ATR: وقف ٢×ATR وهدف ٣×ATR — نسبة عائد/مخاطرة ثابتة ١:١٫٥ */
     stop:Math.round((p-2*ag)*1000)/1000,t1:Math.round((p+3*ag)*1000)/1000,t2:Math.max(res,p+5*ag),sma20:s20,sma50:s50,rsiArr:r,macdArr:m,closes:c};
 }
 
@@ -895,7 +907,7 @@ function parseChart(j){
   }
   const meta=r.meta||{};
   const divs=(r.events&&r.events.dividends)?Object.values(r.events.dividends).map(function(d){return {a:d.amount,t:d.date}}).sort(function(a,b){return a.t-b.t}):[];
-  return {hist,price:meta.regularMarketPrice??lastOf(hist)?.c,prev:meta.chartPreviousClose??meta.previousClose??(hist.length>1?hist[hist.length-2].c:null),name:meta.longName||meta.shortName||null,ts:Date.now(),cur:meta.currency||"",divs};
+  return {hist,price:meta.regularMarketPrice??lastOf(hist)?.c,prev:meta.chartPreviousClose??meta.previousClose??(hist.length>1?hist[hist.length-2].c:null),name:meta.longName||meta.shortName||null,ts:Date.now(),cur:meta.currency||"",divs,mkt:meta.regularMarketTime??(ts.length?ts[ts.length-1]:null)};
 }
 async function yahooChart(sym,range="1y",raw=false){
   let err;
@@ -960,7 +972,7 @@ async function getStock(sym,{force=false}={}){
       const d=await yahooChart(sym);
       const verdict=analyze(d.hist);
       if(!verdict)throw new Error("بيانات غير كافية");
-      const rec={t:Date.now(),sym,price:d.price,prev:d.prev,chg:(d.price-d.prev)/d.prev*100,name:d.name,hist:d.hist,divs:d.divs||[],verdict};
+      const rec={t:Date.now(),sym,price:d.price,prev:d.prev,chg:(d.price-d.prev)/d.prev*100,name:d.name,hist:d.hist,divs:d.divs||[],verdict,mkt:d.mkt||null};
       WATCH_CACHE[sym]=rec;store.set("egx_watch2",WATCH_CACHE);
       net(true,"متصل");
       return rec;
@@ -1400,6 +1412,7 @@ function mlBlend(sym){
 }
 async function runScan(){
   $("btn-scan").disabled=true;
+  REV={};
   $("scan-bar-wrap").classList.remove("hide");
   $("scan-status").textContent="فحص سريع بطلب واحد...";
   const list=[...new Set([...SHARIA,...HOLDINGS.map(h=>h.t)])];
@@ -1409,11 +1422,15 @@ async function runScan(){
     const q=list.map(s=>s+".CA");
     const j=await fetchJSON(`https://query1.finance.yahoo.com/v8/finance/spark?symbols=${q.map(encodeURIComponent).join(",")}&range=1y&interval=1d`);
     list.forEach((s,i)=>{
-      const closes=(((j&&j[q[i]])||{}).close||[]).filter(v=>v!=null);
+      const d=(j&&j[q[i]])||{};
+      const closes=(d.close||[]).filter(v=>v!=null);
       if(closes.length>=60){
+        /* 🕐 طابع آخر تريدة من الياهو نفسه — عشان نعرض عمر السعر الحقيقي مش وقت الجلب */
+        const tsp=d.timestamp||[];
+        const mkt=tsp.length?tsp[tsp.length-1]:null;
         const hist=closes.map((c,k)=>{const o=k?closes[k-1]:c;return {d:null,o,h:Math.max(o,c),l:Math.min(o,c),c,v:0}});
         const price=closes[closes.length-1],prev=closes[closes.length-2];
-        out[s]={t:Date.now(),sym:s,price,prev,chg:(price-prev)/prev*100,name:BYSYM[s]?.n,hist,verdict:analyze(hist)};
+        out[s]={t:Date.now(),sym:s,price,prev,chg:(price-prev)/prev*100,name:BYSYM[s]?.n,hist,verdict:analyze(hist),mkt:mkt};
         WATCH_CACHE[s]=out[s];
       }
     });
@@ -1434,10 +1451,25 @@ async function runScan(){
   const noliq=pool.length-poolL.length;
   const REG=await marketRegime();
   const ranked=[...poolL].sort((a,b)=>b.v.sc-a.v.sc);
-  const buys=(REG&&REG.regime==="bear"?ranked.filter(x=>x.v.sc>=2):ranked).slice(0,6).map(x=>Object.assign({},x,{ml:mlBlend(x.sym)}));
+  let buys=(REG&&REG.regime==="bear"?ranked.filter(x=>x.v.sc>=2):ranked).slice(0,6).map(x=>Object.assign({},x,{ml:mlBlend(x.sym)}));
   const buySyms=new Set(buys.map(x=>x.sym));
-  const sells=[...pool].sort((a,b)=>a.v.sc-b.v.sc).filter(x=>!buySyms.has(x.sym)).slice(0,6);
-  const outp={time:Date.now(),buys,sells,count:arr.length,regime:REG||null,noliq:noliq};
+  let sells=[...pool].sort((a,b)=>a.v.sc-b.v.sc).filter(x=>!buySyms.has(x.sym)).slice(0,6);
+  /* المرحلة 3 — التحديث العميق للفرص النهائية: شموع OHLC وحجم تداول حقيقي بدل تركيبات الإغلاقات —
+     الوقف والهدف بيتبنوا على المدى الحقيقي (مش المتفق منه)، وفلتر السيولة بيشتغل على الحجم الفعلي */
+  let noliq2=0;
+  const finals=[...new Set([...buys.map(x=>x.sym),...sells.map(x=>x.sym)])];
+  if(finals.length){
+    try{
+      $("scan-status").textContent="تعميق بيانات "+finals.length+" فرصة (شموع وحجم حقيقي)...";
+      const deep=await queue(finals,s=>getStock(s,{force:true}),3);
+      const up=x=>{const d=deep[x.sym];if(!d||!d.verdict)return x;return {sym:x.sym,n:d.name||x.n,price:d.price,chg:d.chg,v:d.verdict,ml:mlBlend(x.sym)}};
+      const before=buys.length;
+      buys=buys.map(up).filter(x=>liquidOK(x.sym,x.price).ok).sort((a,b)=>b.v.sc-a.v.sc);
+      noliq2=before-buys.length;
+      sells=sells.map(up);
+    }catch(e){}
+  }
+  const outp={time:Date.now(),buys,sells,count:arr.length,regime:REG||null,noliq:noliq,noliq2:noliq2};
   if(arr.length)store.set("egx_picks3",outp);
   else{const prev=store.get("egx_picks3",null);if(prev&&prev.buys&&prev.buys.length){outp.buys=prev.buys;outp.sells=prev.sells||[];outp.time=prev.time}outp.stale=true}
   if(arr.length)safe("سجل التوصيات",()=>{recLogPicks(outp);recEval();renderRecLog();});
@@ -1455,7 +1487,7 @@ async function runScan(){
     const ok=await tgSend("🕌 سهمي — فرص "+new Date().toLocaleDateString("ar-EG")
       +(REG&&REG.regime?("\n"+(REG.regime==="bull"?"📈 نظام السوق: صاعد":"📉 نظام السوق: هابط — عتبة الشراء مرفوعة")):"")
       +(noliq>0?("\n🚫 استُبعد "+noliq+" سهم قليل السيولة"):"")
-      +"\n"+outp.buys.slice(0,3).map((b,i)=>(i+1)+". "+(b.n||b.sym)+" ("+b.sym+") — "+b.v.rec+" · سعر "+NF(b.price)+" ج.م · هدف "+NF(b.v.t1)+" · وقف "+NF(b.v.stop)).join("\n"));
+      +"\n"+outp.buys.slice(0,3).map((b,i)=>(i+1)+". "+(b.n||b.sym)+" ("+b.sym+") — "+b.v.rec+" · سعر "+NF(b.price)+" ج.م · هدف "+NF(b.v.t1)+" · وقف "+NF(b.v.stop)+(b.v.risk==="عالية"?" · 🛡️ مخاطرة عالية":"")).join("\n"));
     if(!ok)return;
     toast("📨 اتأكدت التوصيات على تليجرام");
   });
@@ -1575,15 +1607,16 @@ function renderPicks(p=PICKS){
   if(!p||(!p.buys&&!p.sells)){$("picks-grid").innerHTML='<div class="empty"><span class="spin"></span> جارٍ فحص السوق تلقائيًا لتوليد توصيات اليوم — من غير أي زر</div>';return}
   const card=(x,isBuy)=>`<div class="card" style="background:var(--card2)">
     <div class="row" style="gap:10px"><b style="font-size:17px">${x.n||x.sym}</b><span class="sect-tag">${x.sym}</span>${SHARIA.includes(x.sym)?'<span class="badge b-sharia">☪️ شريعة</span>':""}<span class="badge ${isBuy?"b-buy":"b-sell"}">${x.chg>=0?"+":""}${x.chg.toFixed(2)}%</span><span style="margin-inline-start:auto" class="stars">${"★".repeat(x.v.stars)}${"☆".repeat(5-x.v.stars)}</span></div>
-    <div class="row" style="gap:8px;margin:8px 0"><span class="rec-badge ${x.v.cls}" style="font-size:14px;padding:7px 12px">${x.v.em} ${x.v.rec}</span><span class="small muted">ثقة ${x.v.conf}%</span><span class="small muted">السعر ${NF(x.price)}</span>${isBuy&&x.ml!=null?'<span class="badge '+(x.ml>=0.55?"b-buy":x.ml<=0.45?"b-sell":"b-neu")+'" title="احتمال تفوق السهم على أقرانه خلال ٤ أسابيع حسب نموذجي ML — إشارة مؤيدة فقط مش قرار">🧠 ML '+(x.ml*100).toFixed(0)+'%</span>':""}</div>
+    <div class="row" style="gap:8px;margin:8px 0"><span class="rec-badge ${x.v.cls}" style="font-size:14px;padding:7px 12px">${x.v.em} ${x.v.rec}</span><span class="small muted">ثقة ${x.v.conf}%</span><span class="small muted">السعر ${NF(x.price)}</span>${isBuy&&x.ml!=null?'<span class="badge '+(x.ml>=0.55?"b-buy":x.ml<=0.45?"b-sell":"b-neu")+'" title="احتمال تفوق السهم على أقرانه خلال ٤ أسابيع حسب نموذجي ML — إشارة مؤيدة فقط مش قرار">🧠 ML '+(x.ml*100).toFixed(0)+'%</span>':""}${x.v.risk?'<span class="badge b-hold" title="تصنيف المخاطرة من المدى اليومي الحقيقي (ATR) نسبة للسعر — الوقف والهدف متحركين مع تقلب السهم">🛡️ مخاطرة '+x.v.risk+'</span>':""}${isBuy&&REV[x.sym]?'<span class="badge '+(REV[x.sym].st==="ok"?"b-buy":REV[x.sym].st==="warn"?"b-hold":"b-sell")+'" title="'+(REV[x.sym].msgs||[]).join(" — ")+'">'+(REV[x.sym].st==="ok"?"✅ اتمراجعت: لسه قايمة":REV[x.sym].st==="warn"?"⚠️ الصورة اتغيرت":"❌ اتلغت")+'</span>':""}</div>
     <ul class="reasons small">${x.v.rs.filter(r=>r[0]!=="ℹ️").slice(0,3).map(r=>`<li>${r[0]} ${r[1]}</li>`).join("")}</ul>
-    <div class="row small" style="gap:12px;margin-top:6px"><span class="sharia-green">دعم ${NF(x.v.sup)}</span><span class="down">مقاومة ${NF(x.v.res)}</span><span style="color:var(--amber)">وقف ${NF(x.v.stop)}</span><span style="color:var(--accent2)">هدف ${NF(x.v.t1)}</span> ${pickRR(x)}</div>
-    <button class="btn mini" style="margin-top:8px" onclick="openStock('${x.sym}')">📊 التحليل الكامل</button>
+    ${REV[x.sym]&&REV[x.sym].st!=="ok"&&(REV[x.sym].msgs||[]).length?'<ul class="reasons small" style="margin-top:6px;border:1px solid var(--border2);border-radius:10px;padding:6px 10px;background:rgba(255,180,84,.06)">'+REV[x.sym].msgs.map(m=>`<li>⚠️ ${m}</li>`).join("")+'</ul>':""}
+    <div class="row small" style="gap:12px;margin-top:6px"><span class="sharia-green">دعم ${NF(x.v.sup)}</span><span class="down">مقاومة ${NF(x.v.res)}</span><span style="color:var(--amber)">وقف ${NF(x.v.stop)}</span><span style="color:var(--accent2)">هدف ${NF(x.v.t1)}</span> ${pickRR(x)}${priceAgeTxt(x.sym)?'<span class="tag">🕐 '+priceAgeTxt(x.sym)+'</span>':""}</div>
+    <div style="margin-top:8px"><button class="btn mini" onclick="openStock('${x.sym}')">📊 التحليل الكامل</button>${isBuy?`<button class="btn mini" style="margin-inline-start:6px" onclick="revalidatePick('${x.sym}')" title="التوصية اتحسبت على إغلاقات — الزر ده يجيب أحدث سعر ويعيد التحليل من الصفر ويقارن قبل ما تنفذ">🔍 راجع قبل ما تشتري</button>`:""}</div>
   </div>`;
   const fresh=p.time&&Date.now()-p.time<24*60*60*1000;
   const ageMin=p.time?Math.round((Date.now()-p.time)/60000):null;
   const stale=p.stale||!fresh;
-  const hdr=`<div class="row small" style="gap:10px;align-items:center;margin-bottom:10px">${stale?'<span class="badge b-sell">⚠️ أسعار قديمة</span>':'<span class="badge b-buy">🟢 أسعار مباشرة</span>'}${p.regime&&p.regime.regime==="bull"?'<span class="badge b-buy" title="EGX30 فوق متوسطه 200 جلسة">🐂 نظام سوق صاعد — المؤشر فوق متوسطه '+Math.abs(p.regime.dist).toFixed(1)+'٪</span>':p.regime?'<span class="badge b-sell" title="EGX30 تحت متوسطه 200 جلسة — التوصيات الضعيفة مستبعدة">🐻 نظام سوق هابط — المؤشر '+Math.abs(p.regime.dist).toFixed(1)+'٪ تحت متوسط ٢٠٠ جلسة · عتبة الشراء مرفوعة</span>':""}<span class="muted">آخر تحديث أسعار: ${p.time?new Date(p.time).toLocaleString("ar-EG"):"—"}${ageMin!=null?" (قبل "+ageMin+" دقيقة)":""}</span>${stale?'<button class="btn mini" onclick="runScan()">🔄 حاول تحديث الأسعار</button>':""}</div>${p.noliq>0?'<div class="small muted" style="margin:-4px 0 10px">🚫 استُبعد '+p.noliq+' سهم قليل السيولة (أقل من مليون ج.م تداول يومي متوسط) من فرص الشراء.</div>':""}`;
+  const hdr=`<div class="row small" style="gap:10px;align-items:center;margin-bottom:10px">${stale?'<span class="badge b-sell">⚠️ أسعار قديمة</span>':'<span class="badge b-buy">🟢 أسعار مباشرة</span>'}${p.regime&&p.regime.regime==="bull"?'<span class="badge b-buy" title="EGX30 فوق متوسطه 200 جلسة">🐂 نظام سوق صاعد — المؤشر فوق متوسطه '+Math.abs(p.regime.dist).toFixed(1)+'٪</span>':p.regime?'<span class="badge b-sell" title="EGX30 تحت متوسطه 200 جلسة — التوصيات الضعيفة مستبعدة">🐻 نظام سوق هابط — المؤشر '+Math.abs(p.regime.dist).toFixed(1)+'٪ تحت متوسط ٢٠٠ جلسة · عتبة الشراء مرفوعة</span>':""}<span class="muted">آخر تحديث أسعار: ${p.time?new Date(p.time).toLocaleString("ar-EG"):"—"}${ageMin!=null?" (قبل "+ageMin+" دقيقة)":""}</span>${stale?'<button class="btn mini" onclick="runScan()">🔄 حاول تحديث الأسعار</button>':""}${p.buys&&p.buys.length?'<button class="btn mini" onclick="revalidateAll()" title="التوصيات اتحسبت على إغلاقات — الزر ده يجيب أحدث سعر لكل فرصة ويعيد التحليل ويقارن قبل ما تنفذ">🔁 راجع التوصيات قبل التنفيذ</button>':""}</div>${(p.noliq>0||p.noliq2>0)?'<div class="small muted" style="margin:-4px 0 10px">🚫 استُبعد '+((p.noliq||0)+(p.noliq2||0))+' سهم قليل السيولة (أقل من مليون ج.م تداول يومي متوسط) من فرص الشراء'+(p.noliq2>0?' — منهم '+p.noliq2+' بعد فحص الحجم الحقيقي للفرص النهائية':'')+'.</div>':""}`;
   $("picks-grid").innerHTML=hdr+`
     <div><h3 class="small" style="margin-bottom:8px">🟢 أقوى فرص الشراء</h3>${p.buys.map(x=>card(x,true)).join("")||'<div class="empty">لا فرص واضحة الآن</div>'}</div>
     <div><h3 class="small" style="margin-bottom:8px">🔴 تحذيرات / فرص بيع</h3>${(p.sells||[]).map(x=>card(x,false)).join("")||'<div class="empty">لا تحذيرات قوية الآن</div>'}</div>`;
@@ -1606,7 +1639,7 @@ function snap(sym){const d=WATCH_CACHE[sym];if(!d)return null;const v=d.verdict;
   return {symbol:sym,company:BYSYM[sym]?.n,price:+d.price.toFixed(2),chg_1d:+d.chg.toFixed(2),
     rsi14:+v.rsi.toFixed(1),macd:+v.macd.toFixed(3),macd_signal:+v.sig.toFixed(3),sma20:+v.s20.toFixed(2),sma50:+v.s50.toFixed(2),
     support:+v.sup.toFixed(2),resistance:+v.res.toFixed(2),atr14:+v.atr.toFixed(2),high52w:+v.hi52.toFixed(2),low52w:+v.lo52.toFixed(2),
-    technical_score:+v.sc.toFixed(1),engine_recommendation:v.rec,sharia_compliant:SHARIA.includes(sym),
+    technical_score:+v.sc.toFixed(1),engine_recommendation:v.rec,risk_level:v.risk||null,sharia_compliant:SHARIA.includes(sym),
     purification_pct:PURIFY[sym]??null}}
 const SYS="أنت محلل أسهم محترف متخصص في البورصة المصرية. اكتب تقريرًا احترافيًا موجزًا بالعربية المصرية الفصيحة: الاتجاه، نقاط القوة والضعف، مستويات مهمة، سيناريو صاعد وسيناريو هابط، توصية واضحة مع إدارة مخاطرة. اختم بتنبيه أن هذا ليس نصيحة استثمارية.";
 window.llmStock=async function(sym){
@@ -1626,7 +1659,7 @@ async function llmPortfolio(){
     const funds=FUNDS.map(f=>({name:f.name,type:f.type,units:f.units,avg_nav:f.avg,last_nav:f.nav}));
     if(!hs.length&&!funds.length)throw new Error("المحفظة فاضية");
     const t=calcTotals();
-    const txt=await callLLM(SYS,"حلّل محفظتي في البورصة المصرية (القيمة:"+NF(t.val)+" ج.م، الربح/الخسارة:"+NF(t.pl)+" ج.م). قراراتي الحالية معلقة: لكل سهم قل لي بوضوح: احتفاظ أو زيادة أو بيع ولماذا:\nأسهمي:\n"+JSON.stringify(hs,null,1)+"\nصناديقي:\n"+JSON.stringify(funds));
+    const txt=await callLLM(SYS,"حلّل محفظتي في البورصة المصرية (القيمة:"+NF(t.val)+" ج.م، الربح/الخسارة:"+NF(t.pl)+" ج.م). قراراتي الحالية معلقة: لكل سهم قل لي بوضوح: احتفاظ أو زيادة أو بيع ولماذا، واذكر المخاطر بتاعة كل قرار:\nأسهمي:\n"+JSON.stringify(hs,null,1)+"\nصناديقي:\n"+JSON.stringify(funds));
     const el=document.getElementById(id);if(el)el.outerHTML=`<div class="ai-box" style="border-color:var(--violet)">🤖 <b>تحليل المحفظة — ${CFG.ai.model}</b><br><br>${mdLite(txt)}</div><div style="height:10px"></div>`;
   }catch(e){const el=document.getElementById(id);if(el)el.outerHTML=`<div class="ai-box" style="color:var(--red)">⚠️ ${e.message}</div>`}
 }
@@ -2314,8 +2347,116 @@ async function renderDivs(){
   finally{DIV_BUSY=false}
 }
 
+/* ═════════════════════════ 12.23) ⚡ الطبقة اللحظية (oanor) + 🔁 مراجعة التوصية قبل التنفيذ + 🕐 عمر السعر ═════════════════════════ */
+function cairoDate(){const n=new Date();return new Date(n.getTime()+(n.getTimezoneOffset()+120)*60000)}
+/* الجلسة: الأحد للخميس 10:00–2:30 ظهرًا بتوقيت القاهرة — بره الأوقات دي مفيش تريدة جديدة أصلًا */
+function inSession(){
+  const c=cairoDate();
+  const day=c.getDay();/* 0=الأحد ... 4=الخميس */
+  const h=c.getHours();
+  return day<=4&&h>=10&&h<15;
+}
+/* ⚡ أسعار لحظية من oanor — باجي 20 سهم في النداء. ترجع null لو مفيش مفتاح أو الفشل، وساعتها الياهو هو الأساس زي ما هو */
+async function oanorQuote(syms){
+  const key=(store.get("egx_oanor",{})||{}).key;
+  if(!key)return null;
+  const s=[...new Set(syms)].filter(Boolean);
+  if(!s.length)return null;
+  const out={};
+  for(let i=0;i<s.length;i+=20){
+    const batch=s.slice(i,i+20);
+    try{
+      const r=await withTimeout(fetch("https://api.oanor.com/egx-api/v1/quote?codes="+encodeURIComponent(batch.join(",")),{headers:{"x-oanor-key":key},cache:"no-store"}),9000);
+      if(!r.ok)throw new Error("HTTP "+r.status);
+      const j=await withTimeout(r.json(),9000);
+      const qs=(j&&j.data&&j.data.quotes)||[];
+      qs.forEach(function(q){
+        if(q&&q.ticker&&q.price!=null)out[q.ticker]={price:q.price,chg:(q.change_percent!=null?q.change_percent:(q.open? q.change/q.open*100:0)),vol:q.volume??null,t:Date.now()};
+      });
+    }catch(e){}
+  }
+  return Object.keys(out).length?out:null;
+}
+/* إعدادات oanor */
+$("oanor-save").onclick=function(){store.set("egx_oanor",{key:$("oanor-key").value.trim()});toast("✅ تم حفظ مفتاح oanor — التنبيهات والمراجعة هيستخدموا اللحظي تلقائيًا")};
+$("oanor-test").onclick=async function(){
+  const o=$("oanor-out");
+  store.set("egx_oanor",{key:$("oanor-key").value.trim()});
+  const key=(store.get("egx_oanor",{})||{}).key;
+  if(!key){o.innerHTML='<span class="down">الصق المفتاح الأول</span>';return}
+  o.innerHTML='<span class="spin"></span>جارٍ اختبار المفتاح...';
+  const q=await oanorQuote(["COMI","TMGH"]);
+  o.innerHTML=q
+    ?'<span class="up">✅ شغال — CIB '+NF(q.COMI.price)+' ج.م ('+(q.COMI.chg>=0?"+":"")+q.COMI.chg.toFixed(2)+'٪) · البيانات اللحظية هتشحن لوحدها</span>'
+    :'<span class="down">❌ المفتاح ما ردش — تأكد منه أو اعتمد على Yahoo (كل حاجة هتفضل شغالة)</span>';
+};
+/* 🕐 عمر آخر سعر حقيقي من طابع الياهو نفسه — مش وقت الجلب عندنا */
+function priceAgeTxt(sym){
+  const c=WATCH_CACHE[sym];
+  if(!c||!c.mkt)return "";
+  const mins=Math.floor((Date.now()-c.mkt*1000)/60000);
+  if(mins<2)return "سعر طازة";
+  if(mins<90)return "قبل "+mins+" دقيقة";
+  const hrs=Math.floor(mins/60);
+  if(hrs<24)return "قبل "+hrs+" ساعة";
+  const days=Math.floor(hrs/24);
+  return days<=1?"إغلاق الجلسة السابقة":"قبل "+days+" يوم";
+}
+/* 🔁 مراجعة التوصية قبل التنفيذ — جوهر الميزة:
+   التوصية اتحسبت على إغلاقات الجلسة السابقة. قبل ما تنفذ وتشتري، الزرار ده يجيب أحدث بيانات السهم
+   (ولو في مفتاح oanor والسوق شغال: السعر اللحظي بالثانية) ويعيد التحليل الفني من الصفر ويقارن بالتوصية الأصلية:
+   هل لسه قايمة؟ ولا السعر طار فوق الهدف؟ ولا كسر الوقف؟ ولا الإشارة ضعفت؟ — القرار النهائي يفضللك دايمًا */
+let REV={};
+async function revalidatePick(sym,quiet){
+  const pick=(PICKS&&PICKS.buys)?PICKS.buys.find(b=>b.sym===sym):null;
+  if(!pick){if(!quiet)toast("⚠️ مفيش توصية شراء مفتوحة للسهم ده");return}
+  if(!quiet)toast("🔍 جارٍ مراجعة "+sym+" على أحدث البيانات...");
+  try{
+    const d=await getStock(sym,{force:true});
+    const v=d.verdict;
+    let px=d.price;
+    const key=(store.get("egx_oanor",{})||{}).key;
+    if(key&&inSession()){
+      const live=await oanorQuote([sym]);
+      if(live&&live[sym]){
+        px=live[sym].price;
+        if(WATCH_CACHE[sym]){WATCH_CACHE[sym].price=px;WATCH_CACHE[sym].chg=live[sym].chg;WATCH_CACHE[sym].live=true}
+      }
+    }
+    const mv=(px-pick.price)/pick.price*100;
+    const msgs=[];
+    if(px<=v.stop)msgs.push("السعر "+NF(px)+" كسر الوقف الفني "+NF(v.stop)+" — الإشارة بقت ملغاة");
+    else if(px>=v.t1)msgs.push("السعر "+NF(px)+" وصل الهدف "+NF(v.t1)+" خلاص — الفرصة اتسعّرت");
+    if(!/شراء/.test(v.rec))msgs.push("توصية المحرك بعد التحديث: "+v.rec);
+    else if(v.sc<pick.v.sc-1)msgs.push("قوة الإشارة نزلت من "+pick.v.sc.toFixed(1)+" إلى "+v.sc.toFixed(1));
+    if(v.rsi>72)msgs.push("RSI دخل تشبع شرائي ("+NF(v.rsi,0)+") — التصحيح قرب");
+    if(mv>=5)msgs.push("السعر طار "+mv.toFixed(1)+"٪ فوق سعر التوصية — الدخول دلوقتي مخاطرته أعلى");
+    const st=((px<=v.stop)||!/شراء/.test(v.rec))?"bad":(msgs.length?"warn":"ok");
+    REV[sym]={t:Date.now(),st:st,px:px,sc:v.sc,mv:mv,msgs:msgs};
+    renderPicks();
+    if(!quiet)toast(st==="ok"?("✅ "+sym+": التوصية لسه قايمة — السعر الحالي "+NF(px)):st==="warn"?("⚠️ "+sym+": فيه تغييرات — اقرا التفاصيل على الكارت"):("❌ "+sym+": التوصية اتلغت — متنفذهاش"),6000);
+  }catch(e){if(!quiet)toast("⚠️ تعذر جلب بيانات "+sym+" للمراجعة — جرب تاني")}
+}
+window.revalidatePick=revalidatePick;
+window.revalidateAll=async function(){
+  if(!PICKS||!PICKS.buys||!PICKS.buys.length){toast("⚠️ مفيش توصيات شراء للمراجعة");return}
+  toast("🔍 جارٍ مراجعة كل التوصيات على أحدث البيانات...");
+  for(const b of PICKS.buys){await revalidatePick(b.sym,true)}
+  toast("✅ المراجعة خلصت — شوف البادجات على كل كارت",6000);
+};
+/* مراجعة أوتوماتيكية لو فتحت التطبيق أثناء الجلسة والتوصيات لسه من إغلاقات أمس — من غير أي زر */
+async function autoRevalidate(){
+  if(!inSession())return;
+  if(!PICKS||!PICKS.buys||!PICKS.buys.length)return;
+  const t0=cairoDate();t0.setHours(0,0,0,0);
+  if(PICKS.time>=t0.getTime())return;/* توصيات النهاردة — مفيش لغاية */
+  let n=0;
+  for(const b of PICKS.buys.slice(0,6)){await revalidatePick(b.sym,true);n++}
+  if(n)toast("🔁 اتراجعت "+n+" توصية على أسعار الجلسة الجارية قبل التنفيذ — شوف البادجات على الكروت",6000);
+}
+
 /* ═════════════════════════ 12.10) 💾 النسخ الاحتياطي والاستعادة — كل بياناتك في ملف واحد على أي جهاز ═════════════════════════ */
-const BK_KEYS=["egx_holdings","egx_funds","egx_watch2","egx_picks3","egx_ml_db","egx_prefs","egx_ai_cfg","egx_journal","egx_paper","egx_reclog","egx_tg","egx_pricealerts","egx_news2","egx_enginebt_hist","egx_weekly_ts","egx_pfval_hist"];
+const BK_KEYS=["egx_holdings","egx_funds","egx_watch2","egx_picks3","egx_ml_db","egx_prefs","egx_ai_cfg","egx_journal","egx_paper","egx_reclog","egx_tg","egx_pricealerts","egx_news2","egx_enginebt_hist","egx_weekly_ts","egx_pfval_hist","egx_oanor"];
 function bkData(){
   const o={app:"aqqar-egx",v:1,at:new Date().toISOString()};
   BK_KEYS.forEach(function(k){const v=store.get(k,null);if(v!=null)o[k]=v});
@@ -2950,7 +3091,19 @@ function alertsTick(){
   const a=alGet().filter(r=>!r.hit);
   if(!a.length)return;
   const syms=[...new Set(a.map(r=>r.sym))];
-  safe("فحص التنبيهات السعرية",async()=>{await queue(syms,s=>getStock(s,{force:true}),3);alertsCheck()});
+  safe("فحص التنبيهات السعرية",async()=>{
+    /* ⚡ لو مفتاح oanor موجود والسوق شغال: السعر اللحظي في نداء واحد — من غير استنى تأخير الياهو */
+    const key=(store.get("egx_oanor",{})||{}).key;
+    if(key&&inSession()){
+      const live=await oanorQuote(syms);
+      if(live){
+        let any=false;
+        syms.forEach(function(s){const q=live[s];if(q&&q.price!=null&&WATCH_CACHE[s]){WATCH_CACHE[s].price=q.price;WATCH_CACHE[s].chg=q.chg;WATCH_CACHE[s].live=true;any=true}});
+        if(any){alertsCheck();return}
+      }
+    }
+    await queue(syms,s=>getStock(s,{force:true}),3);alertsCheck();
+  });
 }
 setInterval(alertsTick,60*1000);
 
@@ -2965,6 +3118,7 @@ function loadSettings(){
   $("auto-refresh").value=String(CFG.prefs.refresh||0);$("custom-proxy").value=CFG.prefs.proxy||"";
   $("auto-run").value=CFG.prefs.auto===false?"0":"1";
   const tg=store.get("egx_tg",{});$("tg-token").value=tg.token||"";$("tg-chat").value=tg.chat||"";
+  $("oanor-key").value=(store.get("egx_oanor",{})||{}).key||"";
 }
 $("pref-save").onclick=()=>{CFG.prefs={refresh:+$("auto-refresh").value,proxy:$("custom-proxy").value.trim(),auto:$("auto-run").value==="1"};store.set("egx_prefs",CFG.prefs);setupAutoRefresh();toast("✅ تم حفظ التفضيلات")};
 
@@ -3090,7 +3244,7 @@ function init(){
   safe("ملخص المحفظة",renderPortfolioMini);
   /* التشغيل التلقائي: فحص السوق يشتغل من نفسه إذا كانت النتائج أقدم من 24 ساعة */
   if(CFG.prefs.auto!==false&&(!PICKS||!PICKS.buys||!PICKS.buys.length||Date.now()-PICKS.time>24*60*60*1000))safe("فحص السوق التلقائي",()=>runScan());
-  else safe("التقرير الأسبوعي",weeklyReport);
+  else{safe("التقرير الأسبوعي",weeklyReport);safe("مراجعة قبل التنفيذ",autoRevalidate);}
 }
 /* التكيف مع iframe ستيرمليت: الإطار بارتفاع الشاشة الظاهرة — التمرير جوه التطبيق فشريط التبويبات الثابت يفضل ظاهر دايمًا */
 (function(){
