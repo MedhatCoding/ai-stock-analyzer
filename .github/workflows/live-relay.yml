@@ -1,4 +1,4 @@
-# تحديث: اختبار تشغيل الريليه بعد إضافة سرية OANOR_KEY — لا تغيير في المنطق
+# تحديث: إعادة محاولات + تشخيص كامل لنداءات oanor (HTTP code + الرد في اللوج)
 name: 🤖 Live Relay — أسعار EGX اللحظية
 on:
   push:
@@ -29,6 +29,24 @@ jobs:
             exit 1
           fi
           set -e
+          fetch() {
+            local url="$1" code body
+            for attempt in 1 2 3; do
+              rm -f /tmp/resp.json
+              code=$(curl -sS --max-time 25 --retry 2 --retry-delay 2 --retry-all-errors \
+                -H "x-oanor-key: $OANOR_KEY" -H "Accept: application/json" \
+                -A "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" \
+                -o /tmp/resp.json -w "%{http_code}" "$url" || true)
+              body=$(head -c 300 /tmp/resp.json 2>/dev/null || true)
+              if [ -n "$body" ] && jq -e . /tmp/resp.json >/dev/null 2>&1; then
+                echo "   ✅ HTTP $code — ${url##*codes=}"
+                return 0
+              fi
+              echo "⚠️ محاولة $attempt/3 — HTTP=$code — الرد: ${body:-فاضي تمامًا}"
+              sleep 3
+            done
+            return 1
+          }
           SYMS="ABUK ACGC ADIB AMOC ARCC ATQA CIEB CIRA CLHO COMI EAST EFID EFIH EGAL EGAS EGCH EGTS ELKA EMFD ETEL ETRS FAIT FAITA FWRY GBCO GOUR HDBK HRHO ICFC IFAP ISPH JUFO LCSW MASR MBSC MCQE MFPC MNHD MPCI MPCO MTIE OCDI OLFI ORAS ORHD ORWE PHDC POUL RACC RMDA SAUD SKPC SWDY TAQA TMGH"
           QUOTES="[]"
           BATCH=()
@@ -37,21 +55,28 @@ jobs:
             BATCH+=( "${ARR[$i]}" )
             if [ ${#BATCH[@]} -eq 20 ] || [ $i -eq $(( ${#ARR[@]} - 1 )) ]; then
               CODES=$(IFS=,; echo "${BATCH[*]}")
-              PART=$(curl -sS --max-time 25 -H "x-oanor-key: $OANOR_KEY" "https://api.oanor.com/egx-api/v1/quote?codes=$CODES" | jq -c '.data.quotes // []')
+              if ! fetch "https://api.oanor.com/egx-api/v1/quote?codes=$CODES"; then
+                echo "⚠️ فشل جلب دفعة $CODES بعد كل المحاولات"
+                exit 1
+              fi
+              PART=$(jq -c '.data.quotes // []' /tmp/resp.json)
               QUOTES=$(jq -c --argjson a "$QUOTES" --argjson b "$PART" '$a + $b')
-              echo "   دفعة: $CODES → $(jq 'length' <<< "$PART") سهم"
+              echo "   → $(jq 'length' <<< "$PART") سهم"
               BATCH=()
               sleep 1
             fi
           done
           N=$(jq 'length' <<< "$QUOTES")
           if [ -z "$N" ] || [ "$N" -eq 0 ]; then
-            echo "⚠️ oanor ما رجّعش أي أسعار — راجع صلاحية المفتاح"
+            echo "⚠️ oanor ما رجّعش أي أسعار — آخر رد: $(head -c 300 /tmp/resp.json 2>/dev/null || echo فاضي)"
             exit 1
           fi
-          IDX=$(curl -sS --max-time 25 -H "x-oanor-key: $OANOR_KEY" "https://api.oanor.com/egx-api/v1/index?name=EGX30" 2>/dev/null \
-            | jq -c 'if (.data|type)=="object" then . else null end' 2>/dev/null || true)
-          [ -n "$IDX" ] || IDX="null"
+          IDX="null"
+          if fetch "https://api.oanor.com/egx-api/v1/index?name=EGX30"; then
+            IDX=$(jq -c 'if (.data|type)=="object" then . else null end' /tmp/resp.json)
+          else
+            echo "⚠️ فشل جلب مؤشر EGX30 — نكمّل من غيره"
+          fi
           T=$(date +%s%3N)
           jq -n --argjson t "$T" --argjson q "$QUOTES" --argjson ix "$IDX" '{t:$t, quotes:$q, idx:$ix}' > live.json
           echo "✅ جلب $N سهم + مؤشر EGX30 → live.json"
