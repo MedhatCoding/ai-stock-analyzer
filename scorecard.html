@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>سهمي — شهادة النموذج العامة</title>
+<meta name="description" content="مقاييس أداء نموذج LightGBM لتطبيق سهمي لتحليل البورصة المصرية — أرقام حقيقية من غير تجميل">
+<style>
+  :root{--bg:#0b1220;--card:#121b2e;--card2:#182338;--tx:#e6edf7;--mut:#8da3c9;--line:#22304d;--green:#22d3a5;--red:#ff6b6b;--amber:#f6c453;--violet:#a78bfa}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,"Segoe UI",Tahoma,sans-serif;line-height:1.8;padding:24px 16px 60px}
+  .wrap{max-width:820px;margin:0 auto}
+  h1{font-size:26px;margin:0 0 6px}
+  h2{font-size:17px;margin:0 0 12px;color:var(--violet)}
+  .sub{color:var(--mut);font-size:14px;margin-bottom:22px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:16px}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:right}
+  thead th{color:var(--mut);font-weight:600}
+  td b{color:var(--green)}
+  .warn{background:rgba(246,196,83,.08);border-color:rgba(246,196,83,.35)}
+  .note{color:var(--mut);font-size:14px}
+  .note b{color:var(--tx)}
+  .badges{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+  .badge{background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13px}
+  .g{color:var(--green)} .r{color:var(--red)} .a{color:var(--amber)} .v{color:var(--violet)}
+  a.btn{display:inline-block;background:var(--card2);color:var(--tx);border:1px solid var(--line);border-radius:10px;padding:9px 16px;text-decoration:none;font-size:14px;margin:4px}
+  a.btn:hover{border-color:var(--green)}
+  .spin{display:inline-block;width:14px;height:14px;border:2px solid var(--mut);border-top-color:var(--green);border-radius:50%;animation:s .8s linear infinite;vertical-align:-2px}
+  @keyframes s{to{transform:rotate(360deg)}}
+  footer{text-align:center;color:var(--mut);font-size:13px;margin-top:26px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🕌 سهمي — شهادة النموذج العامة</h1>
+  <div class="sub">صفحة مستقلة بتعرض مقاييس نموذج LightGBM بتاع تطبيق «سهمي» (محلل البورصة المصرية المتوافق مع الشريعة). النموذج بيتدرب تلقائيًا كل أسبوع على GitHub Actions، والصفحة دي بتقرأ الملف مباشرة من المستودع — يعني اللي بتشوفه هو الملف نفسه مش نسخة معروضة.</div>
+  <div class="badges">
+    <span class="badge g">يتحدث تلقائيًا مع كل تدريب</span>
+    <span class="badge v">مصدر مفتوح على GitHub</span>
+    <span class="badge a">أرقام من غير تجميل</span>
+  </div>
+  <main id="out"><span class="spin"></span> جارٍ جلب المقاييس من المستودع...</main>
+  <footer>
+    <div><a class="btn" href="./">📊 افتح التطبيق كامل</a><a class="btn" href="https://github.com/MedhatCoding/ai-stock-analyzer" target="_blank" rel="noopener">💻 المستودع على GitHub</a></div>
+    <p>التوقعات احتمالية وليست نصيحة استثمارية — الأداء السابق لا يضمن المستقبل.</p>
+  </footer>
+</div>
+<script>
+const URLS=["https://raw.githubusercontent.com/MedhatCoding/ai-stock-analyzer/main/model_weights.json","https://cdn.jsdelivr.net/gh/MedhatCoding/ai-stock-analyzer@main/model_weights.json"];
+async function load(){
+  for(const u of URLS){
+    try{
+      const r=await fetch(u,{cache:"no-store"});
+      if(!r.ok)throw new Error("HTTP "+r.status);
+      return await r.json();
+    }catch(e){}
+  }
+  return null;
+}
+function fmt(x){return (x==null||!isFinite(x))?"—":x}
+function color(v,good,ok){return (v==null)?"":(v>=good?"g":v>=ok?"a":"r")}
+function render(m){
+  const rows=[
+    ["نوع النموذج",m.kind||"—"],
+    ["هدف التوقع",m.label==="rel_median_20d"?"التفوق على وسيط الأقران خلال ٢٠ جلسة (نسبي)":(m.label||"—")],
+    ["أفق التوقع",(m.horizon_days!=null?m.horizon_days:"—")+" جلسة"],
+    ["AUC (walk-forward زمني)",'<span class="'+color(m.wf_auc,0.55,0.52)+'">'+fmt(m.wf_auc)+"</span>"],
+    ["AUC (عينة اختبار)",'<span class="'+color(m.auc,0.55,0.52)+'">'+fmt(m.auc)+"</span>"],
+    ["دقة عينة الاختبار",(m.test_acc!=null?m.test_acc+"٪":"—")+" مقابل تخمين ساذج "+(m.naive_base!=null?m.naive_base+"٪":"—")],
+    ["عينات التدريب",(m.n_train!=null?Number(m.n_train).toLocaleString("en-US"):"—")+" من "+(m.n_symbols||"—")+" سهمًا"],
+    ["عدد الأشجار",fmt(m.n_trees)],
+    ["معايرة Platt",(m.cal_platt&&isFinite(m.cal_platt.a))?"✅ مفعّلة — التوقعات احتمالات حقيقية":"—"],
+    ["تاريخ آخر تدريب",m.trained_at||"—"]
+  ];
+  let h='<div class="card"><table><tbody>'+rows.map(r=>'<tr><th style="width:40%">'+r[0]+"</th><td>"+r[1]+"</td></tr>").join("")+"</tbody></table></div>";
+  if(m.calibration&&m.calibration.length){
+    h+='<div class="card"><h2>🎯 جدول المعايرة — هل النموذج صادق مع نفسه؟</h2><table><thead><tr><th>نطاق التوقع</th><th>عينات</th><th>الصعود المتوقع</th><th>الصعود الفعلي</th></tr></thead><tbody>'
+     +m.calibration.map(function(r){return "<tr><td>"+r.range+'</td><td class="v">'+r.n+"</td><td>"+r.pred_pct+"٪</td><td>"+r.actual_pct+"٪</td></tr>"}).join("")
+     +"</tbody></table><p class=\"note\">لو الصعود الفعلي قريب من المتوقع في نطاق معين، توقعات النطاق ده تؤخذ بثقة أعلى.</p></div>";
+  }
+  h+='<div class="card warn"><b>⚖️ قراءة صادقة للشهادة:</b> AUC فوق 0.5 معناها النموذج أفضل من قطعة عملة، 1.0 مثالي، و أقل من 0.5 أسوأ من الصدفة. الهدف هنا <b>نسبي</b> — النموذج بيتوقع تفوق السهم على متوسط أقرانه خلال ٤ أسابيع مش صعوده لوحده، وده بيشيل تأثير صعود السوق كله من الحساب عشان مفيش غش بالعوام. لو الأرقام ضعيفة هتلاقيها معروضة زي ما هي — المصداقية أهم من التسويق.</div>';
+  return h;
+}
+load().then(function(m){
+  const out=document.getElementById("out");
+  out.innerHTML=m?render(m):'<div class="card warn">⚠️ تعذر جلب ملف المقاييس — حاول تاني بعد شوية، أو افتح التطبيق كامل.</div>';
+});
+</script>
+</body>
+</html>

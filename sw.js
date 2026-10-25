@@ -1,6 +1,6 @@
 /* سهمي — Service Worker: تثبيت كتطبيق حقيقي + شغل أوفلاين */
-const SAHMY_CACHE="sahmy-v3.34";
-const SAHMY_ASSETS=["./","./index.html","./manifest.json","./icon.svg"];
+const SAHMY_CACHE="sahmy-v3.35";
+const SAHMY_ASSETS=["./","./index.html","./manifest.json","./icon.svg","./scorecard.html"];
 self.addEventListener("install",function(e){
   e.waitUntil(caches.open(SAHMY_CACHE).then(function(c){return c.addAll(SAHMY_ASSETS)}).then(function(){return self.skipWaiting()}));
 });
