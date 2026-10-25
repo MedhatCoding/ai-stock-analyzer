@@ -1,59 +1,59 @@
-start 2026-10-24T01:09:45.319769+00:00
-ACGC samples: 1132
-ETEL samples: 1132
-OCDI samples: 1132
-PHDC samples: 1132
-SKPC samples: 1132
-TMGH samples: 1132
-ETRS samples: 1132
-IFAP samples: 1132
-LCSW samples: 1132
-MASR samples: 1132
-MPCO samples: 1132
-ORWE samples: 1132
-SAUD samples: 1132
-MCQE samples: 1132
-AMOC samples: 1132
-EGAS samples: 1133
-FAIT samples: 1132
-ATQA samples: 1132
-CIRA samples: 1132
-EGAL samples: 1132
-FAITA samples: 1132
-JUFO samples: 1132
-ORHD samples: 1132
-ADIB samples: 1134
-ARCC samples: 1132
-ORAS samples: 1134
-EFID samples: 1132
-OLFI samples: 1132
-MTIE samples: 1134
-RACC samples: 1132
-ICFC samples: 1132
-ISPH samples: 1132
-RMDA samples: 1132
-EFIH samples: 1134
+start 2026-10-25T20:59:50.461957+00:00
+ACGC samples: 1131
+ETEL samples: 1131
+OCDI samples: 1131
+PHDC samples: 1131
+SKPC samples: 1131
+TMGH samples: 1131
+ETRS samples: 1131
+IFAP samples: 1131
+LCSW samples: 1131
+MASR samples: 1131
+MPCO samples: 1131
+ORWE samples: 1131
+SAUD samples: 1131
+MCQE samples: 1131
+AMOC samples: 1131
+EGAS samples: 1132
+FAIT samples: 1131
+ATQA samples: 1131
+CIRA samples: 1131
+EGAL samples: 1131
+FAITA samples: 1131
+JUFO samples: 1131
+ORHD samples: 1131
+ADIB samples: 1133
+ARCC samples: 1131
+ORAS samples: 1133
+EFID samples: 1131
+OLFI samples: 1131
+MTIE samples: 1133
+RACC samples: 1131
+ICFC samples: 1131
+ISPH samples: 1131
+RMDA samples: 1131
+EFIH samples: 1133
 GOUR fetch failed: <HTTPError 404: 'Not Found'>
 GOUR samples: 0
-CLHO samples: 1132
-ABUK samples: 1132
-SWDY samples: 1132
-MFPC samples: 1132
-FWRY samples: 1132
-POUL samples: 1132
-EGCH samples: 1132
-EGTS samples: 1132
-ELKA samples: 1132
-EMFD samples: 1132
+CLHO samples: 1131
+ABUK samples: 1131
+SWDY samples: 1131
+MFPC samples: 1131
+FWRY samples: 1131
+POUL samples: 1131
+EGCH samples: 1131
+EGTS samples: 1131
+ELKA samples: 1131
+EMFD samples: 1131
 TAQA fetch failed: <HTTPError 404: 'Not Found'>
 TAQA samples: 0
 MNHD fetch failed: <HTTPError 404: 'Not Found'>
 MNHD samples: 0
-total: 49808 (relative-median label, kept 49808/49817) symbols: 44 span: 2022-01-16 -> 2026-09-23
-walk-forward fold 1: auc=0.495 train_n=9961 test_n=9961
-walk-forward fold 2: auc=0.521 train_n=19922 test_n=9961
-walk-forward fold 3: auc=0.523 train_n=29883 test_n=9961
-walk-forward fold 4: auc=0.526 train_n=39844 test_n=9961
-walk-forward mean auc: 0.516
-platt calibration: {"a": 0.7746, "b": -0.0165}
-model v8 written - trees: 10 nodes: 610 acc: 50.9 auc: 0.513 wf_auc: 0.516 platt: {"a": 0.7746, "b": -0.0165} cal buckets: 2
+total: 49764 (relative-median label, kept 49764/49773) symbols: 44 span: 2022-01-17 -> 2026-09-23
+walk-forward fold 1: auc=0.481 train_n=9952 test_n=9952
+walk-forward fold 2: auc=0.522 train_n=19904 test_n=9952
+walk-forward fold 3: auc=0.522 train_n=29856 test_n=9952
+walk-forward fold 4: auc=0.527 train_n=39808 test_n=9952
+walk-forward mean auc: 0.513
+platt calibration: {"a": 0.6845, "b": -0.0229}
+model v8 written - trees: 13 nodes: 793 acc: 50.6 auc: 0.515 wf_auc: 0.513 platt: {"a": 0.6845, "b": -0.0229} cal buckets: 2
