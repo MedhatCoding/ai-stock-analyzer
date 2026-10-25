@@ -261,7 +261,7 @@
     <div class="logo">🕌</div>
     <div>
       <h1>سهمي — محلل البورصة المصرية بالذكاء الاصطناعي</h1>
-      <div class="sub">EGX · أسعار شبه لحظية من Yahoo Finance · تحليل فني وتوصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.36</b></div>
+      <div class="sub">EGX · أسعار لحظية أثناء الجلسة (oanor) + تحليل فني من Yahoo Finance · توصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.37</b></div>
     </div>
     <div class="hd-right">
       <span class="pill" id="clock">—</span>
@@ -554,7 +554,7 @@
         <button class="btn" id="oanor-test">🧪 اختبر المفتاح</button>
         <span id="oanor-out" class="small"></span>
       </div>
-      <div class="small muted" style="margin-top:10px;line-height:1.9">لما المفتاح يشتغل: التنبيهات السعرية بتفحص السعر اللحظي كل دقيقة أثناء الجلسة، و«مراجعة التوصية قبل التنفيذ» بتقرا سعر السوق دلوقتي بالفعل — مش إغلاق أمس.</div>
+      <div class="small muted" style="margin-top:10px;line-height:1.9">لما المفتاح يشتغل: <b>الفحص نفسه بيبقى لحظي</b> — سعر النهاردة بيدخل حسابات RSI والمتوسطات والوقف والهدف، نبض السوق والصاعد/الهابط بيتصححوا من البورصة مباشرة، التنبيهات بتفحص اللحظي كل دقيقة أثناء الجلسة، و«مراجعة التوصية قبل التنفيذ» بتقرا سعر السوق دلوقتي بالفعل — مش إغلاق أمس.</div>
     </div>
     <div class="card">
       <h3>🧠 التعميق الشامل — Deep Research (اختياري)</h3>
@@ -608,7 +608,7 @@
         <li>💼 <b>محفظتك</b> وبياناتك كلها محفوظة في متصفحك (localStorage) ولا تُرسل لأي سيرفر سوى مزوّد الـ AI الذي تختاره بنفسك.</li>
         <li>⚠️ هذا التطبيق لاستخدام شخصي تعليمي — <b>ليس نصيحة استثمارية</b>.</li>
       </ul>
-      <div class="small muted">إصدار 3.36 · صنع بحُب لمستثمر مصري 🇪🇬</div>
+      <div class="small muted">إصدار 3.37 · صنع بحُب لمستثمر مصري 🇪🇬</div>
     </div>
   </section>
 
@@ -1048,15 +1048,19 @@ async function renderMarket(force=false){
   $("idx-cards").innerHTML=IDX_DEF.map(d=>`<div class="idx-card"><div class="lbl small muted">${d.name}</div><div class="v">—</div><div class="small muted">جارٍ الجلب...</div></div>`).join("");
   let sparkIdx=null;
   try{sparkIdx=await yahooSpark([...new Set(IDX_DEF.flatMap(d=>d.cands))])}catch(e){sparkIdx=null}
+  /* ⚡ EGX30 اللحظي من oanor: القيمة والتغير الحقيقيين من البورصة نفسها — الياهو بييجيب تغير المؤشر غلط */
+  const hasOaKey=(store.get("egx_oanor",{})||{}).key;
+  const oix=hasOaKey?await oanorIndex():null;
   await Promise.all(IDX_DEF.map(async(d,i)=>{
     idxLive[d.key]=(sparkIdx&&d.cands.map(s=>sparkIdx[s]).find(Boolean))||await getIndexData(d.cands);
     const live=idxLive[d.key],snap=IDX_SNAPSHOT[d.key];
+    const lv=(d.key==="egx30"&&oix&&live)?Object.assign({},live,{price:oix.value,chg:oix.chg}):live;
     const el=$("idx-cards").children[i];
-    if(live){
-      el.innerHTML=`<div class="lbl small muted">${d.name} <span class="badge b-buy">🟢 مباشر</span></div>
-        <div class="v ${d.key==="egx33"?"sharia-green":""}">${NF(live.price)} <span class="small ${live.chg>=0?"up":"down"}">${PCT(live.chg)}</span></div>
-        ${spark(live.hist,120,34)}
-        <div class="small muted">العملة: ${live.cur==="EGP"?"جنيه مصري":live.cur||"—"}${live.verdict?" · اتجاه: "+live.verdict.rec:""}</div>`;
+    if(lv){
+      el.innerHTML=`<div class="lbl small muted">${d.name} <span class="badge b-buy">🟢 مباشر${lv===live?"":" · ⚡ oanor"}</span></div>
+        <div class="v ${d.key==="egx33"?"sharia-green":""}">${NF(lv.price)} <span class="small ${lv.chg>=0?"up":"down"}">${PCT(lv.chg)}</span></div>
+        ${spark(lv.hist,120,34)}
+        <div class="small muted">العملة: ${lv.cur==="EGP"?"جنيه مصري":lv.cur||"—"}${lv.verdict?" · اتجاه: "+lv.verdict.rec:""}</div>`;
     }else if(snap&&snap.v!=null){
       el.innerHTML=`<div class="lbl small muted">${d.name} <span class="badge b-neu">لقطة مدمجة</span></div>
         <div class="v ${d.key==="egx33"?"sharia-green":""}">${NF(snap.v)} <span class="small ${snap.c>=0?"up":"down"}">${snap.c!=null?PCT(snap.c):""}</span></div>
@@ -1065,6 +1069,7 @@ async function renderMarket(force=false){
       el.innerHTML=`<div class="lbl small muted">${d.name}</div><div class="v">—</div><div class="small muted">غير متاح — جرب زر 🔄 تحديث</div>`;
     }
   }));
+  if(oix&&idxLive.egx30)idxLive.egx30=Object.assign({},idxLive.egx30,{price:oix.value,chg:oix.chg});
   const eg=idxLive.egx30;
   if(eg&&eg.hist&&eg.hist.length>5){
     safe("رسم EGX30",()=>drawArea($("egx30-chart"),eg.hist.map(x=>x&&x.c),eg.chg>=0));
@@ -1076,6 +1081,13 @@ async function renderMarket(force=false){
   const syms=LIQUID.slice(0,24);
   let arr=[];
   try{const sp=await yahooSpark(syms);arr=syms.map(s=>sp[s]).filter(Boolean);net(true,"مباشر · "+LAST_PROXY)}catch(e){arr=[]}
+  /* ⚡ نبض السوق لحظي: الياهو أثناء الجلسة بيعرض إغلاقات أمس للأسهم الفردية —
+     لو فيه مفتاح oanor بنصحح أسعار وتغيرات الأربع والعشرين سهم من البورصة مباشرة،
+     فبيبقى الاتساع والصاعد/الهابط على حركة النهاردة فعلًا */
+  if(hasOaKey&&arr.length){
+    const lq=await oanorQuote(syms);
+    if(lq)arr=arr.map(d=>(lq[d.sym]&&lq[d.sym].price!=null)?Object.assign({},d,{price:lq[d.sym].price,chg:lq[d.sym].chg}):d);
+  }
   if(!arr.length){
     const data=await queue(syms,s=>getStock(s,{force}),3,(i,n)=>net(true,`تحديث السوق ${i}/${n}`));
     arr=Object.values(data).filter(Boolean);
@@ -1443,6 +1455,35 @@ async function runScan(){
     const data=await queue(rest,s=>getStock(s),3,(i,n)=>{$("scan-bar").style.width=(i/n*100)+"%";$("scan-status").textContent=`فحص ${i}/${n}`});
     Object.assign(out,data);
   }
+  /* ⚡ المرحلة 2.5 — الطبقة اللحظية من oanor (لو المفتاح موجود): بنجيب السعر الحي لكل الأسهم في نداءين،
+     ونحدّن السعر والتغير. ولو السعر الحي مختلف عن آخر إغلاق عند الياهو (>0.1٪) — واللي بيحصل إن الياهو
+     أثناء الجلسة بيعتبر آخر شمعة إغلاق أمس — بنركّب «شمعة مؤقتة» لليوم (lv:1) ونعيد التحليل الفني عليها.
+     كده RSI والمتوسطات والمولنجن والوقف والهدف كلها بتبقى واعية بحركة النهاردة مش واقفة على أمس.
+     الشمعة المؤقتة بتتحديث في مكانها لو الفحص اتكرر في نفس اليوم، وبتختفي لوحدها لما الياهو يجيب إغلاق اليوم الرسمي */
+  const hasOa=(store.get("egx_oanor",{})||{}).key;
+  if(hasOa){
+    try{
+      $("scan-status").textContent="جلب الأسعار اللحظية (oanor)...";
+      const lq=await oanorQuote(list);
+      if(lq)list.forEach(function(s){
+        const q=lq[s],o=out[s];
+        if(!q||q.price==null)return;
+        if(o&&o.verdict){
+          o.price=q.price;o.chg=q.chg;o.live=true;o.mkt=Math.floor(q.t/1000);
+          const lb=o.hist&&o.hist.length?o.hist[o.hist.length-1]:null;
+          if(lb){
+            const base=lb.lv?lb.pc:lb.c;
+            if(base&&Math.abs(q.price-base)/base>0.001){
+              if(lb.lv){lb.h=Math.max(lb.h,base,q.price);lb.l=Math.min(lb.l,base,q.price);lb.c=q.price;lb.v=Math.max(lb.v||0,q.vol||0)}
+              else o.hist.push({d:new Date(),o:base,h:Math.max(base,q.price),l:Math.min(base,q.price),c:q.price,v:q.vol||0,lv:1,pc:base});
+              const nv=analyze(o.hist);if(nv)o.verdict=nv;
+            }
+          }
+          WATCH_CACHE[s]=o;
+        }
+      });
+    }catch(e){/* لو oanor فشل بنكمل على الياهو عادي */}
+  }
   const arr=Object.values(out).filter(x=>x&&x.verdict).map(x=>({sym:x.sym,n:BYSYM[x.sym]?.n,price:x.price,chg:x.chg,v:x.verdict}));
   const pool=arr.filter(x=>SHARIA.includes(x.sym));
   /* 💧 السيولة ثم 🧭 حالة السوق ثم 🧠 إشارة ML — طبقة جودة القرار */
@@ -1467,6 +1508,32 @@ async function runScan(){
       buys=buys.map(up).filter(x=>liquidOK(x.sym,x.price).ok).sort((a,b)=>b.v.sc-a.v.sc);
       noliq2=before-buys.length;
       sells=sells.map(up);
+      /* ⚡ بعد التعميق: بنرجّع طبقة oanor للفرص النهائية — التعميق بيجيب شموع الياهو اللي لسه
+         من غير شمعة النهاردة، فلازم السعر الحي يرجع للوقف والهدف والترتيب قبل العرض */
+      if(hasOa){
+        const lqf=await oanorQuote(finals);
+        if(lqf){
+          const upLive=x=>{
+            const q=lqf[x.sym];if(!q||q.price==null)return x;
+            const d=deep[x.sym];
+            if(d&&d.verdict){
+              const lb=d.hist&&d.hist.length?d.hist[d.hist.length-1]:null;
+              if(lb){
+                const base=lb.lv?lb.pc:lb.c;
+                if(base&&Math.abs(q.price-base)/base>0.001){
+                  if(lb.lv){lb.h=Math.max(lb.h,base,q.price);lb.l=Math.min(lb.l,base,q.price);lb.c=q.price;lb.v=Math.max(lb.v||0,q.vol||0)}
+                  else d.hist.push({d:new Date(),o:base,h:Math.max(base,q.price),l:Math.min(base,q.price),c:q.price,v:q.vol||0,lv:1,pc:base});
+                  const nv=analyze(d.hist);if(nv)d.verdict=nv;
+                }
+              }
+              d.price=q.price;d.chg=q.chg;d.live=true;d.mkt=Math.floor(q.t/1000);
+              return {sym:x.sym,n:d.name||x.n,price:q.price,chg:q.chg,v:d.verdict,ml:mlBlend(x.sym)};
+            }
+            return x;
+          };
+          buys=buys.map(upLive);sells=sells.map(upLive);
+        }
+      }
     }catch(e){}
   }
   const outp={time:Date.now(),buys,sells,count:arr.length,regime:REG||null,noliq:noliq,noliq2:noliq2};
@@ -2348,7 +2415,16 @@ async function renderDivs(){
 }
 
 /* ═════════════════════════ 12.23) ⚡ الطبقة اللحظية (oanor) + 🔁 مراجعة التوصية قبل التنفيذ + 🕐 عمر السعر ═════════════════════════ */
-function cairoDate(){const n=new Date();return new Date(n.getTime()+(n.getTimezoneOffset()+120)*60000)}
+/* ⚡ توقيت القاهرة الصح: Africa/Cairo بيتعامل مع التوقيت الصيفي/الشتوي لوحده (الياهو التقريبي بيغلط ساعة في الصيف) */
+function cairoDate(){
+  try{
+    const p=new Intl.DateTimeFormat("en-US",{timeZone:"Africa/Cairo",hour12:false,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit"}).formatToParts(new Date());
+    const g=t=>+(p.find(x=>x.type===t).value);
+    return new Date(g("year"),g("month")-1,g("day"),g("hour")%24,g("minute"),g("second"));
+  }catch(e){
+    const n=new Date();return new Date(n.getTime()+(n.getTimezoneOffset()+120)*60000);
+  }
+}
 /* الجلسة: الأحد للخميس 10:00–2:30 ظهرًا بتوقيت القاهرة — بره الأوقات دي مفيش تريدة جديدة أصلًا */
 function inSession(){
   const c=cairoDate();
@@ -2377,8 +2453,22 @@ async function oanorQuote(syms){
   }
   return Object.keys(out).length?out:null;
 }
+/* ⚡ قيمة EGX30 اللحظية من oanor (المصدر: البورصة المصرية نفسها) — بيصحح قيمة وتغير المؤشر،
+   لأن الياهو بييجيب تغير ^CASE30 غلط أغلب الوقت */
+async function oanorIndex(){
+  const key=(store.get("egx_oanor",{})||{}).key;
+  if(!key)return null;
+  try{
+    const r=await withTimeout(fetch("https://api.oanor.com/egx-api/v1/index?name=EGX30",{headers:{"x-oanor-key":key},cache:"no-store"}),9000);
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    const j=await withTimeout(r.json(),9000);
+    const d=j&&j.data;
+    if(d&&d.value!=null)return {value:d.value,chg:(d.change_percent!=null?d.change_percent:(d.open?(d.value-d.open)/d.open*100:0))};
+  }catch(e){}
+  return null;
+}
 /* إعدادات oanor */
-$("oanor-save").onclick=function(){store.set("egx_oanor",{key:$("oanor-key").value.trim()});toast("✅ تم حفظ مفتاح oanor — التنبيهات والمراجعة هيستخدموا اللحظي تلقائيًا")};
+$("oanor-save").onclick=function(){store.set("egx_oanor",{key:$("oanor-key").value.trim()});toast("✅ تم حفظ مفتاح oanor — الفحص ونبض السوق والتنبيهات والمراجعة كلها هتستخدم اللحظي تلقائيًا")};
 $("oanor-test").onclick=async function(){
   const o=$("oanor-out");
   store.set("egx_oanor",{key:$("oanor-key").value.trim()});
@@ -2390,10 +2480,13 @@ $("oanor-test").onclick=async function(){
     ?'<span class="up">✅ شغال — CIB '+NF(q.COMI.price)+' ج.م ('+(q.COMI.chg>=0?"+":"")+q.COMI.chg.toFixed(2)+'٪) · البيانات اللحظية هتشحن لوحدها</span>'
     :'<span class="down">❌ المفتاح ما ردش — تأكد منه أو اعتمد على Yahoo (كل حاجة هتفضل شغالة)</span>';
 };
-/* 🕐 عمر آخر سعر حقيقي من طابع الياهو نفسه — مش وقت الجلب عندنا */
+/* 🕐 عمر آخر سعر حقيقي — لو السعر جاي من oanor وطازة (أقل من 30 دقيقة) بنعرض «لحظي»،
+   وغير كده طابع الياهو نفسه هو المرجع مش وقت الجلب عندنا */
 function priceAgeTxt(sym){
   const c=WATCH_CACHE[sym];
-  if(!c||!c.mkt)return "";
+  if(!c)return "";
+  if(c.live&&c.mkt&&Date.now()-c.mkt*1000<30*60000)return "لحظي ⚡ (oanor)";
+  if(!c.mkt)return "";
   const mins=Math.floor((Date.now()-c.mkt*1000)/60000);
   if(mins<2)return "سعر طازة";
   if(mins<90)return "قبل "+mins+" دقيقة";
@@ -2404,7 +2497,7 @@ function priceAgeTxt(sym){
 }
 /* 🔁 مراجعة التوصية قبل التنفيذ — جوهر الميزة:
    التوصية اتحسبت على إغلاقات الجلسة السابقة. قبل ما تنفذ وتشتري، الزرار ده يجيب أحدث بيانات السهم
-   (ولو في مفتاح oanor والسوق شغال: السعر اللحظي بالثانية) ويعيد التحليل الفني من الصفر ويقارن بالتوصية الأصلية:
+   (ولو في مفتاح oanor: السعر اللحظي + شمعة النهاردة المؤقتة) ويعيد التحليل الفني من الصفر ويقارن بالتوصية الأصلية:
    هل لسه قايمة؟ ولا السعر طار فوق الهدف؟ ولا كسر الوقف؟ ولا الإشارة ضعفت؟ — القرار النهائي يفضللك دايمًا */
 let REV={};
 async function revalidatePick(sym,quiet){
@@ -2413,16 +2506,27 @@ async function revalidatePick(sym,quiet){
   if(!quiet)toast("🔍 جارٍ مراجعة "+sym+" على أحدث البيانات...");
   try{
     const d=await getStock(sym,{force:true});
-    const v=d.verdict;
     let px=d.price;
     const key=(store.get("egx_oanor",{})||{}).key;
-    if(key&&inSession()){
+    if(key){
       const live=await oanorQuote([sym]);
       if(live&&live[sym]){
         px=live[sym].price;
-        if(WATCH_CACHE[sym]){WATCH_CACHE[sym].price=px;WATCH_CACHE[sym].chg=live[sym].chg;WATCH_CACHE[sym].live=true}
+        /* شمعة النهاردة المؤقتة — نفس فكرة الفحص: لو السعر الحي بعيد عن آخر إغلاق عند الياهو،
+           بنركّب شمعة لليوم ونعيد التحليل عليها، فيبقى الوقف والهدف والـ RSI على آخر حركة فعلية مش أمس */
+        const lb=d.hist&&d.hist.length?d.hist[d.hist.length-1]:null;
+        if(lb){
+          const base=lb.lv?lb.pc:lb.c;
+          if(base&&Math.abs(px-base)/base>0.001){
+            if(lb.lv){lb.h=Math.max(lb.h,base,px);lb.l=Math.min(lb.l,base,px);lb.c=px;lb.v=Math.max(lb.v||0,live[sym].vol||0)}
+            else d.hist.push({d:new Date(),o:base,h:Math.max(base,px),l:Math.min(base,px),c:px,v:live[sym].vol||0,lv:1,pc:base});
+            const nv=analyze(d.hist);if(nv)d.verdict=nv;
+          }
+        }
+        if(WATCH_CACHE[sym]){WATCH_CACHE[sym].price=px;WATCH_CACHE[sym].chg=live[sym].chg;WATCH_CACHE[sym].live=true;WATCH_CACHE[sym].mkt=Math.floor(Date.now()/1000)}
       }
     }
+    const v=d.verdict;
     const mv=(px-pick.price)/pick.price*100;
     const msgs=[];
     if(px<=v.stop)msgs.push("السعر "+NF(px)+" كسر الوقف الفني "+NF(v.stop)+" — الإشارة بقت ملغاة");
@@ -3106,6 +3210,41 @@ function alertsTick(){
   });
 }
 setInterval(alertsTick,60*1000);
+
+/* ⚡ نبضة لحظية كل 10 دقايق أثناء الجلسة (لو فيه مفتاح oanor): بنحدّث أسعار كل الأسهم المتابعة،
+   ولو السعر اتحرك بنركّب/نحدّث شمعة النهاردة المؤقتة ونعيد التحليل الفني عليها،
+   والتنبيهات بتتراجع فورًا على السعر الجديد. التبويب المفتوح بيتحدّث لوحده من غير ما تلمس حاجة.
+   النداءات: 2-3 لكل نبضة × أقل من 30 نبضة في الجلسة = حوالي 75 نداء/يوم — أقل من 1٪ من الخطة المجانية */
+setInterval(function(){
+  if(document.hidden)return;
+  if(!(store.get("egx_oanor",{})||{}).key||!inSession())return;
+  safe("النبضة اللحظية",async()=>{
+    const syms=Object.keys(WATCH_CACHE).filter(function(s){return /^[A-Z]+$/.test(s)&&WATCH_CACHE[s]&&WATCH_CACHE[s].verdict});
+    if(!syms.length)return;
+    const lq=await oanorQuote(syms);
+    if(!lq)return;
+    syms.forEach(function(s){
+      const q=lq[s],o=WATCH_CACHE[s];
+      if(!q||q.price==null||!o)return;
+      o.price=q.price;o.chg=q.chg;o.live=true;o.mkt=Math.floor(q.t/1000);
+      const lb=o.hist&&o.hist.length?o.hist[o.hist.length-1]:null;
+      if(lb){
+        const base=lb.lv?lb.pc:lb.c;
+        if(base&&Math.abs(q.price-base)/base>0.001){
+          if(lb.lv){lb.h=Math.max(lb.h,base,q.price);lb.l=Math.min(lb.l,base,q.price);lb.c=q.price;lb.v=Math.max(lb.v||0,q.vol||0)}
+          else o.hist.push({d:new Date(),o:base,h:Math.max(base,q.price),l:Math.min(base,q.price),c:q.price,v:q.vol||0,lv:1,pc:base});
+          const nv=analyze(o.hist);if(nv)o.verdict=nv;
+        }
+      }
+    });
+    store.set("egx_watch2",WATCH_CACHE);
+    alertsCheck();
+    const tm=$("tab-market"),tp=$("tab-picks"),tpf=$("tab-portfolio");
+    if(tm&&!tm.classList.contains("hide"))renderMarket(true);
+    else if(tp&&!tp.classList.contains("hide"))renderPicks();
+    else if(tpf&&!tpf.classList.contains("hide"))renderPortfolio();
+  });
+},10*60*1000);
 
 /* ═════════════════════════ 12.18) ⚙️ Service Worker — تثبيت كتطبيق حقيقي + شغل أوفلاين ═════════════════════════ */
 if("serviceWorker" in navigator&&location.protocol.indexOf("http")===0){
