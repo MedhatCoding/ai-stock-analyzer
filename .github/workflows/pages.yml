@@ -28,6 +28,10 @@ jobs:
       - uses: actions/configure-pages@v5
         with:
           enablement: true
+      - name: تجهيز ملفات الموقع فقط (من غير ملفات المستودع الحساسة)
+        run: |
+          rm -rf .git .github
+          rm -f portfolio.dat train_model.py train_log.txt model_weights.json README.md
       - uses: actions/upload-pages-artifact@v3
         with:
           path: "."
