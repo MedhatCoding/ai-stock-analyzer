@@ -261,7 +261,7 @@
     <div class="logo">🕌</div>
     <div>
       <h1>سهمي — محلل البورصة المصرية بالذكاء الاصطناعي</h1>
-      <div class="sub">EGX · أسعار لحظية أثناء الجلسة (oanor / 🤖 ريليه GitHub) + تحليل فني من Yahoo Finance · توصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.43</b></div>
+      <div class="sub">EGX · أسعار لحظية أثناء الجلسة (oanor / 🤖 ريليه GitHub) + تحليل فني من Yahoo Finance · توصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.45</b></div>
     </div>
     <div class="hd-right">
       <span class="pill" id="clock">—</span>
@@ -608,7 +608,7 @@
         <li>💼 <b>محفظتك</b> وبياناتك كلها محفوظة في متصفحك (localStorage) ولا تُرسل لأي سيرفر سوى مزوّد الـ AI الذي تختاره بنفسك.</li>
         <li>⚠️ هذا التطبيق لاستخدام شخصي تعليمي — <b>ليس نصيحة استثمارية</b>.</li>
       </ul>
-      <div class="small muted">إصدار 3.43 · صنع بحُب لمستثمر مصري 🇪🇬</div>
+      <div class="small muted">إصدار 3.45 · صنع بحُب لمستثمر مصري 🇪🇬</div>
     </div>
   </section>
 
@@ -976,6 +976,13 @@ async function getStock(sym,{force=false}={}){
       net(true,"متصل");
       return rec;
     }catch(e){
+      /* 📜 البديل الجذري لبروكسيات ياهو المحجوبة: سهم كامل من ريليه التاريخ (شموع + سعر حي) */
+      const rs=await relayStock(sym).catch(()=>null);
+      if(rs&&rs.verdict){
+        WATCH_CACHE[sym]=rs;store.set("egx_watch2",WATCH_CACHE);
+        net(true,"مباشر · 🤖 ريليه GitHub");
+        return rs;
+      }
       net(false,"غير متصل — لقطة محفوظة");
       if(c)return c;
       return null; // سيعرض التطبيق اللقطة المدمجة
@@ -2527,6 +2534,48 @@ async function oanorIndex(){
   }
   /* 🤖 الريليه كبديل تلقائي: قيمة وتغير المؤشر من لقطة GitHub */
   return relayIndex();
+}
+/* 📜 ريليه التاريخ — hist.json من فرع hist (EODHD/ياهو من سيرفر GitHub + شمعة كل يوم من oanor):
+   التاريخ السعري الكامل اللي بيشتغل منه التحليل الفني (RSI/MACD/المتوسطات/الوقف والهدف).
+   هو الحل الجذري لبروكسيات ياهو المحجوبة عند العميل: التحليل كامل يوصل من GitHub نفسه */
+const HIST_URL="https://raw.githubusercontent.com/MedhatCoding/ai-stock-analyzer/hist/hist.json";
+let HIST_CACHE={t:0,j:null};
+async function relayHist(){
+  try{
+    if(HIST_CACHE.j&&Date.now()-HIST_CACHE.t<30*60*1000)return HIST_CACHE.j;
+    const r=await withTimeout(fetch(HIST_URL+"?cb="+Date.now(),{cache:"no-store"}),15000);
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    const j=await withTimeout(r.json(),15000);
+    if(!j||!j.stocks||!Object.keys(j.stocks).length)return null;
+    if(j.t&&Date.now()-j.t>7*24*60*60*1000)return null;/* أقدم من أسبوع = الريليه واقف — منعتمدش عليه */
+    HIST_CACHE={t:Date.now(),j:j};
+    return j;
+  }catch(e){return null}
+}
+/* سهم كامل من تاريخ الريليه: شموع جاهزة + سعر حي من oanor/الريليه — بديل تلقائي لو ياهو محجوب */
+async function relayStock(sym){
+  const h=await relayHist();
+  const arr=h&&h.stocks&&h.stocks[sym];
+  if(!arr||arr.length<60)return null;
+  const hist=arr.filter(c=>c&&c.c!=null&&c.c>0).map(c=>({d:c.d||null,o:(c.o!=null?c.o:c.c),h:(c.h!=null?c.h:c.c),l:(c.l!=null?c.l:c.c),c:c.c,v:c.v||0}));
+  if(hist.length<60)return null;
+  let verdict=analyze(hist);
+  if(!verdict)return null;
+  let price=hist[hist.length-1].c,prev=hist.length>1?hist[hist.length-2].c:price;
+  let live=false,mkt=null,chg=prev?(price-prev)/prev*100:0;
+  const lq=await relayQuotes([sym]);
+  const q=lq&&lq[sym];
+  if(q&&q.price!=null&&q.price>0){
+    const base=price;
+    /* شمعة النهاردة المؤقتة — نفس منطق طبقة oanor في الفحص: التحليل بيبقى واعي بحركة اليوم */
+    if(Math.abs(q.price-base)/base>0.001){
+      hist.push({d:new Date().toISOString().slice(0,10),o:base,h:Math.max(base,q.price),l:Math.min(base,q.price),c:q.price,v:q.vol||0,lv:1,pc:base});
+      const nv=analyze(hist);if(nv)verdict=nv;
+    }
+    price=q.price;prev=base;chg=(q.chg!=null?q.chg:(price-prev)/prev*100);
+    live=true;mkt=Math.floor((q.t||Date.now())/1000);
+  }
+  return {t:Date.now(),sym:sym,price:price,prev:prev,chg:chg,name:BYSYM[sym]?.n,hist:hist,divs:[],verdict:verdict,mkt:mkt,live:live,relay:true};
 }
 /* إعدادات oanor */
 $("oanor-save").onclick=function(){store.set("egx_oanor",{key:$("oanor-key").value.trim()});toast("✅ تم حفظ مفتاح oanor — الفحص ونبض السوق والتنبيهات والمراجعة كلها هتستخدم اللحظي تلقائيًا")};

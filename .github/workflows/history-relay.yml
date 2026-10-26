@@ -1,0 +1,178 @@
+# 📜 ريليه التاريخ: يبني hist.json على فرع hist — التاريخ السعري الكامل لأسهم EGX
+# الأولوية: EODHD (OHLCV حقيقي) → ياهو من سيرفر GitHub (نداء واحد للكل) → شمعة كل يوم من oanor
+# التطبيق بيقرأه من raw.githubusercontent.com/.../hist/hist.json عشان التحليل الفني والتوصيات
+# يشتغلوا حتى لو بروكسيات ياهو محجوبة عند العميل (مشكلة شبكات ISP في مصر)
+name: 📜 History Relay — تاريخ أسعار EGX للتحليل الفني
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/history-relay.yml"]
+  schedule:
+    - cron: "45 12 * * 0-4"   # 12:45 UTC = بعد إغلاق الجلسة بتوقيت القاهرة (شتاءً وصيفًا)، الأحد-الخميس
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: history-relay
+  cancel-in-progress: true
+
+jobs:
+  history:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 📜 بناء hist.json (EODHD → ياهو من السيرفر → شمعة اليوم من oanor)
+        id: build
+        continue-on-error: true
+        shell: bash
+        env:
+          EODHD_KEY: ${{ secrets.EODHD_KEY }}
+        run: |
+          {
+            trap 'echo "❌ فشل عند السطر $LINENO (rc=$?)"' ERR
+            set -e
+            echo "== بيئة التشغيل =="
+            echo "curl: $(curl --version 2>&1 | head -1) · jq: $(jq --version 2>&1)"
+            SYMS="ABUK ACGC ADIB AMOC ARCC ATQA CIEB CIRA CLHO COMI EAST EFID EFIH EGAL EGAS EGCH EGTS ELKA EMFD ETEL ETRS FAIT FAITA FWRY GBCO GOUR HDBK HRHO ICFC IFAP ISPH JUFO LCSW MASR MBSC MCQE MFPC MNHD MPCI MPCO MTIE OCDI OLFI ORAS ORHD ORWE PHDC POUL RACC RMDA SAUD SKPC SWDY TAQA TMGH"
+            IFS=' ' read -ra A <<< "$SYMS"
+            echo "== تحميل الوضع الحالي =="
+            curl -sS --max-time 25 -o /tmp/hist.json "https://raw.githubusercontent.com/MedhatCoding/ai-stock-analyzer/hist/hist.json" || true
+            if ! jq -e '.stocks' /tmp/hist.json >/dev/null 2>&1; then
+              echo '{"t":0,"stocks":{}}' > /tmp/hist.json
+              echo "   (مفيش hist.json قديم — بنبدأ من الصفر)"
+            else
+              echo "   موجود: $(jq '.stocks|length' /tmp/hist.json) سهم حاليًا"
+            fi
+            TODAY=$(TZ=Africa/Cairo date +%F)
+            echo "اليوم (القاهرة): $TODAY"
+
+            echo "== المرحلة 1: EODHD — تاريخ OHLCV كامل (17 نداء/تشغيل كحد أقصى — الخطة المجانية 20/يوم) =="
+            if [ -n "$EODHD_KEY" ]; then
+              CUTOFF=$(TZ=Africa/Cairo date -d "-30 days" +%F)
+              TODO=()
+              for s in "${A[@]}"; do
+                LAST=$(jq -r --arg s "$s" '(.stocks[$s] // []) | last | .d // empty' /tmp/hist.json 2>/dev/null || true)
+                if [ -z "$LAST" ] || [[ "$LAST" < "$CUTOFF" ]]; then TODO+=("$s"); fi
+              done
+              echo "   ${#TODO[@]} سهم محتاج تاريخ من EODHD (مفيش أو آخر شمعة أقدم من $CUTOFF)"
+              EOD_N=0
+              EOD_STOP=0
+              for s in "${TODO[@]:0:17}"; do
+                if [ "$EOD_STOP" = "1" ]; then break; fi
+                CODE=$(curl -sS --max-time 25 -o /tmp/eod.json -w "%{http_code}" "https://eodhd.com/api/eod/$s.EGX?api_token=$EODHD_KEY&from=2024-01-01&fmt=json" || echo 000)
+                if [ "$CODE" = "200" ] && jq -e 'type=="array" and length>0' /tmp/eod.json >/dev/null 2>&1; then
+                  jq -c '[.[] | {d:.date, o:.open, h:.high, l:.low, c:.close, v:(.volume//0)}] | sort_by(.d) | .[-260:]' /tmp/eod.json > /tmp/arr.json
+                  jq --arg s "$s" --slurpfile arr /tmp/arr.json '.stocks[$s] = $arr[0]' /tmp/hist.json > /tmp/h.tmp && mv /tmp/h.tmp /tmp/hist.json
+                  EOD_N=$((EOD_N+1)); echo "   ✅ $s: $(jq 'length' /tmp/arr.json) شمعة (EODHD)"
+                else
+                  BODY=$(head -c 150 /tmp/eod.json 2>/dev/null || true)
+                  echo "   ⚠️ $s: HTTP $CODE — ${BODY:-فاضي}"
+                  case "$CODE" in
+                    402|403) echo "   💳 EODHD: الخطة الحالية مش مفعّلة لسوق EGX (المجانية بتغطي البورصات الأمريكية) — هنعتمد على ياهو + oanor"; EOD_STOP=1 ;;
+                  esac
+                fi
+                sleep 2
+              done
+              echo "   EODHD: جبنا $EOD_N سهم في التشغيل ده"
+            else
+              echo "   ⚠️ مفيش سكرت EODHD_KEY — (اختياري) ضيفه من Settings ← Secrets and variables ← Actions"
+            fi
+
+            echo "== المرحلة 2: ياهو من سيرفر GitHub — نداء واحد للتاريخ الكامل لكل الأسهم الناقصة =="
+            MISSING=()
+            for s in "${A[@]}"; do
+              N=$(jq --arg s "$s" '(.stocks[$s] // []) | length' /tmp/hist.json)
+              if [ -z "$N" ] || [ "$N" -lt 60 ]; then MISSING+=("$s"); fi
+            done
+            echo "   ${#MISSING[@]} سهم لسه من غير تاريخ كافي (أقل من 60 شمعة)"
+            if [ ${#MISSING[@]} -gt 0 ]; then
+              Q=$(IFS=,; echo "${MISSING[*]/%/.CA}")
+              UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+              SPARK_OK=0
+              for HOST in query1 query2; do
+                CODE=$(curl -sS --max-time 40 -A "$UA" -H "Accept: application/json" -o /tmp/spark.json -w "%{http_code}" "https://$HOST.finance.yahoo.com/v8/finance/spark?symbols=$Q&range=1y&interval=1d" || echo 000)
+                if [ "$CODE" = "200" ] && jq -e 'type=="object"' /tmp/spark.json >/dev/null 2>&1; then
+                  SPARK_OK=1; echo "   ✅ HTTP 200 من $HOST — بنستخرج الشموع"
+                  break
+                else
+                  BODY=$(head -c 120 /tmp/spark.json 2>/dev/null || true)
+                  echo "   ⚠️ $HOST: HTTP $CODE — ${BODY:-فاضي}"
+                fi
+              done
+              if [ "$SPARK_OK" = "1" ]; then
+                Y_N=0
+                for s in "${MISSING[@]}"; do
+                  jq -c --arg k "$s.CA" '{ts:.[$k].timestamp, cl:.[$k].close}' /tmp/spark.json > /tmp/sp.json 2>/dev/null || continue
+                  jq -e '.cl and (.cl|length>=60)' /tmp/sp.json >/dev/null 2>&1 || continue
+                  jq -c '[.ts,.cl] | transpose | map({d:(.[0]|todate|.[0:10]), c:.[1]}) as $rows | [ range(0; ($rows|length)) as $i | { d:$rows[$i].d, o:(if $i==0 then $rows[0].c else $rows[$i-1].c end), h:([if $i==0 then $rows[0].c else $rows[$i-1].c end, $rows[$i].c]|max), l:([if $i==0 then $rows[0].c else $rows[$i-1].c end, $rows[$i].c]|min), c:$rows[$i].c, v:0 } ]' /tmp/sp.json > /tmp/arr.json
+                  jq --arg s "$s" --slurpfile arr /tmp/arr.json '.stocks[$s] = $arr[0]' /tmp/hist.json > /tmp/h.tmp && mv /tmp/h.tmp /tmp/hist.json
+                  Y_N=$((Y_N+1))
+                done
+                echo "   ياهو: جبنا $Y_N سهم في التشغيل ده"
+              else
+                echo "   ❌ ياهو حجب سيرفرات GitHub — التشغيلات الجاية هتحاول تاني + EODHD لو الباقة اتفتحت"
+              fi
+            fi
+
+            echo "== المرحلة 3: شمعة النهاردة من oanor (لقطة live.json) =="
+            curl -sS --max-time 25 -o /tmp/live.json "https://raw.githubusercontent.com/MedhatCoding/ai-stock-analyzer/live/live.json" || true
+            if jq -e '.t' /tmp/live.json >/dev/null 2>&1; then
+              LT=$(jq -r '.t' /tmp/live.json)
+              LDATE=$(TZ=Africa/Cairo date -d "@$((LT/1000))" +%F 2>/dev/null || echo none)
+              if [ "$LDATE" = "$TODAY" ]; then
+                MERGED=0
+                for s in "${A[@]}"; do
+                  CANDLE=$(jq -c --arg s "$s" --arg d "$TODAY" 'first(.quotes[] | select(.ticker==$s and .price!=null and .price>0) | {d:$d, o:(.open // .price), h:(.high // .price), l:(.low // .price), c:.price, v:(.volume // 0)}) // empty' /tmp/live.json 2>/dev/null || true)
+                  [ -n "$CANDLE" ] || continue
+                  jq --arg s "$s" --argjson c "$CANDLE" '.stocks[$s] = (((.stocks[$s] // []) | map(select(.d != $c.d)) + [$c] | sort_by(.d)) | .[-260:])' /tmp/hist.json > /tmp/h.tmp && mv /tmp/h.tmp /tmp/hist.json
+                  MERGED=$((MERGED+1))
+                done
+                echo "   ✅ دمجنا شمعة النهاردة في $MERGED سهم"
+              else
+                echo "   ⏳ لقطة live.json مش بتاعة النهاردة ($LDATE) — بنكمل من غير دمج النهاردة"
+              fi
+            else
+              echo "   ⚠️ مفيش live.json — الريليه اللحظي ممكن لسه مش اشتغل النهاردة"
+            fi
+
+            echo "== المرحلة 4: الفحص النهائي =="
+            NSYMS=$(jq '.stocks | length' /tmp/hist.json)
+            GOOD=$(jq '[.stocks[] | select(length>=60)] | length' /tmp/hist.json)
+            TOTAL=$(jq '[.stocks[] | length] | add // 0' /tmp/hist.json)
+            echo "   إجمالي: $NSYMS سهم · جاهزين للتحليل (60+ شمعة): $GOOD · إجمالي الشموع: $TOTAL"
+            if [ "$GOOD" -lt 10 ]; then
+              echo "   ⚠️ عدد الأسهم الجاهزة قليل جدًا — راجع اللوج فوق"
+            fi
+            T=$(date +%s%3N)
+            jq --argjson t "$T" '.t=$t' /tmp/hist.json > /tmp/h.tmp && mv /tmp/h.tmp /tmp/hist.json
+            echo "✅ hist.json جاهز: $(wc -c < /tmp/hist.json) بايت"
+          } > /tmp/hist.log 2>&1
+      - name: 🖨️ عرض اللوج
+        if: always()
+        shell: bash
+        run: cat /tmp/hist.log 2>/dev/null || echo "مفيش لوج خالص"
+      - name: 📤 نشر hist.json على فرع hist (أو لوج التشخيص لو فشل)
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/pub
+          if [ -f /tmp/hist.json ] && jq -e '.stocks and (.stocks|length>0)' /tmp/hist.json >/dev/null 2>&1; then
+            cp /tmp/hist.json /tmp/pub/hist.json
+            MSG="chore: 📜 تحديث تاريخ أسعار EGX [skip ci]"
+          else
+            if [ -f /tmp/hist.log ]; then cp /tmp/hist.log /tmp/pub/hist-debug.txt; else echo "مفيش لوج" > /tmp/pub/hist-debug.txt; fi
+            MSG="chore: 📜 تشخيص فشل ريليه التاريخ [skip ci]"
+          fi
+          cd /tmp/pub
+          git init -q -b hist
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -qm "$MSG"
+          git push -qf "https://x-access-token:${GH_TOKEN}@github.com/MedhatCoding/ai-stock-analyzer.git" hist
+          echo "✅ اتنشر على فرع hist"
+          if [ ! -f /tmp/pub/hist.json ]; then exit 1; fi
