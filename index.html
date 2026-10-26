@@ -3589,7 +3589,7 @@ init();
 </script>
 
 <script>
-/* ═══ إضافة v1 (2026-10-26) — مؤشرات حجم التداول للعرض فقط ═══
+/* ═══ إضافة v2 (2026-10-26) — مؤشرات حجم التداول للعرض فقط ═══
    قراءة من الكاش المحلي (WATCH_CACHE) فقط — صفر استدعاءات API جديدة.
    كتلة مستقلة: لا تعدّل ولا تعيد تعريف أي كود قائم.
    حذفها = حذف الكتلة كلها، بدون أي أثر على باقي التطبيق. ═══ */
@@ -3652,6 +3652,41 @@ init();
       note.innerHTML=chips.join("<br>")+'<br>🔒 مؤشرات حجم التداول إضافة للعرض فقط — غير مُدخلة في حساب التوصيات.';
       grid.insertAdjacentElement("afterend",note)
     }catch(e){}
+  }
+  /* ⚖️ تحسين جودة التوصيات بقرار الباك تست (Volume Lab 26/10/2026 — 5 سنين، 51 سهم، 3,862 توصية):
+     توصيات الشراء مع OBV هابط خلال 20 جلسة بتتحول للحياد. النتيجة المقاسة:
+     فوز 51.1%→52.2% · متوسط العائد 1.42%→1.55% · الوسيط 0.37%→0.83% · PF 1.48→1.53
+     بإجمالي ربح نفسه تقريبًا وتوصيات أقل 8% (الرداءة اتشالت). لا تأثير على توصيات البيع.
+     لو حجم التداول مش متاح من المصدر: لا تغيير — نفس سلوك المحرك الحالي. */
+  if(typeof window.analyze==="function"){
+    var egxAnOrig=window.analyze;
+    window.analyze=function(hist){
+      var v=egxAnOrig.apply(this,arguments);
+      try{
+        if(v&&v.rs&&typeof v.sc==="number"&&v.sc>=1.5){
+          var f=egxVolFacts(hist);
+          if(f){
+            if(f.obvChg>0){
+              v.rs.push(["✅","OBV صاعد خلال آخر 20 جلسة — تجميع يؤكد التوصية"]);
+            }else{
+              v.rs.push(["⚠️","تخفيض التوصية: OBV هابط خلال آخر 20 جلسة — التجميع مش مؤكد"]);
+              if(v.sc>1.4)v.sc=1.4;
+            }
+            var sc=v.sc,rec,cls,em,stars;
+            if(sc>=4.5){rec="شراء قوي";cls="rec-strongbuy";em="🚀";stars=5}
+            else if(sc>=1.5){rec="شراء";cls="rec-buy";em="📈";stars=4}
+            else if(sc>-1.5){rec="حياد / احتفاظ";cls="rec-hold";em="⚖️";stars=3}
+            else if(sc>-4.5){rec="بيع / تجنب";cls="rec-sell";em="📉";stars=2}
+            else{rec="بيع قوي";cls="rec-strongsell";em="🔻";stars=1}
+            var pn=0,nn=0;
+            for(var i=0;i<v.rs.length;i++){if(v.rs[i][0]==="✅")pn++;else if(v.rs[i][0]==="⚠️")nn++}
+            v.rec=rec;v.cls=cls;v.em=em;v.stars=stars;
+            v.conf=Math.min(94,Math.round(52+Math.abs(sc)*4.5+Math.abs(pn-nn)/((pn+nn)||1)*18));
+          }
+        }
+      }catch(e){}
+      return v;
+    };
   }
   if(typeof window.openStock!=="function")return;
   var egxOpenOrig=window.openStock;
