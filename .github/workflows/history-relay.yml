@@ -53,10 +53,10 @@ jobs:
               CUTOFF=$(TZ=Africa/Cairo date -d "-30 days" +%F)
               TODO=()
               for s in "${A[@]}"; do
-                LAST=$(jq -r --arg s "$s" '(.stocks[$s] // []) | last | .d // empty' /tmp/hist.json 2>/dev/null || true)
-                if [ -z "$LAST" ] || [[ "$LAST" < "$CUTOFF" ]]; then TODO+=("$s"); fi
+                NEED=$(jq -r --arg s "$s" --arg cutoff "$CUTOFF" '(.stocks[$s] // []) as $a | (if ($a|length)<60 or (($a|last|.d // "")<$cutoff) then "1" else "0" end)' /tmp/hist.json 2>/dev/null || echo 1)
+                if [ "$NEED" = "1" ]; then TODO+=("$s"); fi
               done
-              echo "   ${#TODO[@]} سهم محتاج تاريخ من EODHD (مفيش أو آخر شمعة أقدم من $CUTOFF)"
+              echo "   ${#TODO[@]} سهم محتاج تاريخ من EODHD (أقل من 60 شمعة أو آخر شمعة أقدم من $CUTOFF)"
               EOD_N=0
               EOD_STOP=0
               for s in "${TODO[@]:0:17}"; do
