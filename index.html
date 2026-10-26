@@ -3587,6 +3587,81 @@ function init(){
 })();
 init();
 </script>
+
+<script>
+/* ═══ إضافة v1 (2026-10-26) — مؤشرات حجم التداول للعرض فقط ═══
+   قراءة من الكاش المحلي (WATCH_CACHE) فقط — صفر استدعاءات API جديدة.
+   كتلة مستقلة: لا تعدّل ولا تعيد تعريف أي كود قائم.
+   حذفها = حذف الكتلة كلها، بدون أي أثر على باقي التطبيق. ═══ */
+(function(){
+  "use strict";
+  function egxVF(v){if(v==null||!isFinite(v))return "—";var a=Math.abs(v);if(a>=1e9)return (v/1e9).toFixed(1)+"B";if(a>=1e6)return (v/1e6).toFixed(1)+"M";if(a>=1e3)return (v/1e3).toFixed(1)+"K";return String(Math.round(v))}
+  function egxVolFacts(h){
+    if(!h||h.length<25)return null;
+    var vols=h.map(function(x){return x.v||0});
+    var w=vols.slice(-20);
+    if(!w.some(function(v){return v>0}))return null;
+    var last=vols[vols.length-1];
+    var a20=w.reduce(function(a,b){return a+b},0)/20;
+    var rel=a20>0?last/a20:null;
+    var obv=0,obvs=[];
+    for(var i=0;i<h.length;i++){
+      if(i>0){var ch=h[i].c-h[i-1].c;obv+=ch>0?(h[i].v||0):ch<0?-(h[i].v||0):0}
+      obvs.push(obv)
+    }
+    var obvChg=obvs[obvs.length-1]-obvs[obvs.length-21];
+    var uv=0,dv=0;
+    for(var j=h.length-20;j<h.length;j++){
+      var c2=h[j].c-h[j-1].c;
+      if(c2>0)uv+=(h[j].v||0);else if(c2<0)dv+=(h[j].v||0)
+    }
+    return {last:last,a20:a20,rel:rel,obv:obv,obvChg:obvChg,uv:uv,dv:dv}
+  }
+  function egxVolClear(){document.querySelectorAll(".egx-vol").forEach(function(n){n.remove()})}
+  function egxVolInject(){
+    try{
+      egxVolClear();
+      var body=document.getElementById("stock-body");
+      if(!body||!body.innerHTML||!body.querySelector||body.querySelector(".warn-box"))return;
+      var sym=(typeof CURRENT_SYM!=="undefined")?CURRENT_SYM:null;
+      if(!sym)return;
+      var rec=(typeof WATCH_CACHE!=="undefined")?WATCH_CACHE[sym]:null;
+      if(!rec||!rec.hist)return;
+      var grid=body.querySelector(".metrics");
+      if(!grid)return;
+      var f=egxVolFacts(rec.hist);
+      if(!f){
+        var nm=document.createElement("div");nm.className="metric egx-vol";
+        nm.innerHTML='<div class="lbl">📊 حجم التداول</div><div class="val" style="font-size:13px">غير متاح من هذا المصدر</div>';
+        grid.appendChild(nm);return
+      }
+      var m=function(l,v,s){var d=document.createElement("div");d.className="metric egx-vol";d.innerHTML='<div class="lbl">'+l+'</div><div class="val">'+v+'</div><div class="lbl" style="margin-top:3px">'+(s||"")+'</div>';grid.appendChild(d)};
+      m("📊 متوسط كمية 20 جلسة",egxVF(f.a20),"سهم/جلسة");
+      var relTxt=f.rel?(f.rel>=1.5?f.rel.toFixed(1)+"× المتوسط — نشاط مرتفع":f.rel<=0.6?f.rel.toFixed(1)+"× المتوسط — هادئ":f.rel.toFixed(1)+"× المتوسط"):"";
+      m("📈 كمية آخر جلسة",egxVF(f.last),relTxt);
+      m(f.obvChg>=0?"🌊 OBV — صاعد (20 جلسة)":"🌊 OBV — هابط (20 جلسة)",egxVF(f.obv),f.obvChg>=0?"تجميع — دعم لاتجاه السعر":"توزيع — ضغط بيع محتمل");
+      var pr=f.dv>0?f.uv/f.dv:null;
+      m("⚖️ حجم الشراء/البيع (20 جلسة)",pr==null?"—":pr.toFixed(2)+" : 1",pr==null?"بيانات غير كافية":pr>=1.3?"ضغط شراء":pr<=0.75?"ضغط بيع":"متوازن");
+      var chips=[];
+      if(f.rel!=null){if(f.rel>=1.5)chips.push("✅ حجم اليوم أعلى من المعدل — اهتمام متزايد بالسهم");else if(f.rel<=0.6)chips.push("ℹ️ حجم اليوم أقل من المعدل — اهتمام محدود")}
+      chips.push(f.obvChg>=0?"✅ خط OBV صاعد خلال آخر 20 جلسة — تجميع":"⚠️ خط OBV هابط خلال آخر 20 جلسة — توزيع");
+      if(pr!=null){if(pr>=1.3)chips.push("✅ حجم الشراء أعلى من حجم البيع خلال 20 جلسة");else if(pr<=0.75)chips.push("⚠️ حجم البيع أعلى من حجم الشراء خلال 20 جلسة")}
+      var note=document.createElement("div");
+      note.className="small muted egx-vol";
+      note.style.cssText="margin-top:8px;line-height:1.8";
+      note.innerHTML=chips.join("<br>")+'<br>🔒 مؤشرات حجم التداول إضافة للعرض فقط — غير مُدخلة في حساب التوصيات.';
+      grid.insertAdjacentElement("afterend",note)
+    }catch(e){}
+  }
+  if(typeof window.openStock!=="function")return;
+  var egxOpenOrig=window.openStock;
+  window.openStock=function(){
+    var r=egxOpenOrig.apply(this,arguments);
+    Promise.resolve(r).then(egxVolInject).catch(function(){});
+    return r
+  };
+})();
+</script>
 </body>
 </html>
 
