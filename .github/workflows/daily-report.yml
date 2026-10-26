@@ -1,6 +1,6 @@
 # 📊 mistral-Mi — التقرير اليومي على تليجرام (محرك التطبيق نفسه على GitHub Actions)
 # المدة: كل يوم من الأحد للخميس الساعة 11:00 ص بتوقيت القاهرة (ساعة بعد الافتتاح)
-# محتوى: EGX30 + أفضل 4 فرص شراء بالتفاصيل + تحذيرات بيع + توصيات محفظتي
+# محتوى: EGX30 + أفضل 4 فرص شراء للأسهم المتوافقة مع الشريعة فقط (EGX33 + متوافق خارج المؤشر) + تحذيرات بيع + توصيات محفظتي
 # المحفظة: بتتزامن تلقائيًا من التطبيق (portfolio.dat مشفر AES) — وfallback: سر PORTFOLIO_JSON
 # الأسرار: TG_BOT_TOKEN + TG_CHAT_ID (نفس بوت التطبيق) — المزامنة محتاجة نفس TG_BOT_TOKEN لفك التشفير
 
@@ -47,10 +47,10 @@ jobs:
         run: |
           set -euo pipefail
           echo "⬇️ تنزيل live.json وhist.json من فرعي live وhist..."
-          curl -fsSL --retry 2 --max-time 30 -o live.json "https://raw.githubusercontent.com/MedhatCoding/ai-stock-analyzer/live/live.json" \
+          curl -fsSL --retry 2 --max-time 30 -o live.json "https://raw.githubusercontent.com/MedhatCoding/mistral-Mi/live/live.json" \
             && echo "✅ live.json اتنزلت ($(wc -c < live.json) بايت)" \
             || echo "⚠️ live.json مش متاحة — التقرير هيشتغل من التاريخ بس"
-          curl -fsSL --retry 2 --max-time 60 -o hist.json "https://raw.githubusercontent.com/MedhatCoding/ai-stock-analyzer/hist/hist.json" \
+          curl -fsSL --retry 2 --max-time 60 -o hist.json "https://raw.githubusercontent.com/MedhatCoding/mistral-Mi/hist/hist.json" \
             && echo "✅ hist.json اتنزلت ($(wc -c < hist.json) بايت)" \
             || echo "❌ hist.json مش متاحة — التقرير مش هينفع"
 
@@ -68,6 +68,10 @@ jobs:
           } > engine.js
           awk '/^const S = \[/{f=1} f{print} f&&/\]\.map\(a=>/{f=0}' index.html > names.js
           echo 'const NAMES=Object.fromEntries(S.map(x=>[x.t,x.n]));' >> names.js
+            grep -E "^const SHARIA_(IDX|EXTRA) ?=" index.html > sharia.js
+            echo 'const SHARIA=[...SHARIA_IDX,...SHARIA_EXTRA];' >> sharia.js
+            if ! grep -q "SHARIA_IDX" sharia.js; then echo "❌ استخراج قائمة الشريعة فشل"; exit 1; fi
+            echo "✅ قائمة الشريعة اتعملت ($(wc -l < sharia.js) سطر)"
           if ! grep -q "function analyze" engine.js; then
             echo "❌ استخراج المحرك فشل — شكل index.html اتغير"; exit 1
           fi
@@ -98,7 +102,7 @@ jobs:
             live.quotes.forEach(function(q){if(q&&q.ticker&&q.price!=null)Q[q.ticker]={price:q.price,chg:(q.change_percent!=null?q.change_percent:(q.open&&q.change!=null?q.change/q.open*100:0)),vol:(q.volume!=null?q.volume:null)}});
           }
           const IDX=(live&&live.idx&&live.idx.data)?live.idx.data:null;
-          /* تحليل كل الأسهم بنفس منطق التطبيق: تاريخ الريليه + شمعة النهاردة الحية */
+          /* تحليل كل الأسهم بنفس منطق التطبيق: تاريخ الريليه + شمعة النهاردة الحية — وفرص الشراء والتحذيرات للأسهم المتوافقة مع الشريعة فقط ☪️ */
           const res=[];
           Object.keys(hist.stocks).forEach(function(sym){
             const raw=hist.stocks[sym]||[];
@@ -115,12 +119,12 @@ jobs:
               }
               price=q.price;prev=base;chg=(q.chg!=null?q.chg:(price-prev)/prev*100);if(q.vol)vol=q.vol;
             }
-            res.push({sym:sym,name:(NAMES[sym]||sym),price:price,prev:prev,chg:chg,vol:vol,v:v});
+            res.push({sym:sym,name:(NAMES[sym]||sym),price:price,prev:prev,chg:chg,vol:vol,v:v,sh:SHARIA.includes(sym)});
           });
           /* فلتر سيولة: آخر حجم × السعر ≥ مليون جنيه (حجم غير معروف = بيتجاوز الفلتر) */
           const liq=res.filter(function(r){return r.vol==null||r.price*r.vol>=1000000});
-          const buys=liq.filter(function(r){return r.v.sc>=1.5}).sort(function(a,b){return b.v.sc-a.v.sc}).slice(0,4);
-          const warns=liq.filter(function(r){return r.v.sc<=-1.5}).sort(function(a,b){return a.v.sc-b.v.sc}).slice(0,2);
+          const buys=liq.filter(function(r){return r.sh&&r.v.sc>=1.5}).sort(function(a,b){return b.v.sc-a.v.sc}).slice(0,4);
+          const warns=liq.filter(function(r){return r.sh&&r.v.sc<=-1.5}).sort(function(a,b){return a.v.sc-b.v.sc}).slice(0,2);
           const sign=function(x){return (x>=0?'+':'')+NF(x,2)};
           function stockLines(r){
             const v=r.v;
@@ -133,7 +137,7 @@ jobs:
             top.forEach(function(x){L.push(x[0]+' '+x[1])});
             return L.join('\n');
           }
-          let msg='📊 mistral-Mi — تقرير سهمي اليومي — '+dayTxt+' · '+timeTxt+' توقيت القاهرة\n';
+          let msg='📊 mistral-Mi — التقرير اليومي ☪️ فرص الشريعة فقط — '+dayTxt+' · '+timeTxt+' توقيت القاهرة\n';
           if(IDX&&IDX.value!=null){
             const ic=(IDX.change_percent!=null?IDX.change_percent:(IDX.open?(IDX.value-IDX.open)/IDX.open*100:0));
             msg+='\n🇪🇬 EGX30: '+NF(IDX.value,1)+' ('+sign(ic)+'٪)';
@@ -170,7 +174,7 @@ jobs:
             });
             msg+='\n';
           }
-          msg+='— التحليل الكامل بالرسومات وسجل التوصيات والتعلم الآلي في التطبيق:\nmedhatcoding.github.io/ai-stock-analyzer';
+          msg+='— التحليل الكامل بالرسومات وسجل التوصيات والتعلم الآلي في التطبيق:\nmedhatcoding.github.io/mistral-Mi';
           /* إرسال تليجرام — تقسيم تلقائي لو عدّى 3800 حرف */
           async function main(){
             const chunks=[];let cur='';
@@ -189,7 +193,7 @@ jobs:
           }
           main().catch(function(e){console.log('❌ فشل الإرسال: '+e.message);process.exit(1)});
           SAHMY_EOF
-          cat engine.js names.js report_body.js > report.js
+          cat engine.js names.js sharia.js report_body.js > report.js
           echo "✅ report.js جاهز ($(wc -l < report.js) سطر)"
 
       - name: فحص الأسرار
@@ -221,7 +225,7 @@ jobs:
           const TOK=(process.env.TG_BOT_TOKEN||'').trim();
           (async function(){
             try{
-              const r=await fetch("https://raw.githubusercontent.com/MedhatCoding/ai-stock-analyzer/main/portfolio.dat?cb="+Date.now(),{cache:'no-store'});
+              const r=await fetch("https://raw.githubusercontent.com/MedhatCoding/mistral-Mi/main/portfolio.dat?cb="+Date.now(),{cache:'no-store'});
               if(!r.ok)throw new Error("HTTP "+r.status);
               const b64=(await r.text()).replace(/\s/g,'');
               const buf=Buffer.from(b64,'base64');
