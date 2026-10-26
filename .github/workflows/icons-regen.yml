@@ -1,0 +1,152 @@
+# 🎨 توليد أيقونات PNG لـ mistral-Mi — مولّد هندسي نقي + مرمّز PNG مكتوب بإيد (من غير مكتبات)
+# 512 = PWA، 192 = PWA، 180 = Apple touch icon
+# ملاحظة مهمة: أدوات الرفع النصية بتلوّث الملفات الثنائية — عشان كده بنولّد الأيقونات على الـ runner ونرفعها بـ git (ثنائي سليم 100%)
+name: 🎨 Icons Regen — أيقونات mistral-Mi
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [".github/workflows/icons-regen.yml"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: icons-regen
+  cancel-in-progress: true
+
+jobs:
+  regen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 🖌️ توليد الأيقونات (رندر هندسي + مرمّز PNG يدوي)
+        run: |
+          cat > gen_icons.js <<'EOF'
+          const fs = require('fs');
+          const CRCT = new Int32Array(256);
+          for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); CRCT[n] = c; }
+          function crc32(buf, s, e) { let c = -1; for (let i = s; i < e; i++) c = CRCT[(c ^ buf[i]) & 255] ^ (c >>> 8); return (c ^ -1) >>> 0; }
+          function u32be(v, o, a) { a[o] = (v >>> 24) & 255; a[o+1] = (v >>> 16) & 255; a[o+2] = (v >>> 8) & 255; a[o+3] = v & 255; }
+          function u32le(v, o, a) { a[o] = v & 255; a[o+1] = (v >>> 8) & 255; a[o+2] = (v >>> 16) & 255; a[o+3] = (v >>> 24) & 255; }
+          function chunk(type, data) {
+            const out = new Uint8Array(12 + data.length);
+            u32be(data.length, 0, out);
+            for (let i = 0; i < 4; i++) out[4 + i] = type.charCodeAt(i);
+            out.set(data, 8);
+            u32be(crc32(out, 4, 8 + data.length), 8 + data.length, out);
+            return out;
+          }
+          function adler32(buf) { let a = 1, b = 0; for (let i = 0; i < buf.length; i++) { a = (a + buf[i]) % 65521; b = (b + a) % 65521; } return ((b * 65536) + a) >>> 0; }
+          function zlibStored(raw) {
+            const n = Math.ceil(raw.length / 65535);
+            const out = new Uint8Array(2 + raw.length + 5 * n + 4);
+            out[0] = 0x78; out[1] = 0x01;
+            let p = 2;
+            for (let b = 0; b < n; b++) {
+              const s = b * 65535, len = Math.min(65535, raw.length - s);
+              out[p++] = (b === n - 1) ? 1 : 0;
+              u32le(len | ((~len & 65535) * 65536), p, out); p += 4;
+              out.set(raw.subarray(s, s + len), p); p += len;
+            }
+            u32be(adler32(raw), p, out);
+            return out;
+          }
+          function sdRect(px, py, cx, cy, hw, hh, r) {
+            const dx = Math.abs(px - cx) - (hw - r);
+            const dy = Math.abs(py - cy) - (hh - r);
+            const ax = dx > 0 ? dx : 0, ay = dy > 0 ? dy : 0;
+            const outer = Math.sqrt(ax * ax + ay * ay);
+            return Math.min(Math.max(dx, dy), 0) + outer - r;
+          }
+          function sdCap(px, py, ax, ay, bx, by, r) {
+            const pax = px - ax, pay = py - ay, bax = bx - ax, bay = by - ay;
+            let h = (pax * bax + pay * bay) / (bax * bax + bay * bay);
+            if (h < 0) h = 0; if (h > 1) h = 1;
+            const dx = pax - bax * h, dy = pay - bay * h;
+            return Math.sqrt(dx * dx + dy * dy) - r;
+          }
+          const BARS = [[105,317,33,71],[202,271,33,117],[299,291,33,97],[396,240,33,148]];
+          const WICKS = [[105,206.5,254.5],[202,114.5,162.5],[299,154.5,202.5],[396,52.5,100.5]];
+          function render(size, ss) {
+            const k = size / 512;
+            const raw = new Uint8Array(size * (1 + size * 4));
+            const offs = [];
+            for (let i = 0; i < ss; i++) for (let j = 0; j < ss; j++) offs.push([(i + 0.5) / ss, (j + 0.5) / ss]);
+            let p = 0;
+            for (let y = 0; y < size; y++) {
+              raw[p++] = 0;
+              for (let x = 0; x < size; x++) {
+                let bg = 0, wh = 0;
+                for (let oi = 0; oi < offs.length; oi++) {
+                  const px = (x + offs[oi][0]) * k, py = (y + offs[oi][1]) * k;
+                  if (sdRect(px, py, 256, 256, 256, 256, 112) <= 0) bg++;
+                  let inw = false;
+                  for (let bi = 0; bi < 4 && !inw; bi++) {
+                    const bb = BARS[bi];
+                    if (sdRect(px, py, bb[0], bb[1], bb[2], bb[3], 20) <= 0) inw = true;
+                  }
+                  for (let wi = 0; wi < 4 && !inw; wi++) {
+                    const ww = WICKS[wi];
+                    if (sdCap(px, py, ww[0], ww[1], ww[0], ww[2], 8.5) <= 0) inw = true;
+                  }
+                  if (inw) wh++;
+                }
+                const n = ss * ss;
+                const bgc = bg / n, whc = wh / n;
+                let t = ((x + 0.5) * k - (y + 0.5) * k + 512) / 1024;
+                if (t < 0) t = 0; if (t > 1) t = 1;
+                let g;
+                if (t < 0.5) g = Math.round(207 + (138 - 207) * (t * 2));
+                else g = Math.round(138 + (67 - 138) * ((t - 0.5) * 2));
+                let r = 255, gg = g, b = 0;
+                r = Math.round(r + (255 - r) * whc);
+                gg = Math.round(gg + (255 - gg) * whc);
+                b = Math.round(b + (255 - b) * whc);
+                raw[p++] = r; raw[p++] = gg; raw[p++] = b;
+                raw[p++] = Math.round(bgc * 255);
+              }
+            }
+            return raw;
+          }
+          function buildPNG(size, ss) {
+            const raw = render(size, ss);
+            const ihdr = new Uint8Array(13);
+            u32be(size, 0, ihdr); u32be(size, 4, ihdr);
+            ihdr[8] = 8; ihdr[9] = 6; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0;
+            const parts = [new Uint8Array([137,80,78,71,13,10,26,10]), chunk('IHDR', ihdr), chunk('IDAT', zlibStored(raw)), chunk('IEND', new Uint8Array(0))];
+            let tot = 0; for (const q of parts) tot += q.length;
+            const out = new Uint8Array(tot);
+            let o = 0; for (const q of parts) { out.set(q, o); o += q.length; }
+            return out;
+          }
+          for (const spec of [[512, 2], [192, 3], [180, 3]]) {
+            const png = buildPNG(spec[0], spec[1]);
+            fs.writeFileSync('icon-' + spec[0] + '.png', png);
+            console.log('icon-' + spec[0] + '.png = ' + png.length + ' bytes');
+          }
+          EOF
+          node gen_icons.js
+          echo "=== فحص الملفات ==="
+          file icon-512.png icon-192.png icon-180.png
+          CNT=$(file icon-512.png icon-192.png icon-180.png | grep -c "PNG image data")
+          if [ "$CNT" != "3" ]; then echo "❌ فيه ملفات PNG مش سليمة"; exit 1; fi
+          if [ "$(stat -c %s icon-512.png)" != "1049236" ]; then echo "❌ حجم icon-512.png غلط"; exit 1; fi
+          if [ "$(stat -c %s icon-192.png)" != "147726" ]; then echo "❌ حجم icon-192.png غلط"; exit 1; fi
+          if [ "$(stat -c %s icon-180.png)" != "129853" ]; then echo "❌ حجم icon-180.png غلط"; exit 1; fi
+          echo "✅ الأيقونات الثلاثة سليمة"
+
+      - name: 📤 رفع الأيقونات لـ main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add icon-512.png icon-192.png icon-180.png
+          if git diff --cached --quiet; then
+            echo "ℹ️ مفيش تغييرات — الأيقونات محدثة بالفعل"
+            exit 0
+          fi
+          git commit -m "🎨 أيقونات mistral-Mi الجديدة (توليد تلقائي deterministic)"
+          git push || { git pull --rebase origin main && git push; }
+          echo "✅ تم رفع الأيقونات — استبدلنا icon-192.png البايظ"
