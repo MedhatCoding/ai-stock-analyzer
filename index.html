@@ -261,7 +261,7 @@
     <div class="logo">🕌</div>
     <div>
       <h1>سهمي — محلل البورصة المصرية بالذكاء الاصطناعي</h1>
-      <div class="sub">EGX · أسعار لحظية أثناء الجلسة (oanor / 🤖 ريليه GitHub) + تحليل فني من Yahoo Finance · توصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.40</b></div>
+      <div class="sub">EGX · أسعار لحظية أثناء الجلسة (oanor / 🤖 ريليه GitHub) + تحليل فني من Yahoo Finance · توصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.41</b></div>
     </div>
     <div class="hd-right">
       <span class="pill" id="clock">—</span>
@@ -547,7 +547,7 @@
     </div>
     <div class="card">
       <h3>⚡ البيانات اللحظية (oanor) — اختياري</h3>
-      <p class="small muted" style="line-height:1.8;margin-bottom:10px">مصدر لحظي للبورصة المصرية (سعر فوري + حجم تداول + EGX30 مباشر) — الخطة المجانية <b>12,200 نداء/شهر</b> من غير كارت. سجّل مجانًا على oanor.com، خد مفتاحك من صفحة المفاتيح، والصقه هنا. و🕊️ حتى من غير مفتاح خالص: <b>🤖 ريليه GitHub</b> بيجيب لقطة شبه لحظية كل 20 دقيقة أثناء الجلسة — فميزات اللحظي بتشتغل للكل، والمفتاح بيزودها دقة وطزاجة. ولو فاضي أو فشل — التطبيق يفضل شغال عادي على Yahoo.</p>
+      <p class="small muted" style="line-height:1.8;margin-bottom:10px">مصدر لحظي للبورصة المصرية (سعر فوري + حجم تداول + EGX30 مباشر) — الخطة المجانية <b>12,200 نداء/شهر</b> من غير كارت. سجّل مجانًا على oanor.com، خد مفتاحك من صفحة المفاتيح، <b>واشترك من صفحة EGX API في الخطة (زر Subscribe — من غير كارت، والمفتاح لوحده مش كفاية)</b>، والصقه هنا. و🕊️ حتى من غير مفتاح خالص: <b>🤖 ريليه GitHub</b> بيجيب لقطة شبه لحظية كل 20 دقيقة أثناء الجلسة — فميزات اللحظي بتشتغل للكل، والمفتاح بيزودها دقة وطزاجة. ولو فاضي أو فشل — التطبيق يفضل شغال عادي على Yahoo.</p>
       <div class="field"><label>مفتاح oanor API</label><input id="oanor-key" type="password" placeholder="oanor_live_..."></div>
       <div class="row">
         <button class="btn primary" id="oanor-save">💾 حفظ</button>
@@ -608,7 +608,7 @@
         <li>💼 <b>محفظتك</b> وبياناتك كلها محفوظة في متصفحك (localStorage) ولا تُرسل لأي سيرفر سوى مزوّد الـ AI الذي تختاره بنفسك.</li>
         <li>⚠️ هذا التطبيق لاستخدام شخصي تعليمي — <b>ليس نصيحة استثمارية</b>.</li>
       </ul>
-      <div class="small muted">إصدار 3.40 · صنع بحُب لمستثمر مصري 🇪🇬</div>
+      <div class="small muted">إصدار 3.41 · صنع بحُب لمستثمر مصري 🇪🇬</div>
     </div>
   </section>
 
@@ -2525,10 +2525,26 @@ $("oanor-test").onclick=async function(){
   const key=(store.get("egx_oanor",{})||{}).key;
   if(!key){o.innerHTML='<span class="down">الصق المفتاح الأول</span>';return}
   o.innerHTML='<span class="spin"></span>جارٍ اختبار المفتاح...';
-  const q=await oanorQuote(["COMI","TMGH"]);
-  o.innerHTML=q
-    ?'<span class="up">✅ شغال — CIB '+NF(q.COMI.price)+' ج.م ('+(q.COMI.chg>=0?"+":"")+q.COMI.chg.toFixed(2)+'٪) · البيانات اللحظية هتشحن لوحدها</span>'
-    :'<span class="down">❌ المفتاح ما ردش — تأكد منه أو اعتمد على Yahoo (كل حاجة هتفضل شغالة)</span>';
+  /* اختبار مباشر بيكشف سبب الفشل الحقيقي (402 = مش مشترك في خطة — مشغل شائع جدًا) */
+  let st=null;
+  try{
+    const r=await withTimeout(fetch("https://api.oanor.com/egx-api/v1/quote?codes=COMI",{headers:{"x-oanor-key":key},cache:"no-store"}),9000);
+    st=r.status;
+  }catch(e){}
+  if(st===200){
+    const q=await oanorQuote(["COMI","TMGH"]);
+    o.innerHTML=q
+      ?'<span class="up">✅ شغال — CIB '+NF(q.COMI.price)+' ج.م ('+(q.COMI.chg>=0?"+":"")+q.COMI.chg.toFixed(2)+'٪) · البيانات اللحظية هتشحن لوحدها</span>'
+      :'<span class="down">❌ المفتاح شغال لكن ما رجّعش أسعار — اعتمد على Yahoo مؤقتًا</span>';
+  }else if(st===402){
+    o.innerHTML='<span class="down">❌ المفتاح مقبول لكن الحساب مش مشترك في خطة — افتح oanor.com ← صفحة EGX API ← Subscribe في الخطة المجانية (12,200 نداء/شهر من غير كارت) — المفتاح لوحده مش كفاية</span>';
+  }else if(st===401){
+    o.innerHTML='<span class="down">❌ المفتاح مكتوب غلط أو ملغي — راجعه من صفحة المفاتيح على oanor.com</span>';
+  }else if(st===429){
+    o.innerHTML='<span class="down">⏳ الحصة خلصت مؤقتًا (429) — هتتجدد لوحدها · التطبيق شغال عادي على Yahoo</span>';
+  }else{
+    o.innerHTML='<span class="down">❌ ما قدرناش نوصل لـ oanor'+(st!=null?' (HTTP '+st+')':'')+' — اعتمد على Yahoo (كل حاجة هتفضل شغالة)</span>';
+  }
 };
 /* 🕐 عمر آخر سعر حقيقي — لو السعر جاي من oanor وطازة (أقل من 30 دقيقة) بنعرض «لحظي»،
    وغير كده طابع الياهو نفسه هو المرجع مش وقت الجلب عندنا */

@@ -53,10 +53,15 @@ jobs:
                   -A "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36" \
                   -o /tmp/resp.json -w "%{http_code}" "$url" || true)
                 body=$(head -c 300 /tmp/resp.json 2>/dev/null || true)
-                if [ -n "$body" ] && jq -e . /tmp/resp.json >/dev/null 2>&1; then
-                  echo "   ✅ HTTP $code — ${url##*codes=}"
-                  return 0
-                fi
+                case "$code" in
+                  2*) if [ -n "$body" ] && jq -e . /tmp/resp.json >/dev/null 2>&1; then
+                        echo "   ✅ HTTP $code — ${url##*codes=}"
+                        return 0
+                      fi ;;
+                  402) echo "   💳 HTTP 402 — المفتاح مش مشترك في خطة EGX API (اشترك مجانًا من oanor.com ← صفحة EGX API ← Subscribe)" ;;
+                  401) echo "   🔑 HTTP 401 — المفتاح غلط أو ملغي" ;;
+                  429) echo "   ⏳ HTTP 429 — الحصة خلصت مؤقتًا" ;;
+                esac
                 echo "⚠️ محاولة $attempt/3 — HTTP=$code — الرد: ${body:-فاضي تمامًا}"
                 sleep 2
               done
