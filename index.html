@@ -7,12 +7,12 @@
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="application-name" content="سهمي" />
-<meta name="apple-mobile-web-app-title" content="سهمي" />
+<meta name="application-name" content="mistral-Mi" />
+<meta name="apple-mobile-web-app-title" content="mistral-Mi" />
 <link rel="manifest" href="manifest.json" />
 <link rel="icon" type="image/svg+xml" href="icon.svg" />
 <link rel="apple-touch-icon" href="icon-180.png" />
-<title>سهمي — محلل البورصة المصرية بالذكاء الاصطناعي</title>
+<title>mistral-Mi — محلل البورصة المصرية بالذكاء الاصطناعي</title>
 <style>
   :root{
     --bg:#0a0f1c; --card:#101a30; --card2:#0c1526; --border:#1c2b4a; --border2:#27406e;
@@ -24,7 +24,7 @@
   body{background:radial-gradient(1100px 500px at 85% -5%,#14234a 0%,var(--bg) 55%);color:var(--text);min-height:100vh}
   .wrap{max-width:1280px;margin:0 auto;padding:18px 14px 108px}
   header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:6px 0 14px}
-  .logo{width:50px;height:50px;border-radius:15px;background:linear-gradient(135deg,#4f8cff,#22d3a5);display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 4px 24px #4f8cff44}
+  .logo{width:50px;height:50px;border-radius:15px;background:linear-gradient(135deg,#ffc800,#ff6a00);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 24px #ff6a0055;padding:6px}
   h1{font-size:24px}
   .sub{color:var(--muted);font-size:12.5px;margin-top:3px}
   .hd-right{margin-inline-start:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -258,10 +258,10 @@
 <body>
 <div class="wrap">
   <header>
-    <div class="logo">🕌</div>
+    <div class="logo"><svg viewBox="0 0 50 50" width="100%" height="100%" style="display:block"><defs><linearGradient id="mmlg" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#ffcf00"/><stop offset="0.5" stop-color="#ff8a00"/><stop offset="1" stop-color="#ff4300"/></linearGradient></defs><g fill="#fff"><rect x="7" y="24" width="6.5" height="14" rx="2"/><rect x="16.5" y="15" width="6.5" height="23" rx="2"/><rect x="26" y="19" width="6.5" height="19" rx="2"/><rect x="35.5" y="9" width="6.5" height="29" rx="2"/></g><g stroke="#fff" stroke-width="1.7" stroke-linecap="round"><line x1="10.25" y1="21" x2="10.25" y2="24"/><line x1="19.75" y1="12" x2="19.75" y2="15"/><line x1="29.25" y1="16" x2="29.25" y2="19"/><line x1="38.75" y1="6" x2="38.75" y2="9"/></g></svg></div>
     <div>
-      <h1>سهمي — محلل البورصة المصرية بالذكاء الاصطناعي</h1>
-      <div class="sub">EGX · أسعار لحظية أثناء الجلسة (oanor / 🤖 ريليه GitHub) + تحليل فني من Yahoo Finance · توصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.45</b></div>
+      <h1>mistral-Mi — محلل البورصة المصرية بالذكاء الاصطناعي</h1>
+      <div class="sub">EGX · أسعار لحظية أثناء الجلسة (oanor / 🤖 ريليه GitHub) + تحليل فني من Yahoo Finance · توصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.46</b></div>
     </div>
     <div class="hd-right">
       <span class="pill" id="clock">—</span>
@@ -546,6 +546,17 @@
       <div class="small muted" style="margin-top:10px;line-height:1.9">بعد الحفظ: أقوى فرص كل فحص وصفقات المتداول الوهمي هتوصلك على تليجرام أوتوماتيك.</div>
     </div>
     <div class="card">
+      <h3>🔄 مزامنة المحفظة مع التقرير اليومي (اختياري)</h3>
+      <p class="small muted" style="line-height:1.8;margin-bottom:12px">التقرير اليومي على تليجرام بيبعتلك توصيات محفظتك اللي في تبويب «💼 محفظتي». عشان يشوفها لوحده من غير أي تدخل منك: كل ما تضيف أو تحذف سهم من محفظتك، التطبيق بيرفعها مشفرة على GitHub لوحده. محتاجين منك <b>خطوة واحدة بس في العمر</b>: توكن GitHub بصلاحية محدودة جدًا (قراءة/كتابة الملفات في الريبو ده بس — ذيرو). من <a href="https://github.com/settings/personal-access-tokens/new" target="_blank">GitHub ← Settings ← Developer settings ← Fine-grained tokens</a>: اعمل توكن، في «Repository access» اختار <b>Only select repositories ← ai-stock-analyzer</b>، وفي «Permissions ← Repository permissions ← Contents» اختار <b>Read and write</b>، وبعدين انسخ التوكن وحطه هنا. المحفظة بتترفع <b>مشفرة</b> (AES) ومحدش يقدر يقراها.</p>
+      <div class="field"><label>توكن GitHub (Fine-grained PAT)</label><input id="gh-pat" type="password" placeholder="github_pat_..."></div>
+      <div class="row">
+        <button class="btn primary" id="gh-save">💾 حفظ</button>
+        <button class="btn" id="gh-test">🔄 جرّب المزامنة</button>
+        <span id="gh-out" class="small"></span>
+      </div>
+      <div class="small muted" style="margin-top:10px;line-height:1.9">بعد الحفظ: محفظتك هتتزامن لوحدها مع كل تعديل + مرة كل يوم لما تفتح التطبيق، والتقرير اليومي الساعة 11:00 هيقراها ويبعتلك توصياتها.</div>
+    </div>
+    <div class="card">
       <h3>⚡ البيانات اللحظية (oanor) — اختياري</h3>
       <p class="small muted" style="line-height:1.8;margin-bottom:10px">مصدر لحظي للبورصة المصرية (سعر فوري + حجم تداول + EGX30 مباشر). ملاحظة مهمة: <b>oanor بيرفض نداءات المتصفح المباشرة (CORS)</b> — عشان كده الطبقة اللحظية بتشتغل عند الكل عبر <b>🤖 ريليه GitHub</b>: لقطة شبه لحظية كل 20 دقيقة أثناء الجلسة (55 سهم + مؤشر EGX30) بتجي من سيرفرات GitHub مش من متصفحك، ومفتاح oanor اشتغل فيها من مستودعك (سرية OANOR_KEY) مش من الخانة دي. الخانة هنا اختيارية واحتياطية — لو oanor فعّل نداءات المتصفح مستقبلًا هيشتغل عليها على طول. ولو الريليه وقع مؤقتًا — التطبيق يفضل شغال عادي على Yahoo.</p>
       <div class="field"><label>مفتاح oanor API</label><input id="oanor-key" type="password" placeholder="oanor_live_..."></div>
@@ -608,7 +619,7 @@
         <li>💼 <b>محفظتك</b> وبياناتك كلها محفوظة في متصفحك (localStorage) ولا تُرسل لأي سيرفر سوى مزوّد الـ AI الذي تختاره بنفسك.</li>
         <li>⚠️ هذا التطبيق لاستخدام شخصي تعليمي — <b>ليس نصيحة استثمارية</b>.</li>
       </ul>
-      <div class="small muted">إصدار 3.45 · صنع بحُب لمستثمر مصري 🇪🇬</div>
+      <div class="small muted">إصدار 3.46 · mistral-Mi · صنع بحُب لمستثمر مصري 🇪🇬</div>
     </div>
   </section>
 
@@ -1332,7 +1343,7 @@ async function renderPortfolio(){
     if(Date.now()-last>30*60*1000){store.set("egx_pfllm_ts",Date.now());safe("تحليل المحفظة التلقائي",()=>llmPortfolio());}
   }
 }
-window.delHolding=t=>{const i=HOLDINGS.findIndex(h=>h.t===t);if(i>-1){HOLDINGS.splice(i,1);store.set("egx_holdings",HOLDINGS);renderPortfolio()}};
+window.delHolding=t=>{const i=HOLDINGS.findIndex(h=>h.t===t);if(i>-1){HOLDINGS.splice(i,1);store.set("egx_holdings",HOLDINGS);renderPortfolio();safe("مزامنة المحفظة",()=>pfSync(true));}};
 function addToPortfolio(sym,price){
   $("hold-sym").value=sym;$("hold-qty").value="";$("hold-avg").value=price||"";
   $("hold-modal").classList.add("open");switchTab("portfolio");
@@ -1350,6 +1361,7 @@ $("hold-save").onclick=()=>{
   $("hold-modal").classList.remove("open");
   toast("✅ تمت إضافة "+t+" إلى محفظتك");
   refreshPortfolio();
+  safe("مزامنة المحفظة",()=>pfSync(true));
 };
 /* الصناديق */
 function renderFunds(){
@@ -1555,7 +1567,7 @@ async function runScan(){
   safe("المتداول الوهمي",()=>{botTick();renderPaper();});
   if(arr.length)toast("✨ اكتمل فحص "+arr.length+" سهمًا");else toast("⚠️ تعذر الاتصال بمصدر الأسعار — الأسعار على الكروت قديمة",6000);
   if(arr.length&&outp.buys&&outp.buys.length)safe("تنبيه تليجرام",async()=>{
-    const ok=await tgSend("🕌 سهمي — فرص "+new Date().toLocaleDateString("ar-EG")
+    const ok=await tgSend("⚡ mistral-Mi — فرص "+new Date().toLocaleDateString("ar-EG")
       +(REG&&REG.regime?("\n"+(REG.regime==="bull"?"📈 نظام السوق: صاعد":"📉 نظام السوق: هابط — عتبة الشراء مرفوعة")):"")
       +(noliq>0?("\n🚫 استُبعد "+noliq+" سهم قليل السيولة"):"")
       +"\n"+outp.buys.slice(0,3).map((b,i)=>(i+1)+". "+(b.n||b.sym)+" ("+b.sym+") — "+b.v.rec+" · سعر "+NF(b.price)+" ج.م · هدف "+NF(b.v.t1)+" · وقف "+NF(b.v.stop)+(b.v.risk==="عالية"?" · 🛡️ مخاطرة عالية":"")).join("\n"));
@@ -2293,7 +2305,7 @@ function weeklyReport(){
   let m=LGB;
   if(!m){const c=store.get("egx_lgb_v1",null);if(c&&c.model)m=c.model}
   const lgbLine=(m&&m.wf_auc)?("\n🌲 LightGBM: AUC زمني = "+m.wf_auc+(m.wf_auc<0.55?" — إشارة ضعيفة ومكتوبة زي ما هي":"")):"";
-  const msg="🕌 سهمي — التقرير الأسبوعي 📅 "+new Date().toLocaleDateString("ar-EG")
+  const msg="⚡ mistral-Mi — التقرير الأسبوعي 📅 "+new Date().toLocaleDateString("ar-EG")
    +"\n📉 توصيات اتقفلت الأسبوع ده: "+wk.length+(wk.length?" (✅ "+hits+" هدف · ❌ "+stops+" وقف · ⏱️ "+d14+" مهلة)":"")
    +pfLine+ebtLine+lgbLine
    +"\n— الأرقام من غير تجميل، ولو مفيش توصيات اتقفلت ده معناه الأسبوع هادي.";
@@ -2674,7 +2686,7 @@ async function autoRevalidate(){
 }
 
 /* ═════════════════════════ 12.10) 💾 النسخ الاحتياطي والاستعادة — كل بياناتك في ملف واحد على أي جهاز ═════════════════════════ */
-const BK_KEYS=["egx_holdings","egx_funds","egx_watch2","egx_picks3","egx_ml_db","egx_prefs","egx_ai_cfg","egx_journal","egx_paper","egx_reclog","egx_tg","egx_pricealerts","egx_news2","egx_enginebt_hist","egx_weekly_ts","egx_pfval_hist","egx_oanor"];
+const BK_KEYS=["egx_holdings","egx_funds","egx_watch2","egx_picks3","egx_ml_db","egx_prefs","egx_ai_cfg","egx_journal","egx_paper","egx_reclog","egx_tg","egx_pricealerts","egx_news2","egx_enginebt_hist","egx_weekly_ts","egx_pfval_hist","egx_oanor","egx_ghpat"];
 function bkData(){
   const o={app:"aqqar-egx",v:1,at:new Date().toISOString()};
   BK_KEYS.forEach(function(k){const v=store.get(k,null);if(v!=null)o[k]=v});
@@ -3169,8 +3181,63 @@ $("tg-save").onclick=function(){
 $("tg-test").onclick=async function(){
   const o=$("tg-out");o.innerHTML='<span class="spin"></span>جارٍ الإرسال...';
   store.set("egx_tg",{token:$("tg-token").value.trim(),chat:$("tg-chat").value.trim()});
-  const ok=await tgSend("🕌 سهمي — رسالة تجريبية ✅ الإشعارات شغالة");
+  const ok=await tgSend("⚡ mistral-Mi — رسالة تجريبية ✅ الإشعارات شغالة");
   o.innerHTML=ok?'<span class="up">✅ وصلت — ابص على تليجرام</span>':'<span class="down">❌ فشل الإرسال — راجع التوكن والـ Chat ID</span>';
+};
+
+/* ═════════════════════════ 12.18) 🔄 مزامنة المحفظة مع GitHub — التقرير اليومي على تليجرام بيقراها لوحده ═════════════════════════ */
+const PF_FILE="portfolio.dat";
+/* مفتاح التشفير = SHA-256 لتوكن البوت — نفس المفتاح موجود عند workflow التقرير (سر TG_BOT_TOKEN) */
+async function pfKey(){
+  const t=((store.get("egx_tg",{})||{}).token)||"mistral-Mi";
+  const h=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(t));
+  return new Uint8Array(h);
+}
+/* تشفير AES-GCM: [12 بايت IV][نص مشفر+الوسم] — ترميز base64 للرفع */
+async function pfEncrypt(obj){
+  const key=await pfKey();
+  const k=await crypto.subtle.importKey("raw",key,"AES-GCM",false,["encrypt"]);
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const data=new TextEncoder().encode(JSON.stringify(obj));
+  const ct=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv:iv},k,data));
+  const bytes=new Uint8Array(12+ct.length);bytes.set(iv,0);bytes.set(ct,12);
+  let bin="";bytes.forEach(b=>bin+=String.fromCharCode(b));
+  return btoa(bin);
+}
+async function ghPut(path,contentB64,msg){
+  const pat=store.get("egx_ghpat","");
+  if(!pat)throw new Error("مفيش توكن GitHub محفوظ");
+  const api="https://api.github.com/repos/MedhatCoding/ai-stock-analyzer/contents/"+path;
+  let sha=null;
+  try{const r0=await fetch(api,{headers:{Authorization:"Bearer "+pat,Accept:"application/vnd.github+json"}});if(r0.ok)sha=((await r0.json())||{}).sha;}catch(e){}
+  const r=await fetch(api,{method:"PUT",headers:{Authorization:"Bearer "+pat,Accept:"application/vnd.github+json"},body:JSON.stringify({message:msg,content:contentB64,branch:"main",...(sha?{sha:sha}:{})})});
+  if(!r.ok)throw new Error("HTTP "+r.status);
+  return true;
+}
+/* المزامنة: بترفع محفظتك المشفرة مع كل تعديل + كحد أقصى مرة كل 30 دقيقة */
+async function pfSync(force){
+  if(!store.get("egx_ghpat",""))return false;
+  const last=+store.get("egx_pfsync_ts",0);
+  if(!force&&Date.now()-last<30*60*1000)return false;
+  store.set("egx_pfsync_ts",Date.now());
+  try{
+    const enc=await pfEncrypt({t:Date.now(),holdings:HOLDINGS.map(h=>({t:h.t,qty:h.qty,avg:h.avg}))});
+    await ghPut(PF_FILE,enc,"🔄 مزامنة المحفظة — mistral-Mi");
+    store.set("egx_pfsync_ok",Date.now());
+    return true;
+  }catch(e){store.set("egx_pfsync_err",e.message);return false;}
+}
+window.pfSync=pfSync;
+$("gh-save").onclick=function(){
+  store.set("egx_ghpat",$("gh-pat").value.trim());
+  toast(store.get("egx_ghpat","")?"✅ تم حفظ توكن المزامنة — محفظتك هتتزامن لوحدها":"⚠️ التوكن فاضي");
+};
+$("gh-test").onclick=async function(){
+  const o=$("gh-out");o.innerHTML='<span class="spin"></span>جارٍ المزامنة...';
+  store.set("egx_ghpat",$("gh-pat").value.trim());
+  const ok=await pfSync(true);
+  if(ok)o.innerHTML='<span class="up">✅ اتزامنت — محفظتك المشفرة اترفعت على GitHub والتقرير اليومي هيشوفها</span>';
+  else o.innerHTML='<span class="down">❌ فشلت المزامنة — تأكد من التوكن (Contents: Read and write على ai-stock-analyzer بس) وإن إعدادات تليجرام محفوظة</span>';
 };
 
 /* ═════════════════════════ 12.19) 🗺️ خريطة حرارية للقطاعات ═════════════════════════ */
@@ -3298,7 +3365,7 @@ function alertsCheck(){
       r.hit=1;r.hitAt=Date.now();r.hitPrice=c.price;ch=true;
       const msg="🚨 تنبيه سعري: "+(BYSYM[r.sym]?BYSYM[r.sym].n:r.sym)+" ("+r.sym+") بقى "+NF(c.price)+" ج.م — "+(r.dir==="above"?"وصل أو علا عن":"نزل عن")+" "+NF(r.price);
       toast("🚨 "+msg,8000);
-      if(typeof Notification!=="undefined"&&Notification.permission==="granted")new Notification("🚨 سهمي — تنبيه سعري",{body:msg,tag:"egx-alert-"+r.sym});
+      if(typeof Notification!=="undefined"&&Notification.permission==="granted")new Notification("🚨 mistral-Mi — تنبيه سعري",{body:msg,tag:"egx-alert-"+r.sym});
       safe("تنبيه تليجرام",function(){tgSend(msg)});
     }
   });
@@ -3371,6 +3438,7 @@ function loadSettings(){
   $("auto-refresh").value=String(CFG.prefs.refresh||0);$("custom-proxy").value=CFG.prefs.proxy||"";
   $("auto-run").value=CFG.prefs.auto===false?"0":"1";
   const tg=store.get("egx_tg",{});$("tg-token").value=tg.token||"";$("tg-chat").value=tg.chat||"";
+  $("gh-pat").value=store.get("egx_ghpat","")||"";
   $("oanor-key").value=(store.get("egx_oanor",{})||{}).key||"";
 }
 $("pref-save").onclick=()=>{CFG.prefs={refresh:+$("auto-refresh").value,proxy:$("custom-proxy").value.trim(),auto:$("auto-run").value==="1"};store.set("egx_prefs",CFG.prefs);setupAutoRefresh();toast("✅ تم حفظ التفضيلات")};
@@ -3489,6 +3557,7 @@ function init(){
   safe("التنبيهات السعرية",function(){renderAlerts();});
   safe("أوزان مصادر الإشارات",rlRefreshW);
   safe("لقطة قيمة المحفظة",pfSnap);
+  safe("مزامنة المحفظة مع التقرير اليومي",()=>pfSync(false));
   safe("خريطة القطاعات",renderSectors);
   safe("أخبار السوق",()=>loadNews());
   safe("عرض السوق",()=>renderMarket());

@@ -1,7 +1,8 @@
-# 📊 تقرير سهمي اليومي على تليجرام — بيتولّد على GitHub Actions بمحرك التطبيق نفسه (تشغيل اختباري بعد إضافة الأسرار)
+# 📊 mistral-Mi — التقرير اليومي على تليجرام (محرك التطبيق نفسه على GitHub Actions)
 # المدة: كل يوم من الأحد للخميس الساعة 11:00 ص بتوقيت القاهرة (ساعة بعد الافتتاح)
-# محتوى: EGX30 + أفضل 4 فرص شراء بالتفاصيل + تحذيرات بيع + توصيات محفظتي (لو السر PORTFOLIO_JSON موجود)
-# الأسرار المطلوبة: TG_BOT_TOKEN + TG_CHAT_ID (نفس بوت التطبيق) — واختياري PORTFOLIO_JSON بصيغة {"COMI":{"q":100,"avg":110}}
+# محتوى: EGX30 + أفضل 4 فرص شراء بالتفاصيل + تحذيرات بيع + توصيات محفظتي
+# المحفظة: بتتزامن تلقائيًا من التطبيق (portfolio.dat مشفر AES) — وfallback: سر PORTFOLIO_JSON
+# الأسرار: TG_BOT_TOKEN + TG_CHAT_ID (نفس بوت التطبيق) — المزامنة محتاجة نفس TG_BOT_TOKEN لفك التشفير
 
 name: التقرير اليومي على تليجرام
 on:
@@ -132,7 +133,7 @@ jobs:
             top.forEach(function(x){L.push(x[0]+' '+x[1])});
             return L.join('\n');
           }
-          let msg='📊 تقرير سهمي اليومي — '+dayTxt+' · '+timeTxt+' توقيت القاهرة\n';
+          let msg='📊 mistral-Mi — تقرير سهمي اليومي — '+dayTxt+' · '+timeTxt+' توقيت القاهرة\n';
           if(IDX&&IDX.value!=null){
             const ic=(IDX.change_percent!=null?IDX.change_percent:(IDX.open?(IDX.value-IDX.open)/IDX.open*100:0));
             msg+='\n🇪🇬 EGX30: '+NF(IDX.value,1)+' ('+sign(ic)+'٪)';
@@ -148,14 +149,15 @@ jobs:
             msg+='⚠️ تحذيرات بيع:\n\n';
             warns.forEach(function(r){msg+=stockLines(r)+'\n\n'});
           }
-          /* 💼 توصيات المحفظة — من سر PORTFOLIO_JSON (اختياري) بصيغة {"COMI":{"q":100,"avg":110}} */
+          /* 💼 توصيات المحفظة — أولوية: مزامنة التطبيق (pf.json) ← سر PORTFOLIO_JSON */
           let pf=null;
-          try{pf=JSON.parse(process.env.PORTFOLIO_JSON||'')}catch(e){pf=null}
+          try{pf=JSON.parse(fs.readFileSync('pf.json','utf8'))}catch(e){pf=null}
+          if(!pf){try{pf=JSON.parse(process.env.PORTFOLIO_JSON||'')}catch(e){pf=null}}
           if(pf&&Object.keys(pf).length){
             msg+='💼 توصيات محفظتي:\n\n';
             const bysym={};res.forEach(function(r){bysym[r.sym]=r});
             Object.keys(pf).forEach(function(sym){
-              const h=pf[sym]||{},q=h.q||0,avg=h.avg||0;
+              const h=pf[sym]||{},q=h.q||h.qty||0,avg=h.avg||0;
               const r=bysym[sym];
               if(!r){msg+='• '+sym+': مفيش بيانات كافية للتحليل — راجعه في التطبيق.\n';return}
               const pl=(q&&avg)?(r.price-avg)*q:0;
@@ -204,6 +206,47 @@ jobs:
             exit 1
           fi
           echo "✅ أسرار التليجرام موجودة"
+
+      - name: تجميع المحفظة من التطبيق
+        if: env.SKIP == 'false'
+        shell: bash
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+        run: |
+          set -euo pipefail
+          cat > pf.js <<'PF_EOF'
+          /* 🔐 فك تشفير محفظة المستخدم المرفوعة من التطبيق — AES-256-GCM بمفتاح SHA-256 لتوكن البوت */
+          const fs=require('fs');
+          const crypto=require('crypto');
+          const TOK=(process.env.TG_BOT_TOKEN||'').trim();
+          (async function(){
+            try{
+              const r=await fetch("https://raw.githubusercontent.com/MedhatCoding/ai-stock-analyzer/main/portfolio.dat?cb="+Date.now(),{cache:'no-store'});
+              if(!r.ok)throw new Error("HTTP "+r.status);
+              const b64=(await r.text()).replace(/\s/g,'');
+              const buf=Buffer.from(b64,'base64');
+              if(buf.length<30)throw new Error("ملف صغير زيادة");
+              const key=crypto.createHash('sha256').update(TOK,'utf8').digest();
+              const iv=buf.slice(0,12),ct=buf.slice(12);
+              const d=crypto.createDecipheriv('aes-256-gcm',key,iv);
+              d.setAuthTag(ct.slice(ct.length-16));
+              const pt=Buffer.concat([d.update(ct.slice(0,ct.length-16)),d.final()]).toString('utf8');
+              const obj=JSON.parse(pt);
+              if(!obj||!Array.isArray(obj.holdings))throw new Error("الصيغة مش مفهومة");
+              const pf={};
+              obj.holdings.forEach(function(h){if(h&&h.t&&h.qty>0&&h.avg>0)pf[h.t]={q:h.qty,avg:h.avg}});
+              fs.writeFileSync('pf.json',JSON.stringify(pf));
+              console.log('✅ محفظة المستخدم جاية من مزامنة التطبيق: '+Object.keys(pf).length+' سهم');
+            }catch(e){console.log('ℹ️ مفيش مزامنة محفظة من التطبيق — '+e.message);}
+            process.exit(0);
+          })();
+          PF_EOF
+          node pf.js || true
+          if [ -f pf.json ]; then
+            echo "✅ pf.json جاهزة ($(wc -c < pf.json) بايت)"
+          else
+            echo "ℹ️ التقرير هيستخدم سر PORTFOLIO_JSON لو موجود — أو قسم المحفظة هيتخطى"
+          fi
 
       - name: توليد وإرسال التقرير
         if: env.SKIP == 'false'

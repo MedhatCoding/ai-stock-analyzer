@@ -1,6 +1,6 @@
 {
-  "name": "سهمي — محلل البورصة المصرية بالذكاء الاصطناعي",
-  "short_name": "سهمي",
+  "name": "mistral-Mi — محلل البورصة المصرية بالذكاء الاصطناعي",
+  "short_name": "mistral-Mi",
   "description": "تحليل فني وتوصيات ذكية لأسهم البورصة المصرية بالذكاء الاصطناعي",
   "start_url": "/ai-stock-analyzer/",
   "scope": "/ai-stock-analyzer/",
