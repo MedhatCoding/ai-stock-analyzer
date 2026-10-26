@@ -3589,7 +3589,7 @@ init();
 </script>
 
 <script>
-/* ═══ إضافة v2 (2026-10-26) — مؤشرات حجم التداول للعرض فقط ═══
+/* ═══ إضافة v2 (2026-10-26) — مؤشرات حجم التداول + فلتر OBV لجودة التوصيات ═══
    قراءة من الكاش المحلي (WATCH_CACHE) فقط — صفر استدعاءات API جديدة.
    كتلة مستقلة: لا تعدّل ولا تعيد تعريف أي كود قائم.
    حذفها = حذف الكتلة كلها، بدون أي أثر على باقي التطبيق. ═══ */
@@ -3649,7 +3649,7 @@ init();
       var note=document.createElement("div");
       note.className="small muted egx-vol";
       note.style.cssText="margin-top:8px;line-height:1.8";
-      note.innerHTML=chips.join("<br>")+'<br>🔒 مؤشرات حجم التداول إضافة للعرض فقط — غير مُدخلة في حساب التوصيات.';
+      note.innerHTML=chips.join("<br>")+'<br>🔒 مؤشرات العرض معلوماتية — فلتر OBV فقط هو الداخل في حساب التوصيات (بقرار الباك تست).';
       grid.insertAdjacentElement("afterend",note)
     }catch(e){}
   }
