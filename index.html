@@ -261,7 +261,7 @@
     <div class="logo">🕌</div>
     <div>
       <h1>سهمي — محلل البورصة المصرية بالذكاء الاصطناعي</h1>
-      <div class="sub">EGX · أسعار لحظية أثناء الجلسة (oanor / 🤖 ريليه GitHub) + تحليل فني من Yahoo Finance · توصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.42</b></div>
+      <div class="sub">EGX · أسعار لحظية أثناء الجلسة (oanor / 🤖 ريليه GitHub) + تحليل فني من Yahoo Finance · توصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.43</b></div>
     </div>
     <div class="hd-right">
       <span class="pill" id="clock">—</span>
@@ -608,7 +608,7 @@
         <li>💼 <b>محفظتك</b> وبياناتك كلها محفوظة في متصفحك (localStorage) ولا تُرسل لأي سيرفر سوى مزوّد الـ AI الذي تختاره بنفسك.</li>
         <li>⚠️ هذا التطبيق لاستخدام شخصي تعليمي — <b>ليس نصيحة استثمارية</b>.</li>
       </ul>
-      <div class="small muted">إصدار 3.42 · صنع بحُب لمستثمر مصري 🇪🇬</div>
+      <div class="small muted">إصدار 3.43 · صنع بحُب لمستثمر مصري 🇪🇬</div>
     </div>
   </section>
 
@@ -1052,10 +1052,12 @@ async function renderMarket(force=false){
   await Promise.all(IDX_DEF.map(async(d,i)=>{
     idxLive[d.key]=(sparkIdx&&d.cands.map(s=>sparkIdx[s]).find(Boolean))||await getIndexData(d.cands);
     const live=idxLive[d.key];
-    const lv=(d.key==="egx30"&&oix&&live)?Object.assign({},live,{price:oix.value,chg:oix.chg}):live;
+    /* 🤖 لو الياهو واقف (بروكسيات محجوبة) — قيمة وتغير EGX30 الحقيقيين من الريليه لوحدهم */
+    const rixOnly=(d.key==="egx30"&&oix&&!live);
+    const lv=(d.key==="egx30"&&oix&&live)?Object.assign({},live,{price:oix.value,chg:oix.chg}):(rixOnly?{price:oix.value,chg:oix.chg,hist:null,cur:"EGP"}:live);
     const el=$("idx-cards").children[i];
     if(lv){
-      el.innerHTML=`<div class="lbl small muted">${d.name} <span class="badge b-buy">🟢 مباشر${lv===live?"":" · ⚡ oanor"}</span></div>
+      el.innerHTML=`<div class="lbl small muted">${d.name} <span class="badge b-buy">🟢 مباشر${rixOnly?" · ⚡ ريليه":(lv===live?"":" · ⚡ oanor")}</span></div>
         <div class="v ${d.key==="egx33"?"sharia-green":""}">${NF(lv.price)} <span class="small ${lv.chg>=0?"up":"down"}">${PCT(lv.chg)}</span></div>
         ${spark(lv.hist,120,34)}
         <div class="small muted">العملة: ${lv.cur==="EGP"?"جنيه مصري":lv.cur||"—"}${lv.verdict?" · اتجاه: "+lv.verdict.rec:""}</div>`;
@@ -1063,7 +1065,7 @@ async function renderMarket(force=false){
       el.innerHTML=`<div class="lbl small muted">${d.name}</div><div class="v">—</div><div class="small muted">غير متاح — جرب زر 🔄 تحديث</div>`;
     }
   }));
-  if(oix&&idxLive.egx30)idxLive.egx30=Object.assign({},idxLive.egx30,{price:oix.value,chg:oix.chg});
+  if(oix)idxLive.egx30=idxLive.egx30?Object.assign({},idxLive.egx30,{price:oix.value,chg:oix.chg}):{price:oix.value,chg:oix.chg,hist:null,cur:"EGP"};
   const eg=idxLive.egx30;
   if(eg&&eg.hist&&eg.hist.length>5){
     safe("رسم EGX30",()=>drawArea($("egx30-chart"),eg.hist.map(x=>x&&x.c),eg.chg>=0));
@@ -1082,12 +1084,18 @@ async function renderMarket(force=false){
     const lq=await oanorQuote(syms);
     if(lq)arr=arr.map(d=>(lq[d.sym]&&lq[d.sym].price!=null)?Object.assign({},d,{price:lq[d.sym].price,chg:lq[d.sym].chg}):d);
   }
+  let relayPulse=false;
+  if(!arr.length){
+    /* 🤖 الريليه لوحده: لو كل بروكسيات الياهو محجوبة من الشبكة — نبض السوق كله من لقطة GitHub الحقيقية */
+    const rq=await relayQuotes(syms);
+    if(rq){arr=syms.filter(s=>rq[s]).map(s=>({sym:s,price:rq[s].price,chg:rq[s].chg,vol:rq[s].vol,hist:null,cur:"EGP"}));relayPulse=arr.length>0}
+  }
   if(!arr.length){
     const data=await queue(syms,s=>getStock(s,{force}),3,(i,n)=>net(true,`تحديث السوق ${i}/${n}`));
     arr=Object.values(data).filter(Boolean);
   }
   $("offline-banner").classList.toggle("hide",arr.length>0);
-  if(arr.length)net(true,"مباشر · "+LAST_PROXY);else net(false,"وضع اللقطة");
+  if(arr.length){if(relayPulse)net(true,"مباشر · 🤖 ريليه GitHub");else net(true,"مباشر · "+LAST_PROXY)}else net(false,"وضع اللقطة");
   const up=arr.filter(d=>d.chg>0).length,dn=arr.filter(d=>d.chg<0).length,fl=arr.length-up-dn;
   const adv=up/(up+dn||1)*100;
   $("breadth").innerHTML=`<div class="row small" style="gap:14px">
@@ -2446,7 +2454,10 @@ async function relayFetch(){
     const r=await withTimeout(fetch(RELAY_URL+"?cb="+Date.now(),{cache:"no-store"}),8000);
     if(!r.ok)throw new Error("HTTP "+r.status);
     const j=await withTimeout(r.json(),8000);
-    if(!j||!j.t||Date.now()-j.t>45*60*1000)return null;/* لقطة عتيقة (بعد انتهاء الجلسة) مش بنستخدمها */
+    if(!j||!j.t)return null;
+    const jage=Date.now()-j.t;
+    if(jage>45*60*1000&&egxOpen())return null;/* أثناء الجلسة: اللقطة لازم تكون طازة (الريليه بيتحدث كل 20 دقيقة) */
+    if(jage>26*60*60*1000)return null;/* خارج الجلسة: بنتقبل لقطة إغلاق آخر جلسة — زي بالظبط ما الياهو بيعرض إغلاقات */
     RELAY_CACHE={t:Date.now(),j:j};
     return j;
   }catch(e){return null}
