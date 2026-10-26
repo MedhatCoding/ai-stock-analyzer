@@ -261,7 +261,7 @@
     <div class="logo"><svg viewBox="0 0 50 50" width="100%" height="100%" style="display:block"><defs><linearGradient id="mmlg" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#ffcf00"/><stop offset="0.5" stop-color="#ff8a00"/><stop offset="1" stop-color="#ff4300"/></linearGradient></defs><g fill="#fff"><rect x="7" y="24" width="6.5" height="14" rx="2"/><rect x="16.5" y="15" width="6.5" height="23" rx="2"/><rect x="26" y="19" width="6.5" height="19" rx="2"/><rect x="35.5" y="9" width="6.5" height="29" rx="2"/></g><g stroke="#fff" stroke-width="1.7" stroke-linecap="round"><line x1="10.25" y1="21" x2="10.25" y2="24"/><line x1="19.75" y1="12" x2="19.75" y2="15"/><line x1="29.25" y1="16" x2="29.25" y2="19"/><line x1="38.75" y1="6" x2="38.75" y2="9"/></g></svg></div>
     <div>
       <h1>mistral-Mi — محلل البورصة المصرية بالذكاء الاصطناعي</h1>
-      <div class="sub">EGX · أسعار لحظية أثناء الجلسة (oanor / 🤖 ريليه GitHub) + تحليل فني من Yahoo Finance · توصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.47</b></div>
+      <div class="sub">EGX · أسعار لحظية أثناء الجلسة (oanor / 🤖 ريليه GitHub) + تحليل فني من Yahoo Finance · توصيات ذكية · فرص الشريعة فقط — EGX33 + متوافق خارج المؤشر · <b>v3.48</b></div>
     </div>
     <div class="hd-right">
       <span class="pill" id="clock">—</span>
@@ -547,7 +547,7 @@
     </div>
     <div class="card">
       <h3>🔄 مزامنة المحفظة مع التقرير اليومي (اختياري)</h3>
-      <p class="small muted" style="line-height:1.8;margin-bottom:12px">التقرير اليومي على تليجرام بيبعتلك توصيات محفظتك اللي في تبويب «💼 محفظتي». عشان يشوفها لوحده من غير أي تدخل منك: كل ما تضيف أو تحذف سهم من محفظتك، التطبيق بيرفعها مشفرة على GitHub لوحده. محتاجين منك <b>خطوة واحدة بس في العمر</b>: توكن GitHub بصلاحية محدودة جدًا (قراءة/كتابة الملفات في الريبو ده بس — ذيرو). من <a href="https://github.com/settings/personal-access-tokens/new" target="_blank">GitHub ← Settings ← Developer settings ← Fine-grained tokens</a>: اعمل توكن، في «Repository access» اختار <b>Only select repositories ← ai-stock-analyzer</b>، وفي «Permissions ← Repository permissions ← Contents» اختار <b>Read and write</b>، وبعدين انسخ التوكن وحطه هنا. المحفظة بتترفع <b>مشفرة</b> (AES) ومحدش يقدر يقراها.</p>
+      <p class="small muted" style="line-height:1.8;margin-bottom:12px">التقرير اليومي على تليجرام بيبعتلك توصيات محفظتك اللي في تبويب «💼 محفظتي». عشان يشوفها لوحده من غير أي تدخل منك: كل ما تضيف أو تحذف سهم من محفظتك، التطبيق بيرفعها مشفرة على GitHub لوحده. محتاجين منك <b>خطوة واحدة بس في العمر</b>: توكن GitHub بصلاحية محدودة جدًا (قراءة/كتابة الملفات في الريبو ده بس — ذيرو). من <a href="https://github.com/settings/personal-access-tokens/new" target="_blank">GitHub ← Settings ← Developer settings ← Fine-grained tokens</a>: اعمل توكن، في «Repository access» اختار <b>Only select repositories ← mistral-Mi</b>، وفي «Permissions ← Repository permissions ← Contents» اختار <b>Read and write</b>، وبعدين انسخ التوكن وحطه هنا. المحفظة بتترفع <b>مشفرة</b> (AES) ومحدش يقدر يقراها.</p>
       <div class="field"><label>توكن GitHub (Fine-grained PAT)</label><input id="gh-pat" type="password" placeholder="github_pat_..."></div>
       <div class="row">
         <button class="btn primary" id="gh-save">💾 حفظ</button>
@@ -619,7 +619,7 @@
         <li>💼 <b>محفظتك</b> وبياناتك كلها محفوظة في متصفحك (localStorage) ولا تُرسل لأي سيرفر سوى مزوّد الـ AI الذي تختاره بنفسك.</li>
         <li>⚠️ هذا التطبيق لاستخدام شخصي تعليمي — <b>ليس نصيحة استثمارية</b>.</li>
       </ul>
-      <div class="small muted">إصدار 3.47 · mistral-Mi · صنع بحُب لمستثمر مصري 🇪🇬</div>
+      <div class="small muted">إصدار 3.48 · mistral-Mi · صنع بحُب لمستثمر مصري 🇪🇬</div>
     </div>
   </section>
 
@@ -2180,7 +2180,7 @@ $("btn-deep").onclick=async()=>{
 
 /* ═════════════════════════ 12.9) 🌲 محرك LightGBM الخارجي — مدرَّب أسبوعيًا على GitHub Actions والتوقع بيحصل في متصفحك ═════════════════════════ */
 let LGB=null;
-const LGB_URLS=["https://raw.githubusercontent.com/MedhatCoding/ai-stock-analyzer/main/model_weights.json","https://cdn.jsdelivr.net/gh/MedhatCoding/ai-stock-analyzer@main/model_weights.json"];
+const LGB_URLS=["https://raw.githubusercontent.com/MedhatCoding/mistral-Mi/main/model_weights.json","https://cdn.jsdelivr.net/gh/MedhatCoding/mistral-Mi@main/model_weights.json"];
 async function lgbFetch(){
   for(const u of LGB_URLS){
     try{
@@ -2465,7 +2465,7 @@ function oaWait(){return new Promise(r2=>{const gap=Date.now()-OA_LAST;gap<600?s
 /* 🤖 ريليه GitHub Actions — لقطة شبه لحظية بتنزل من GitHub نفسه (بتتحدث كل 20 دقيقة أثناء الجلسة):
    مجانية 100% من غير مفتاح ولا استهلاك من حصة oanor. هي البديل التلقائي في كل حتة لو مفيش مفتاح
    أو لو المفتاح فشل أو الحصة اليومية قربت تخلص — فالتطبيق عمره ما بيرجع لإغلاقات أمس تاني */
-const RELAY_URL="https://raw.githubusercontent.com/MedhatCoding/ai-stock-analyzer/live/live.json";
+const RELAY_URL="https://raw.githubusercontent.com/MedhatCoding/mistral-Mi/live/live.json";
 const RELAY_STALE=25*60*1000;
 let RELAY_CACHE={t:0,j:null};
 async function relayFetch(){
@@ -2551,7 +2551,7 @@ async function oanorIndex(){
 /* 📜 ريليه التاريخ — hist.json من فرع hist (EODHD/ياهو من سيرفر GitHub + شمعة كل يوم من oanor):
    التاريخ السعري الكامل اللي بيشتغل منه التحليل الفني (RSI/MACD/المتوسطات/الوقف والهدف).
    هو الحل الجذري لبروكسيات ياهو المحجوبة عند العميل: التحليل كامل يوصل من GitHub نفسه */
-const HIST_URL="https://raw.githubusercontent.com/MedhatCoding/ai-stock-analyzer/hist/hist.json";
+const HIST_URL="https://raw.githubusercontent.com/MedhatCoding/mistral-Mi/hist/hist.json";
 let HIST_CACHE={t:0,j:null};
 async function relayHist(){
   try{
@@ -3208,7 +3208,7 @@ async function pfEncrypt(obj){
 async function ghPut(path,contentB64,msg){
   const pat=store.get("egx_ghpat","");
   if(!pat)throw new Error("مفيش توكن GitHub محفوظ");
-  const api="https://api.github.com/repos/MedhatCoding/ai-stock-analyzer/contents/"+path;
+  const api="https://api.github.com/repos/MedhatCoding/mistral-Mi/contents/"+path;
   let sha=null;
   try{const r0=await fetch(api,{headers:{Authorization:"Bearer "+pat,Accept:"application/vnd.github+json"}});if(r0.ok)sha=((await r0.json())||{}).sha;}catch(e){}
   const r=await fetch(api,{method:"PUT",headers:{Authorization:"Bearer "+pat,Accept:"application/vnd.github+json"},body:JSON.stringify({message:msg,content:contentB64,branch:"main",...(sha?{sha:sha}:{})})});
@@ -3238,7 +3238,7 @@ $("gh-test").onclick=async function(){
   store.set("egx_ghpat",$("gh-pat").value.trim());
   const ok=await pfSync(true);
   if(ok)o.innerHTML='<span class="up">✅ اتزامنت — محفظتك المشفرة اترفعت على GitHub والتقرير اليومي هيشوفها</span>';
-  else o.innerHTML='<span class="down">❌ فشلت المزامنة — تأكد من التوكن (Contents: Read and write على ai-stock-analyzer بس) وإن إعدادات تليجرام محفوظة</span>';
+  else o.innerHTML='<span class="down">❌ فشلت المزامنة — تأكد من التوكن (Contents: Read and write على mistral-Mi بس) وإن إعدادات تليجرام محفوظة</span>';
 };
 
 /* ═════════════════════════ 12.19) 🗺️ خريطة حرارية للقطاعات ═════════════════════════ */
