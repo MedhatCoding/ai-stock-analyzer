@@ -1,4 +1,4 @@
-# تحديث: shell: bash صريح على كل الخطوات (صورة Ubuntu 26 الجديدة) + نشر مضاد للفشل
+# تشغيل اختبار فوري بعد Subscribe في خطة EGX API — المنطق زي ما هو
 name: 🤖 Live Relay — أسعار EGX اللحظية
 on:
   push:
