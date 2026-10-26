@@ -1,0 +1,26 @@
+name: apply-new-logo
+on:
+  push:
+    branches: [main]
+    paths: [".logo-tmp/**"]
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Decode logos
+        run: |
+          base64 -d .logo-tmp/icon-180.b64 > icon-180.png
+          base64 -d .logo-tmp/icon-192.b64 > icon-192.png
+          base64 -d .logo-tmp/icon-512.b64 > icon-512.png
+      - name: Commit new logos and clean temp files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add icon-180.png icon-192.png icon-512.png
+          git rm -rq .logo-tmp
+          git rm -q .github/workflows/apply-logo.yml
+          git commit -m "Replace mistral-Mi logos with new white Mistral logomark on dark background"
+          git push
