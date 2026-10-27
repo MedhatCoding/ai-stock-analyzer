@@ -468,12 +468,9 @@
       </div>
       <div id="nc-out" style="margin-top:12px"></div>
     </div>
-    <div class="card">
-      <div class="flex-between">
-        <h3>🏦 صناديق الاستثمار (تتبع يدوي)</h3>
-        <button class="btn primary mini" id="btn-add-fund">＋ إضافة صندوق</button>
-      </div>
-      <p class="small muted" style="line-height:1.8;margin-bottom:10px">لا يوجد مصدر مجاني موثوق للقيم الصافية لصناديق الاستثمار المصرية، لذا يتم التتبع يدويًا: أدخل عدد الوحدات وسعر الشراء وآخر قيمة صافية من كشف حسابك.</p>
+    <!-- كارت الصناديق القديم اتشال (الصناديق بتظهر مدمجة في جدول المحفظة) — العناصر الجاية مستورة لأن كود التطبيق الأصلي بيتصل بيها: -->
+    <div class="card hide">
+      <button class="btn primary mini" id="btn-add-fund">＋ إضافة صندوق</button>
       <div id="funds-wrap" class="scroll-x"></div>
       <div id="fund-catalog" style="margin-top:14px"></div>
     </div>
@@ -3596,6 +3593,7 @@ init();
    تحديث v3.2 (2026-10-27) — إخفاء قسم «صناديق الاستثمار (تتبع يدوي)» المكرر: الصناديق بتظهر مدمجة في جدول المحفظة مع الأسهم في قسم واحد ═══
    تحديث v3.3 (2026-10-27) — 📱 جداول بكروت على الموبايل: كل صف جدول بيتحول لكارت فيه كل خلية سطر (القيمة + اسم العمود) — مفيش سحب يمين وشمال على الهاتف
    تحديث v3.4 (2026-10-27) — كروت أجمل للعربي: الاسم رأس الكارت بخط كبير والرمز صغير جنبه + خطوط أكبر للقيم + دمج الإضافات المتكررة (سهم/صندوق موجود = تجميع بالمتوسط المرجح)
+   تحديث v3.5 (2026-10-27) — 🧹 شيل قسم الصناديق المكرر نهائيًا + إصلاح علامة إغلاق كانت بتكسر الكتلة + 💡 إشارة المركز الحالي (الكمية والمتوسط الموجودين) جوه مودال الإضافة زي تطبيقات الاستثمار
    قراءة من الكاش المحلي (WATCH_CACHE) فقط — صفر استدعاءات API جديدة.
    كتلة مستقلة: لا تعدّل ولا تعيد تعريف أي كود قائم.
    حذفها = حذف الكتلة كلها، بدون أي أثر على باقي التطبيق. ═══ */
@@ -3830,15 +3828,6 @@ init();
       }
     }catch(e){}
   }
-  function egxPfFundsUp(){
-    try{
-      var fw=document.getElementById("funds-wrap");
-      if(!fw)return;
-      var card=fw.closest(".card");
-      /* القسم الأصلي «صناديق الاستثمار (تتبع يدوي)» بيتخبى — الصناديق بتظهر مدمجة في جدول المحفظة مع الأسهم (صفوف egx-fundrow)، والإضافة/الحذف من نفس الجدول وزرار الإضافة الموحد. */
-      if(card)card.classList.add("hide");
-    }catch(e){}
-  }
   if(typeof window.renderPortfolioMini==="function"){
     var egxMiniOrig=window.renderPortfolioMini;
     window.renderPortfolioMini=function(){
@@ -3851,7 +3840,7 @@ init();
     var egxPfOrig=window.renderPortfolio;
     window.renderPortfolio=function(){
       var p=egxPfOrig.apply(this,arguments);
-      try{Promise.resolve(p).then(function(){egxPfComboInject();egxPfFundRows();egxPfFundsUp()}).catch(function(){})}catch(e){}
+      try{Promise.resolve(p).then(function(){egxPfComboInject();egxPfFundRows()}).catch(function(){})}catch(e){}
       return p;
     };
   }
@@ -3882,12 +3871,6 @@ init();
       if(!hb||!fb)return;
       hb.classList.add("hide");
       fb.classList.add("hide");
-      var fc=document.getElementById("fund-catalog");
-      if(fc){
-        fc.classList.add("hide");
-        var fcard=fc.closest(".card");
-        if(fcard&&!fcard.querySelector("#funds-wrap"))fcard.classList.add("hide");
-      }
       hb.insertAdjacentHTML("afterend",'<button class="btn primary mini" id="egx-add-btn">＋ إضافة سهم أو صندوق</button>');
       var mod=document.createElement("div");
       mod.className="modal";
@@ -3931,7 +3914,7 @@ init();
     if(document.getElementById("egx-mob-style"))return;
     var st=document.createElement("style");
     st.id="egx-mob-style";
-    st.textContent='@media (max-width:760px){'+'table.egx-mob{border-collapse:separate;border-spacing:0}'+'table.egx-mob thead{display:none}'+'table.egx-mob tbody tr{display:block;background:var(--card2);border:1px solid var(--border);border-radius:16px;margin:0 0 12px;padding:6px}'+'table.egx-mob tbody td{display:flex;justify-content:space-between;align-items:center;gap:14px;border-bottom:1px dashed var(--border);padding:12px 14px;white-space:normal;font-size:16px;line-height:1.8}'+'table.egx-mob tbody td::before{content:attr(data-l);color:var(--muted);font-size:14.5px;font-weight:600;flex:0 0 auto}'+'table.egx-mob tbody td:not([data-l])::before{content:none}'+'table.egx-mob tbody td.num,table.egx-mob tbody td .num{white-space:normal;font-size:16.5px;font-weight:700}'+'table.egx-mob tbody td:last-child{justify-content:center;border-bottom:none;padding-top:13px}'+'table.egx-mob tbody tr:last-child td:last-child{border-bottom:none}'+'table.egx-mob tbody td:first-child{display:block;border-bottom:2px solid var(--border2);padding:13px 14px 10px;font-size:18px}'+'table.egx-mob tbody td:first-child::before{content:none}'+'table.egx-mob tbody td:first-child b{font-size:18.5px;line-height:1.6}'+'table.egx-mob tbody td:first-child .sect-tag{font-size:13px;margin-inline-start:8px;vertical-align:middle}'+'table.egx-mob tbody td:first-child .tag{font-size:13px;margin-inline-start:8px;vertical-align:middle}'+'
+    st.textContent='@media (max-width:760px){'+'table.egx-mob{border-collapse:separate;border-spacing:0}'+'table.egx-mob thead{display:none}'+'table.egx-mob tbody tr{display:block;background:var(--card2);border:1px solid var(--border);border-radius:16px;margin:0 0 12px;padding:6px}'+'table.egx-mob tbody td{display:flex;justify-content:space-between;align-items:center;gap:14px;border-bottom:1px dashed var(--border);padding:12px 14px;white-space:normal;font-size:16px;line-height:1.8}'+'table.egx-mob tbody td::before{content:attr(data-l);color:var(--muted);font-size:14.5px;font-weight:600;flex:0 0 auto}'+'table.egx-mob tbody td:not([data-l])::before{content:none}'+'table.egx-mob tbody td.num,table.egx-mob tbody td .num{white-space:normal;font-size:16.5px;font-weight:700}'+'table.egx-mob tbody td:last-child{justify-content:center;border-bottom:none;padding-top:13px}'+'table.egx-mob tbody tr:last-child td:last-child{border-bottom:none}'+'table.egx-mob tbody td:first-child{display:block;border-bottom:2px solid var(--border2);padding:13px 14px 10px;font-size:18px}'+'table.egx-mob tbody td:first-child::before{content:none}'+'table.egx-mob tbody td:first-child b{font-size:18.5px;line-height:1.6}'+'table.egx-mob tbody td:first-child .sect-tag{font-size:13px;margin-inline-start:8px;vertical-align:middle}'+'table.egx-mob tbody td:first-child .tag{font-size:13px;margin-inline-start:8px;vertical-align:middle}'+'}';
     document.head.appendChild(st);
   }
   function egxMobLabel(){
@@ -3997,6 +3980,50 @@ init();
     }catch(e){}
   }
   if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",egxMergeSetup)}else{egxMergeSetup()}
+  /* 💡 إشارة المركز الحالي (v3.5): جوه مودال الإضافة بتشوف فورًا الكمية/الوحدات والمتوسط الموجودين — والجديد بيتجمع معاهم تلقائيًا بالمتوسط المرجح. */
+  function egxHintUp(){
+    try{
+      var el=document.getElementById("egx-hold-hint");
+      if(!el)return;
+      var t=document.getElementById("hold-sym").value,old=null;
+      if(typeof HOLDINGS!=="undefined")for(var i=0;i<HOLDINGS.length;i++){if(HOLDINGS[i].t===t){old=HOLDINGS[i];break}}
+      el.innerHTML=old?('💡 عندك حاليًا <b>'+old.qty+'</b> سهم بمتوسط <b>'+old.avg+'</b> ج.م — اللي هتكتبه دلوقتي هيتجمع معاهم تلقائيًا بمتوسط مرجح جديد.'):'';
+    }catch(e){}
+  }
+  function egxFundHintUp(){
+    try{
+      var el=document.getElementById("egx-fund-hint");
+      if(!el)return;
+      var nm=document.getElementById("fund-name").value.trim(),k=egxNormName(nm),old=null;
+      if(typeof FUNDS!=="undefined"&&k)for(var i=0;i<FUNDS.length;i++){if(egxNormName(FUNDS[i].name)===k){old=FUNDS[i];break}}
+      el.innerHTML=old?('💡 عندك حاليًا <b>'+old.units+'</b> وحدة بمتوسط <b>'+old.avg+'</b> ج.م — اللي هتكتبه دلوقتي هيتجمع معاهم تلقائيًا.'):'';
+    }catch(e){}
+  }
+  function egxHint(){
+    try{
+      var hm=document.getElementById("hold-modal");
+      if(hm&&!document.getElementById("egx-hold-hint")){
+        var h=document.createElement("p");
+        h.id="egx-hold-hint";h.className="small muted";h.style.cssText="margin:-4px 0 10px;line-height:1.8";
+        var inner=hm.querySelector(".inner");
+        inner.insertBefore(h,inner.querySelector(".field"));
+        document.getElementById("hold-sym").addEventListener("change",egxHintUp);
+        hm.addEventListener("click",function(){setTimeout(egxHintUp,30)});
+        egxHintUp();
+      }
+      var fm=document.getElementById("fund-modal");
+      if(fm&&!document.getElementById("egx-fund-hint")){
+        var f=document.createElement("p");
+        f.id="egx-fund-hint";f.className="small muted";f.style.cssText="margin:-4px 0 10px;line-height:1.8";
+        var finner=fm.querySelector(".inner");
+        finner.insertBefore(f,finner.querySelector(".field"));
+        document.getElementById("fund-name").addEventListener("input",egxFundHintUp);
+        fm.addEventListener("click",function(){setTimeout(egxFundHintUp,30)});
+        egxFundHintUp();
+      }
+    }catch(e){}
+  }
+  if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",egxHint)}else{egxHint()}
     egxNavFetch();
   if(typeof window.openStock!=="function")return;
   var egxOpenOrig=window.openStock;
@@ -4009,6 +4036,7 @@ init();
 </script>
 </body>
 </html>
+
 
 
 
