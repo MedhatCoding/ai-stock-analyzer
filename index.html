@@ -3774,6 +3774,44 @@ init();
       return r;
     };
   }
+  /* 💼 الإجمالي الشامل: دمج قيمة الصناديق مع الأسهم في ملخص المحفظة وتبويبها (إضافة DOM فقط — صفر تعديل على الكود الأصلي). */
+  function egxPfComboInject(){
+    try{
+      document.querySelectorAll(".egx-combo").forEach(function(n){n.remove()});
+      if(typeof FUNDS==="undefined"||!FUNDS.length)return;
+      var fVal=0,fCost=0;
+      FUNDS.forEach(function(f){var u=parseFloat(f.units)||0;if(!u)return;fVal+=u*(parseFloat(f.nav)||0);fCost+=u*(parseFloat(f.avg)||0)});
+      if(!(fVal>0))return;
+      var sVal=0;
+      if(typeof calcTotals==="function"){var t=calcTotals();if(t&&t.val)sVal=t.val}
+      var combo=sVal+fVal,fPl=fVal-fCost;
+      var box='<div class="grid3 egx-combo" style="margin-top:10px">'+
+        '<div class="metric"><div class="lbl">🏦 قيمة الصناديق ('+FUNDS.length+')</div><div class="val">'+NF(fVal)+' ج.م</div><div class="lbl" style="margin-top:3px">'+(fCost?PCT(fPl/fCost*100):"—")+' من تكلفة الصناديق</div></div>'+
+        '<div class="metric"><div class="lbl">💼 الإجمالي الشامل (أسهم + صناديق)</div><div class="val">'+NF(combo)+' ج.م</div></div>'+
+        '<div class="metric"><div class="lbl">📊 ربح/خسارة الصناديق</div><div class="val '+(fPl>=0?"up":"down")+'">'+NF(fPl)+' ج.م</div></div>'+
+        '</div>';
+      var tgt=document.getElementById("portfolio-mini");
+      if(tgt)tgt.insertAdjacentHTML("beforeend",box);
+      var hs=document.getElementById("holdings-summary");
+      if(hs)hs.insertAdjacentHTML("beforeend",box);
+    }catch(e){}
+  }
+  if(typeof window.renderPortfolioMini==="function"){
+    var egxMiniOrig=window.renderPortfolioMini;
+    window.renderPortfolioMini=function(){
+      var r=egxMiniOrig.apply(this,arguments);
+      egxPfComboInject();
+      return r;
+    };
+  }
+  if(typeof window.renderPortfolio==="function"){
+    var egxPfOrig=window.renderPortfolio;
+    window.renderPortfolio=function(){
+      var p=egxPfOrig.apply(this,arguments);
+      try{Promise.resolve(p).then(function(){egxPfComboInject()}).catch(function(){})}catch(e){}
+      return p;
+    };
+  }
   egxNavFetch();
   if(typeof window.openStock!=="function")return;
   var egxOpenOrig=window.openStock;
@@ -3786,6 +3824,7 @@ init();
 </script>
 </body>
 </html>
+
 
 
 
