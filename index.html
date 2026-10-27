@@ -3594,6 +3594,7 @@ init();
    تحسن في النص الزمني الأول (56.5% ضد 54.3%) وفي الثاني (51.1% ضد 50.8%) — الفائز الوحيد المتناسق
    تحديث v3.1 (2026-10-27) — 📡 NAV تلقائي للصناديق من مباشر (فرع fundnav المحدث يوميًا من GitHub Actions — طلب واحد/6 ساعات كحد أقصى من المتصفح)
    تحديث v3.2 (2026-10-27) — إخفاء قسم «صناديق الاستثمار (تتبع يدوي)» المكرر: الصناديق بتظهر مدمجة في جدول المحفظة مع الأسهم في قسم واحد ═══
+   تحديث v3.3 (2026-10-27) — 📱 جداول بكروت على الموبايل: كل صف جدول بيتحول لكارت فيه كل خلية سطر (القيمة + اسم العمود) — مفيش سحب يمين وشمال على الهاتف
    قراءة من الكاش المحلي (WATCH_CACHE) فقط — صفر استدعاءات API جديدة.
    كتلة مستقلة: لا تعدّل ولا تعيد تعريف أي كود قائم.
    حذفها = حذف الكتلة كلها، بدون أي أثر على باقي التطبيق. ═══ */
@@ -3922,7 +3923,46 @@ init();
     }catch(e){}
   }
   if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",egxAddUI)}else{egxAddUI()}
-  egxNavFetch();
+  /* 📱 جداول بكروت للموبايل (v3.3): على شاشة الهاتف كل صف جدول بيتحول لكارت مستقل — كل خلية سطر فيه "اسم العمود: القيمة" من غير أي سحب أفقي.
+     التطبيق تلقائي على كل جداول التطبيق (المحفظة/الصناديق/الأسهم/الشريعة/التنبيهات/التوصيات...) — الكمبيوتر زي ما هو بالظبط.
+     الحذف من الكود = رجوع الجداول العادية. جدول ممكن يستثنى بإضافة class="egx-nomob". */
+  function egxMobStyle(){
+    if(document.getElementById("egx-mob-style"))return;
+    var st=document.createElement("style");
+    st.id="egx-mob-style";
+    st.textContent='@media (max-width:760px){'+
+      'table.egx-mob{border-collapse:separate;border-spacing:0}'+
+      'table.egx-mob thead{display:none}'+
+      'table.egx-mob tbody tr{display:block;background:var(--card2);border:1px solid var(--border);border-radius:14px;margin:0 0 12px;padding:8px 6px}'+
+      'table.egx-mob tbody td{display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px dashed var(--border);padding:9px 12px;white-space:normal}'+
+      'table.egx-mob tbody td:last-child{justify-content:center;border-bottom:none;padding-top:12px}'+
+      'table.egx-mob tbody tr:last-child td{border-bottom:1px dashed var(--border)}'+
+      'table.egx-mob tbody tr:last-child td:last-child{border-bottom:none}'+
+      'table.egx-mob tbody td::before{content:attr(data-l);color:var(--muted);font-size:13.5px;font-weight:600;flex:0 0 auto}'+
+      'table.egx-mob tbody td:not([data-l])::before{content:none}'+
+      'table.egx-mob .num{white-space:normal}'+
+      '}';
+    document.head.appendChild(st);
+  }
+  function egxMobLabel(){
+    document.querySelectorAll("table:not(.egx-nomob)").forEach(function(tbl){
+      var ths=tbl.querySelectorAll("thead th");
+      if(!ths.length)return;
+      tbl.classList.add("egx-mob");
+      tbl.querySelectorAll("tbody td:not([data-l])").forEach(function(td){
+        var i=Array.prototype.indexOf.call(td.parentNode.children,td);
+        if(ths[i]&&ths[i].textContent.trim())td.setAttribute("data-l",ths[i].textContent.trim());
+      });
+    });
+  }
+  var egxMobT=null;
+  function egxMobKick(){if(egxMobT)return;egxMobT=setTimeout(function(){egxMobT=null;try{egxMobLabel()}catch(e){}},150)}
+  try{
+    egxMobStyle();
+    egxMobLabel();
+    if(window.MutationObserver)new MutationObserver(egxMobKick).observe(document.body||document.documentElement,{childList:true,subtree:true});
+  }catch(e){}
+    egxNavFetch();
   if(typeof window.openStock!=="function")return;
   var egxOpenOrig=window.openStock;
   window.openStock=function(){
@@ -3934,6 +3974,7 @@ init();
 </script>
 </body>
 </html>
+
 
 
 
