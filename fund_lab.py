@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# 🏦 Fund Lab v1 — باك تست فلاتر السعر على تاريخ NAV لصناديق الاستثمار المصرية
+# 🏦 Fund Lab v2 — باك تست فلاتر السعر على تاريخ NAV لصناديق الاستثمار المصرية (كل الصناديق بلا فلتر)
 # المصدر: مباشر (Mubasher Info) — قائمة كل الصناديق في طلب واحد + ملف CSV بتاريخ NAV لكل صندوق.
 # المنهجية: نفس منهجية Volume Lab — تقسيم زمني نص/نص (SPLIT=2024-01-01) + مقارنة متغيرات بصراحة.
 # إشارة الدخول المرشحة: تقاطع صاعد SMA20 فوق SMA50 (زخم قياسي للصناديق).
@@ -13,10 +13,10 @@ UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chr
 LIST_URL = "https://english.mubasher.info/api/1/funds?country=eg&size=1000"
 CSV_URL = "https://static.mubasher.info/File.MubasherCharts/File.Mutual_Fund_Charts_Dir/priceChartFund_{fid}.csv"
 SPLIT = "2024-01-01"
-MAX_FUNDS = 80
+MAX_FUNDS = 250
 TARGET, STOP, HORIZON = 1.05, 0.97, 30
 MIN_PTS = 120
-KEYWORDS = ["equity","growth","index","sharia","sukuk","gold","أسهم","اسهم","نمو","مؤشر","شريعة","صكوك","ذهب","متوافق","حلال","نخبة"]
+KEYWORDS = []  # v2: بلا فلتر — كل الصناديق
 
 def fetch(url, timeout=25, tries=2):
     for a in range(tries):
@@ -85,7 +85,7 @@ def main():
         fid = r.get("fundId"); name = (r.get("name") or "").strip(); price = r.get("price") or 0
         if fid is None or not name: continue
         latest[name] = {"id": fid, "nav": price, "date": (r.get("date") or "").strip()}
-        if price and any(k in name.lower() for k in KEYWORDS):
+        if price:
             cands.append((fid, name))
     log.append("candidates by keywords: %d" % len(cands))
     cands = cands[:MAX_FUNDS]
@@ -122,10 +122,10 @@ def main():
     def split(trades, late):
         return [t for t in trades if (t["d"] >= SPLIT) == late]
 
-    out = {"t": datetime.now(timezone.utc).isoformat(), "version": 1, "source": "mubasher",
+    out = {"t": datetime.now(timezone.utc).isoformat(), "version": 2, "source": "mubasher",
            "split": SPLIT, "target": "+5%", "stop": "-3%", "horizon": "30 جلسة",
            "funds_ok": len(funds),
-           "span": [funds[0]["dates"][0], funds[-1]["dates"][-1]] if funds else None,
+           "span": [[min(f["dates"][0] for f in funds), max(f["dates"][-1] for f in funds)] if funds else None][0],
            "variants": {}}
     for k, tr in variants.items():
         out["variants"][k] = {
