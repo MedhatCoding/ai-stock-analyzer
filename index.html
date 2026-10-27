@@ -3786,14 +3786,14 @@ init();
       if(typeof calcTotals==="function"){var t=calcTotals();if(t&&t.val)sVal=t.val}
       var combo=sVal+fVal,fPl=fVal-fCost;
       var box='<div class="grid3 egx-combo" style="margin-top:10px">'+
-        '<div class="metric"><div class="lbl">🏦 قيمة الصناديق ('+FUNDS.length+')</div><div class="val">'+NF(fVal)+' ج.م</div><div class="lbl" style="margin-top:3px">'+(fCost?PCT(fPl/fCost*100):"—")+' من تكلفة الصناديق</div></div>'+
-        '<div class="metric"><div class="lbl">💼 الإجمالي الشامل (أسهم + صناديق)</div><div class="val">'+NF(combo)+' ج.م</div></div>'+
-        '<div class="metric"><div class="lbl">📊 ربح/خسارة الصناديق</div><div class="val '+(fPl>=0?"up":"down")+'">'+NF(fPl)+' ج.م</div></div>'+
+        '<div class="metric" style="border-color:var(--border2)"><div class="lbl">💼 الإجمالي الشامل (أسهم + صناديق)</div><div class="val" style="font-size:19px">'+NF(combo)+' ج.م</div><div class="lbl" style="margin-top:3px">أسهم '+NF(sVal)+' + صناديق '+NF(fVal)+'</div></div>'+
+        '<div class="metric"><div class="lbl">📊 ربح/خسارة الأسهم</div><div class="val '+((typeof calcTotals==="function"&&calcTotals().pl>=0)?"up":"down")+'">'+((typeof calcTotals==="function"&&calcTotals().pl)?NF(calcTotals().pl):"—")+' ج.م</div></div>'+
+        '<div class="metric"><div class="lbl">🏦 ربح/خسارة الصناديق ('+FUNDS.length+')</div><div class="val '+(fPl>=0?"up":"down")+'">'+NF(fPl)+' ج.م</div><div class="lbl" style="margin-top:3px">'+(fCost?PCT(fPl/fCost*100):"—")+' من تكلفة الصناديق</div></div>'+
         '</div>';
       var tgt=document.getElementById("portfolio-mini");
-      if(tgt)tgt.insertAdjacentHTML("beforeend",box);
+      if(tgt)tgt.insertAdjacentHTML("afterbegin",box);
       var hs=document.getElementById("holdings-summary");
-      if(hs)hs.insertAdjacentHTML("beforeend",box);
+      if(hs)hs.insertAdjacentHTML("afterbegin",box);
     }catch(e){}
   }
   window.egxPfFundDel=function(i){
@@ -3852,6 +3852,69 @@ init();
       return p;
     };
   }
+  /* ➕ زرار موحد «إضافة سهم أو صندوق» بقايمة اختيار: سهم → مودال الأسهم الأصلي بقائمته · صندوق → قائمة الصناديق الجاهزة (بحث بالاسم) أو إدخال يدوي → مودال الصندوق الأصلي. الزرارين الأصليين بيتخفوا بس منطقهم مستخدم زي ما هو. */
+  function egxFundChips(q){
+    try{
+      var box=document.getElementById("egx-fund-chips");
+      if(!box||typeof FUNDS_CATALOG==="undefined")return;
+      q=String(q||"").trim();
+      box.innerHTML="";
+      FUNDS_CATALOG.forEach(function(f,i){
+        if(q&&String(f.name).indexOf(q)<0)return;
+        var b=document.createElement("button");
+        b.className="btn mini";
+        b.style.cssText="display:block;width:100%;text-align:right;margin-bottom:8px";
+        b.innerHTML=(f.sh?"☪️ ":"")+"<b>"+f.name+"</b> <span class='small muted'>"+f.type+(f.nav!=null?" — NAV ≈ "+f.nav:"")+"</span>";
+        b.onclick=function(){document.getElementById("egx-add-modal").classList.remove("open");if(typeof window.trackFund==="function")window.trackFund(i)};
+        box.appendChild(b);
+      });
+      if(!box.children.length)box.innerHTML='<div class="empty small">مفيش نتيجة — جرب كلمة تانية أو الإدخال اليدوي تحت.</div>';
+    }catch(e){}
+  }
+  function egxAddUI(){
+    try{
+      if(document.getElementById("egx-add-modal"))return;
+      var hb=document.getElementById("btn-add-holding");
+      var fb=document.getElementById("btn-add-fund");
+      if(!hb||!fb)return;
+      hb.classList.add("hide");
+      fb.classList.add("hide");
+      hb.insertAdjacentHTML("afterend",'<button class="btn primary mini" id="egx-add-btn">＋ إضافة سهم أو صندوق</button>');
+      var mod=document.createElement("div");
+      mod.className="modal";
+      mod.id="egx-add-modal";
+      mod.innerHTML='<div class="inner">'+
+        '<h3>＋ إضافة إلى محفظتك</h3>'+
+        '<div class="grid2">'+
+          '<button class="btn" id="egx-pick-stock" style="padding:18px;font-size:15px;line-height:2">📈 سهم<span class="small muted" style="display:block">من قائمة أسهم البورصة</span></button>'+
+          '<button class="btn" id="egx-pick-fund" style="padding:18px;font-size:15px;line-height:2">🏦 صندوق<span class="small muted" style="display:block">من قائمة الصناديق الجاهزة</span></button>'+
+        '</div>'+
+        '<div id="egx-fund-list" class="hide" style="margin-top:14px">'+
+          '<input class="search" id="egx-fund-search" placeholder="🔍 دوّر على صندوق بالاسم..." />'+
+          '<div id="egx-fund-chips" class="row" style="margin-top:10px;max-height:38vh;overflow:auto"></div>'+
+          '<button class="btn mini" id="egx-fund-custom" style="margin-top:10px">✍️ صندوق مش في القائمة — إدخال يدوي</button>'+
+        '</div>'+
+        '<div class="row" style="margin-top:14px;justify-content:flex-end"><button class="btn mini" id="egx-add-cancel">إلغاء</button></div>'+
+      '</div>';
+      document.body.appendChild(mod);
+      document.getElementById("egx-add-btn").onclick=function(){
+        mod.classList.add("open");
+        document.getElementById("egx-fund-list").classList.add("hide");
+        var s=document.getElementById("egx-fund-search");if(s)s.value="";
+      };
+      document.getElementById("egx-add-cancel").onclick=function(){mod.classList.remove("open")};
+      document.getElementById("egx-pick-stock").onclick=function(){mod.classList.remove("open");document.getElementById("btn-add-holding").click()};
+      document.getElementById("egx-pick-fund").onclick=function(){
+        var s=document.getElementById("egx-fund-search");
+        if(s)s.value="";
+        document.getElementById("egx-fund-list").classList.remove("hide");
+        egxFundChips("");
+      };
+      document.getElementById("egx-fund-search").addEventListener("input",function(e){egxFundChips(e.target.value)});
+      document.getElementById("egx-fund-custom").onclick=function(){mod.classList.remove("open");document.getElementById("btn-add-fund").click()};
+    }catch(e){}
+  }
+  if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",egxAddUI)}else{egxAddUI()}
   egxNavFetch();
   if(typeof window.openStock!=="function")return;
   var egxOpenOrig=window.openStock;
@@ -3864,6 +3927,7 @@ init();
 </script>
 </body>
 </html>
+
 
 
 
