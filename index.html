@@ -3879,6 +3879,12 @@ init();
       if(!hb||!fb)return;
       hb.classList.add("hide");
       fb.classList.add("hide");
+      var fc=document.getElementById("fund-catalog");
+      if(fc){
+        fc.classList.add("hide");
+        var fcard=fc.closest(".card");
+        if(fcard&&!fcard.querySelector("#funds-wrap"))fcard.classList.add("hide");
+      }
       hb.insertAdjacentHTML("afterend",'<button class="btn primary mini" id="egx-add-btn">＋ إضافة سهم أو صندوق</button>');
       var mod=document.createElement("div");
       mod.className="modal";
@@ -3927,6 +3933,7 @@ init();
 </script>
 </body>
 </html>
+
 
 
 
