@@ -3591,7 +3591,8 @@ init();
 <script>
 /* ═══ إضافة v2 (2026-10-26) — مؤشرات حجم التداول + فلتر OBV لجودة التوصيات
    تحديث v3 (2026-10-27) — ترقية الفلتر لـ OBV + Stochastic<80 + فوق SMA100 بقرار باك تست v3 الحاسم:
-   تحسن في النص الزمني الأول (56.5% ضد 54.3%) وفي الثاني (51.1% ضد 50.8%) — الفائز الوحيد المتناسق ═══
+   تحسن في النص الزمني الأول (56.5% ضد 54.3%) وفي الثاني (51.1% ضد 50.8%) — الفائز الوحيد المتناسق
+   تحديث v3.1 (2026-10-27) — 📡 NAV تلقائي للصناديق من مباشر (فرع fundnav المحدث يوميًا من GitHub Actions — طلب واحد/6 ساعات كحد أقصى من المتصفح) ═══
    قراءة من الكاش المحلي (WATCH_CACHE) فقط — صفر استدعاءات API جديدة.
    كتلة مستقلة: لا تعدّل ولا تعيد تعريف أي كود قائم.
    حذفها = حذف الكتلة كلها، بدون أي أثر على باقي التطبيق. ═══ */
@@ -3711,6 +3712,69 @@ init();
       return v;
     };
   }
+  /* 📡 NAV تلقائي للصناديق: قراءة funds_nav.json من فرع fundnav (مباشر عبر GitHub Actions يوميًا).
+     مطابقة بالاسم (عربي/إنجليزي) — الصندوق اللي مش بيتلاج أو الـ NAV قديم (>45 يوم) بيفضل على قيمته اليدوية. */
+  var EGX_NAV_URLS=["https://raw.githubusercontent.com/MedhatCoding/mistral-Mi/fundnav/funds_nav.json","https://cdn.jsdelivr.net/gh/MedhatCoding/mistral-Mi@fundnav/funds_nav.json"];
+  var EGX_NAV_TTL=6*3600*1000;
+  function egxNorm(s){return String(s||"").toLowerCase().replace(/[إأآ]/g,"ا").replace(/ى/g,"ي").replace(/[^ا-يa-z0-9]+/g,"")}
+  function egxNavApply(){
+    try{
+      var c=store.get("egx_fundnav_cache",null);
+      if(!c||!c.funds||!c.funds.length||typeof FUNDS==="undefined"||!FUNDS.length)return null;
+      var idx={};
+      c.funds.forEach(function(f){if(f){var a=egxNorm(f.ar||""),e=egxNorm(f.en||"");if(a)idx[a]=f;if(e)idx[e]=f}});
+      var now=Date.now(),fresh=0,miss=0;
+      FUNDS.forEach(function(u){
+        var k=egxNorm(u.name),hit=idx[k];
+        if(!hit&&k.length>4){
+          for(var key in idx){if(key.length>4&&(k.indexOf(key)>=0||key.indexOf(k)>=0)){hit=idx[key];break}}
+        }
+        if(!hit){miss++;return}
+        var nav=parseFloat(hit.nav);
+        if(!isFinite(nav)||nav<=0)return;
+        var dt=Date.parse(hit.d||"");
+        if(!isFinite(dt)||now-dt>45*864e5)return;
+        u.nav=nav;u.navDate=hit.d;u.navSrc="مباشر";fresh++;
+      });
+      if(fresh)store.set("egx_funds",FUNDS);
+      return {fresh:fresh,miss:miss,t:c.t};
+    }catch(e){return null}
+  }
+  function egxNavFetch(){
+    try{
+      var c=store.get("egx_fundnav_cache",null);
+      if(c&&c.fetchedAt&&Date.now()-c.fetchedAt<EGX_NAV_TTL){egxNavApply();return}
+      EGX_NAV_URLS.forEach(function(u){
+        fetch(u).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(j){
+          if(!j||!j.funds||!j.funds.length)throw 0;
+          j.fetchedAt=Date.now();store.set("egx_fundnav_cache",j);
+          egxNavApply();
+          if(typeof renderFunds==="function"&&document.getElementById("funds-wrap"))renderFunds();
+        }).catch(function(){});
+      });
+    }catch(e){}
+  }
+  if(typeof window.renderFunds==="function"){
+    var egxFundsOrig=window.renderFunds;
+    window.renderFunds=function(){
+      egxNavApply();
+      var r=egxFundsOrig.apply(this,arguments);
+      try{
+        var wrap=document.getElementById("funds-wrap");
+        if(wrap&&typeof FUNDS!=="undefined"&&FUNDS.length){
+          var auto=FUNDS.filter(function(u){return u.navSrc==="مباشر"}).length;
+          var c=store.get("egx_fundnav_cache",null);
+          var line=document.createElement("p");
+          line.className="small muted egx-navnote";
+          line.style.cssText="margin-top:8px;line-height:1.8";
+          line.innerHTML=auto?("📡 آخر NAV اتحدث تلقائيًا من مباشر (بيانات: "+((c&&c.t)||"—")+") — متطابق "+auto+" من "+FUNDS.length+" صندوق، والباقي على القيمة اليدوية."):"ℹ️ مفيش صندوق متطابق مع قائمة مباشر بعد — الصناديق بتفضل على NAV اليدوي لحد ما الاسم يتطابق.";
+          wrap.insertAdjacentElement("beforeend",line);
+        }
+      }catch(e){}
+      return r;
+    };
+  }
+  egxNavFetch();
   if(typeof window.openStock!=="function")return;
   var egxOpenOrig=window.openStock;
   window.openStock=function(){
@@ -3722,5 +3786,6 @@ init();
 </script>
 </body>
 </html>
+
 
 
