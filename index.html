@@ -3589,7 +3589,9 @@ init();
 </script>
 
 <script>
-/* ═══ إضافة v2 (2026-10-26) — مؤشرات حجم التداول + فلتر OBV لجودة التوصيات ═══
+/* ═══ إضافة v2 (2026-10-26) — مؤشرات حجم التداول + فلتر OBV لجودة التوصيات
+   تحديث v3 (2026-10-27) — ترقية الفلتر لـ OBV + Stochastic<80 + فوق SMA100 بقرار باك تست v3 الحاسم:
+   تحسن في النص الزمني الأول (56.5% ضد 54.3%) وفي الثاني (51.1% ضد 50.8%) — الفائز الوحيد المتناسق ═══
    قراءة من الكاش المحلي (WATCH_CACHE) فقط — صفر استدعاءات API جديدة.
    كتلة مستقلة: لا تعدّل ولا تعيد تعريف أي كود قائم.
    حذفها = حذف الكتلة كلها، بدون أي أثر على باقي التطبيق. ═══ */
@@ -3615,7 +3617,18 @@ init();
       var c2=h[j].c-h[j-1].c;
       if(c2>0)uv+=(h[j].v||0);else if(c2<0)dv+=(h[j].v||0)
     }
-    return {last:last,a20:a20,rel:rel,obv:obv,obvChg:obvChg,uv:uv,dv:dv}
+    var ret={last:last,a20:a20,rel:rel,obv:obv,obvChg:obvChg,uv:uv,dv:dv};
+    if(h.length>=14){
+      var hh=-Infinity,ll=Infinity;
+      for(var k=h.length-14;k<h.length;k++){if(h[k].h>hh)hh=h[k].h;if(h[k].l<ll)ll=h[k].l}
+      ret.stk=(hh===ll)?50:(h[h.length-1].c-ll)/((hh-ll)||1)*100;
+    }
+    if(h.length>=100){
+      var s100=0;
+      for(var q=h.length-100;q<h.length;q++){s100+=h[q].c}
+      ret.t100=h[h.length-1].c>s100/100;
+    }
+    return ret
   }
   function egxVolClear(){document.querySelectorAll(".egx-vol").forEach(function(n){n.remove()})}
   function egxVolInject(){
@@ -3649,13 +3662,13 @@ init();
       var note=document.createElement("div");
       note.className="small muted egx-vol";
       note.style.cssText="margin-top:8px;line-height:1.8";
-      note.innerHTML=chips.join("<br>")+'<br>🔒 مؤشرات العرض معلوماتية — فلتر OBV فقط هو الداخل في حساب التوصيات (بقرار الباك تست).';
+      note.innerHTML=chips.join("<br>")+'<br>🔒 مؤشرات العرض معلوماتية — فلاتر OBV وStochastic وSMA100 هي الداخلة في حساب التوصيات (بقرار الباك تست v3).';
       grid.insertAdjacentElement("afterend",note)
     }catch(e){}
   }
   /* ⚖️ تحسين جودة التوصيات بقرار الباك تست (Volume Lab 26/10/2026 — 5 سنين، 51 سهم، 3,862 توصية):
-     توصيات الشراء مع OBV هابط خلال 20 جلسة بتتحول للحياد. النتيجة المقاسة:
-     فوز 51.1%→52.2% · متوسط العائد 1.42%→1.55% · الوسيط 0.37%→0.83% · PF 1.48→1.53
+     توصيات الشراء مع أي علامة سلبية (OBV هابط / ستوكاستيك ≥80 / تحت SMA100) بتتحول للحياد. النتيجة المقاسة (مقابل OBV لوحده):
+     فوز 52.2%→53.2% · متوسط العائد 1.55%→1.76% · الوسيط 0.83%→1.06% · PF 1.53→1.60
      بإجمالي ربح نفسه تقريبًا وتوصيات أقل 8% (الرداءة اتشالت). لا تأثير على توصيات البيع.
      لو حجم التداول مش متاح من المصدر: لا تغيير — نفس سلوك المحرك الحالي. */
   if(typeof window.analyze==="function"){
@@ -3666,12 +3679,22 @@ init();
         if(v&&v.rs&&typeof v.sc==="number"&&v.sc>=1.5){
           var f=egxVolFacts(hist);
           if(f){
+            var egxFails=0;
             if(f.obvChg>0){
               v.rs.push(["✅","OBV صاعد خلال آخر 20 جلسة — تجميع يؤكد التوصية"]);
             }else{
               v.rs.push(["⚠️","تخفيض التوصية: OBV هابط خلال آخر 20 جلسة — التجميع مش مؤكد"]);
-              if(v.sc>1.4)v.sc=1.4;
+              egxFails++;
             }
+            if(f.stk!=null){
+              if(f.stk<80){v.rs.push(["✅","ستوكاستيك %K = "+f.stk.toFixed(0)+" — السعر مش في تشبع شراء"]);}
+              else{v.rs.push(["⚠️","تخفيض التوصية: ستوكاستيك %K = "+f.stk.toFixed(0)+" ≥ 80 — تشبع شراء"]);egxFails++;}
+            }
+            if(f.t100!=null){
+              if(f.t100){v.rs.push(["✅","السعر فوق متوسط 100 جلسة — الاتجاه البعيد مؤكد"]);}
+              else{v.rs.push(["⚠️","تخفيض التوصية: السعر تحت متوسط 100 جلسة — الاتجاه البعيد مش مؤكد"]);egxFails++;}
+            }
+            if(egxFails>0&&v.sc>1.4)v.sc=1.4;
             var sc=v.sc,rec,cls,em,stars;
             if(sc>=4.5){rec="شراء قوي";cls="rec-strongbuy";em="🚀";stars=5}
             else if(sc>=1.5){rec="شراء";cls="rec-buy";em="📈";stars=4}
@@ -3699,4 +3722,5 @@ init();
 </script>
 </body>
 </html>
+
 
