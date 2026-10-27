@@ -3595,6 +3595,7 @@ init();
    تحديث v3.1 (2026-10-27) — 📡 NAV تلقائي للصناديق من مباشر (فرع fundnav المحدث يوميًا من GitHub Actions — طلب واحد/6 ساعات كحد أقصى من المتصفح)
    تحديث v3.2 (2026-10-27) — إخفاء قسم «صناديق الاستثمار (تتبع يدوي)» المكرر: الصناديق بتظهر مدمجة في جدول المحفظة مع الأسهم في قسم واحد ═══
    تحديث v3.3 (2026-10-27) — 📱 جداول بكروت على الموبايل: كل صف جدول بيتحول لكارت فيه كل خلية سطر (القيمة + اسم العمود) — مفيش سحب يمين وشمال على الهاتف
+   تحديث v3.4 (2026-10-27) — كروت أجمل للعربي: الاسم رأس الكارت بخط كبير والرمز صغير جنبه + خطوط أكبر للقيم + دمج الإضافات المتكررة (سهم/صندوق موجود = تجميع بالمتوسط المرجح)
    قراءة من الكاش المحلي (WATCH_CACHE) فقط — صفر استدعاءات API جديدة.
    كتلة مستقلة: لا تعدّل ولا تعيد تعريف أي كود قائم.
    حذفها = حذف الكتلة كلها، بدون أي أثر على باقي التطبيق. ═══ */
@@ -3930,18 +3931,7 @@ init();
     if(document.getElementById("egx-mob-style"))return;
     var st=document.createElement("style");
     st.id="egx-mob-style";
-    st.textContent='@media (max-width:760px){'+
-      'table.egx-mob{border-collapse:separate;border-spacing:0}'+
-      'table.egx-mob thead{display:none}'+
-      'table.egx-mob tbody tr{display:block;background:var(--card2);border:1px solid var(--border);border-radius:14px;margin:0 0 12px;padding:8px 6px}'+
-      'table.egx-mob tbody td{display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px dashed var(--border);padding:9px 12px;white-space:normal}'+
-      'table.egx-mob tbody td:last-child{justify-content:center;border-bottom:none;padding-top:12px}'+
-      'table.egx-mob tbody tr:last-child td{border-bottom:1px dashed var(--border)}'+
-      'table.egx-mob tbody tr:last-child td:last-child{border-bottom:none}'+
-      'table.egx-mob tbody td::before{content:attr(data-l);color:var(--muted);font-size:13.5px;font-weight:600;flex:0 0 auto}'+
-      'table.egx-mob tbody td:not([data-l])::before{content:none}'+
-      'table.egx-mob .num{white-space:normal}'+
-      '}';
+    st.textContent='@media (max-width:760px){'+'table.egx-mob{border-collapse:separate;border-spacing:0}'+'table.egx-mob thead{display:none}'+'table.egx-mob tbody tr{display:block;background:var(--card2);border:1px solid var(--border);border-radius:16px;margin:0 0 12px;padding:6px}'+'table.egx-mob tbody td{display:flex;justify-content:space-between;align-items:center;gap:14px;border-bottom:1px dashed var(--border);padding:12px 14px;white-space:normal;font-size:16px;line-height:1.8}'+'table.egx-mob tbody td::before{content:attr(data-l);color:var(--muted);font-size:14.5px;font-weight:600;flex:0 0 auto}'+'table.egx-mob tbody td:not([data-l])::before{content:none}'+'table.egx-mob tbody td.num,table.egx-mob tbody td .num{white-space:normal;font-size:16.5px;font-weight:700}'+'table.egx-mob tbody td:last-child{justify-content:center;border-bottom:none;padding-top:13px}'+'table.egx-mob tbody tr:last-child td:last-child{border-bottom:none}'+'table.egx-mob tbody td:first-child{display:block;border-bottom:2px solid var(--border2);padding:13px 14px 10px;font-size:18px}'+'table.egx-mob tbody td:first-child::before{content:none}'+'table.egx-mob tbody td:first-child b{font-size:18.5px;line-height:1.6}'+'table.egx-mob tbody td:first-child .sect-tag{font-size:13px;margin-inline-start:8px;vertical-align:middle}'+'table.egx-mob tbody td:first-child .tag{font-size:13px;margin-inline-start:8px;vertical-align:middle}'+'
     document.head.appendChild(st);
   }
   function egxMobLabel(){
@@ -3962,6 +3952,51 @@ init();
     egxMobLabel();
     if(window.MutationObserver)new MutationObserver(egxMobKick).observe(document.body||document.documentElement,{childList:true,subtree:true});
   }catch(e){}
+    /* ➕ دمج الإضافات المتكررة (v3.4): لو ضفت سهم أو صندوق موجود بالفعل في محفظتك، الكمية الجديدة بتتجمع مع القديمة
+     ومتوسط الشراء بيتحسب بالمتوسط المرجح — بدل الكتابة فوق القديم (سهم) أو التكرار في صف منفصل (صندوق).
+     الطريقة: اعتراض قبل الحفظ الأصلي وتعديل قيم الحقول للقيم المدموجة — منطق الحفظ الأصلي زي ما هو بالظبط. */
+  function egxNormName(s){return String(s||"").toLowerCase().replace(/[إأآ]/g,"ا").replace(/ى/g,"ي").replace(/[^ا-يa-z0-9]+/g,"")}
+  function egxMergeSetup(){
+    try{
+      var hm=document.getElementById("hold-modal");
+      if(hm){hm.addEventListener("click",function(e){
+        if(!e.target||e.target.id!=="hold-save")return;
+        try{
+          var t=document.getElementById("hold-sym").value;
+          var qty=+document.getElementById("hold-qty").value,avg=+document.getElementById("hold-avg").value;
+          if(!t||!(qty>0)||!(avg>0))return;
+          var old=null;
+          if(typeof HOLDINGS!=="undefined")for(var i=0;i<HOLDINGS.length;i++){if(HOLDINGS[i].t===t){old=HOLDINGS[i];break}}
+          if(!old)return;
+          var mq=old.qty+qty,ma=(old.qty*old.avg+qty*avg)/mq;
+          document.getElementById("hold-qty").value=mq;
+          document.getElementById("hold-avg").value=+ma.toFixed(4);
+          toast("🔄 اتجمعت مع "+old.qty+" سهم موجودين — الكمية بقت "+mq+" بمتوسط شراء جديد "+ma.toFixed(2)+" ج.م");
+        }catch(x){}
+      },true)}
+      var fm=document.getElementById("fund-modal");
+      if(fm){fm.addEventListener("click",function(e){
+        if(!e.target||e.target.id!=="fund-save")return;
+        try{
+          var nm=document.getElementById("fund-name").value.trim();
+          var un=+document.getElementById("fund-units").value,av=+document.getElementById("fund-avg").value,nv=+document.getElementById("fund-nav").value;
+          if(!nm||!(un>0)||!(av>0))return;
+          var idx=-1,k=egxNormName(nm);
+          if(typeof FUNDS!=="undefined")for(var i=0;i<FUNDS.length;i++){if(egxNormName(FUNDS[i].name)===k){idx=i;break}}
+          if(idx<0)return;
+          var old=FUNDS[idx];
+          var mu=old.units+un,ma=(old.units*old.avg+un*av)/mu;
+          /* نشيل القديم قبل الحفظ الأصلي — الصف الجديد بيحل محله بالكمية المدموجة */
+          FUNDS.splice(idx,1);
+          document.getElementById("fund-units").value=mu;
+          document.getElementById("fund-avg").value=+ma.toFixed(4);
+          if(!(nv>0))document.getElementById("fund-nav").value=old.nav||"";
+          toast("🔄 اتجمعت مع "+old.units+" وحدة موجودة — الوحدات بقت "+mu+" بمتوسط شراء جديد "+ma.toFixed(4)+" ج.م");
+        }catch(x){}
+      },true)}
+    }catch(e){}
+  }
+  if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",egxMergeSetup)}else{egxMergeSetup()}
     egxNavFetch();
   if(typeof window.openStock!=="function")return;
   var egxOpenOrig=window.openStock;
@@ -3974,6 +4009,7 @@ init();
 </script>
 </body>
 </html>
+
 
 
 
