@@ -1,15 +1,16 @@
 # -*- coding: utf-8 -*-
-# volume_lab.py v2 — مختبر الإشارات: باك تست صادق لعوامل إضافية على محرك التوصيات الحالي
-# نفس ميزان سجل التوصيات: هدف 3xATR، وقف 2xATR، أفق 14 جلسة، توصية واحدة مفتوحة لكل سهم
-# المتغيرات: أ) المحرك الحالي · ب) OBV20 · ج) ضغط شراء · د) وزن OBV · هـ) ب+ج
-# الجديد: و) Stochastic<80 · ز) OBV10 أسرع · ح) فوق SMA100 · ط) كمية اليوم>=0.8x المتوسط
-#         ي) تقلب ATR%<=5 · ك) ب+و · ل) ب+ح
+# volume_lab.py v3 — القرار النهائي: هل Stochastic يضيف قيمة حقيقية فوق فلتر OBV؟
+# فحوصات صرامة: (1) تقسيم زمني نص/نص — التحسن لازم يثبت في النصين
+#               (2) تحليل شرطي: جوه توصيات OBV نفسها، أداء stoch<80 مقابل >=80
+#               (3) حساسية العتبة: 75 / 80 / 85
+# المتغيرات: أ) المحرك · ب) OBV20 · ك) ب+stoch<80 · ل) ب+SMA100 · م) ب+الاثنين · ن75/ن85
 import json, math, time, datetime, traceback, urllib.request, http.cookiejar
 
 SYMS = "ABUK ACGC ADIB AMOC ARCC ATQA CIEB CIRA CLHO COMI EAST EFID EFIH EGAL EGAS EGCH EGTS ELKA EMFD ETEL ETRS FAIT FAITA FWRY GBCO GOUR HDBK HRHO ICFC IFAP ISPH JUFO LCSW MASR MBSC MCQE MFPC MNHD MPCI MPCO MTIE OCDI OLFI ORAS ORHD ORWE PHDC POUL RACC RMDA SAUD SKPC SWDY TAQA TMGH".split()
 HORIZON = 14
 MINI = 60
 W52 = 250
+SPLIT = "2024-01-01"
 LOG = []
 
 def L(s):
@@ -118,38 +119,23 @@ def precompute(rows):
     for i in range(1, n):
         d = c[i] - c[i - 1]
         obv[i] = obv[i - 1] + (rows[i]["v"] if d > 0 else (-rows[i]["v"] if d < 0 else 0.0))
-    # Stochastic %K (14) خام
     stk = [None] * n
     for i in range(13, n):
         hh = max(r["h"] for r in rows[i - 13:i + 1])
         ll = min(r["l"] for r in rows[i - 13:i + 1])
         stk[i] = 50.0 if hh == ll else (c[i] - ll) / (hh - ll) * 100.0
-    # متوسط كمية 20
-    av20 = [None] * n
-    vs = 0.0
-    for i in range(n):
-        vs += rows[i]["v"]
-        if i >= 20:
-            vs -= rows[i - 20]["v"]
-        if i >= 19:
-            av20[i] = vs / 20.0
-    return {"c": c, "line": line, "sig": sig, "rsi": rsi, "s20": s20, "s50": s50, "s100": s100, "bu": bu, "bl": bl, "atr": atr, "obv": obv, "stk": stk, "av20": av20}
+    return {"c": c, "line": line, "sig": sig, "rsi": rsi, "s20": s20, "s50": s50, "s100": s100, "bu": bu, "bl": bl, "atr": atr, "obv": obv, "stk": stk}
 
 def factors_at(rows, pc, i):
     c = pc["c"]
     obv20 = pc["obv"][i] - pc["obv"][max(0, i - 20)]
-    obv10 = pc["obv"][i] - pc["obv"][max(0, i - 10)]
     uv = 0.0; dv = 0.0
     for j in range(max(1, i - 19), i + 1):
         d = c[j] - c[j - 1]
         if d > 0: uv += rows[j]["v"]
         elif d < 0: dv += rows[j]["v"]
     pr20 = (uv / dv) if dv > 0 else None
-    av = pc["av20"][i]
-    rv = (rows[i]["v"] / av) if (av is not None and av > 0) else None
-    a = pc["atr"][i]
-    atrpct = (a / c[i] * 100.0) if (a is not None and a > 0 and c[i] > 0) else None
-    return {"obv20": obv20, "obv10": obv10, "pr20": pr20, "rv": rv, "stk": pc["stk"][i], "t100": (c[i] > pc["s100"][i]) if pc["s100"][i] is not None else None, "atrpct": atrpct}
+    return {"obv20": obv20, "pr20": pr20, "stk": pc["stk"][i], "t100": (c[i] > pc["s100"][i]) if pc["s100"][i] is not None else None}
 
 def engine_sc(rows, pc, i):
     c = pc["c"]
@@ -180,23 +166,18 @@ def engine_sc(rows, pc, i):
     ag = a if (a is not None and a > 0) else p * 0.02
     return sc, ag
 
-def cond(v, i, f):
-    base = v["sc"] >= 1.5
-    if v["key"] == "A": return base
-    if v["key"] == "B": return base and f["obv20"] > 0
-    if v["key"] == "C": return base and f["pr20"] is not None and f["pr20"] >= 1.0
-    if v["key"] == "D": return (v["sc"] + (1.0 if f["obv20"] > 0 else -1.0)) >= 1.5
-    if v["key"] == "E": return base and f["obv20"] > 0 and f["pr20"] is not None and f["pr20"] >= 1.0
-    if v["key"] == "F": return base and f["stk"] is not None and f["stk"] < 80
-    if v["key"] == "G": return base and f["obv10"] > 0
-    if v["key"] == "H": return base and f["t100"] is True
-    if v["key"] == "I": return base and f["rv"] is not None and f["rv"] >= 0.8
-    if v["key"] == "J": return base and f["atrpct"] is not None and f["atrpct"] <= 5.0
-    if v["key"] == "K": return base and f["obv20"] > 0 and f["stk"] is not None and f["stk"] < 80
-    if v["key"] == "L": return base and f["obv20"] > 0 and f["t100"] is True
+def cond(key, sc, f):
+    base = sc >= 1.5
+    if key == "A": return base
+    if key == "B": return base and f["obv20"] > 0
+    if key == "K": return base and f["obv20"] > 0 and f["stk"] is not None and f["stk"] < 80
+    if key == "L": return base and f["obv20"] > 0 and f["t100"] is True
+    if key == "M": return base and f["obv20"] > 0 and f["stk"] is not None and f["stk"] < 80 and f["t100"] is True
+    if key == "N75": return base and f["obv20"] > 0 and f["stk"] is not None and f["stk"] < 75
+    if key == "N85": return base and f["obv20"] > 0 and f["stk"] is not None and f["stk"] < 85
     return base
 
-VARIANTS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"]
+VARIANTS = ["A", "B", "K", "L", "M", "N75", "N85"]
 
 def simulate(rows, pc, key):
     c = pc["c"]
@@ -210,11 +191,11 @@ def simulate(rows, pc, key):
                 break
             sc, ag = engine_sc(rows, pc, i)
             f = factors_at(rows, pc, i)
-            state = {"key": key, "sc": sc}
-            if cond(state, i, f):
+            if cond(key, sc, f):
                 p = c[i]
                 pos = {"entry": p, "stop": p - 2 * ag, "target": p + 3 * ag, "i": i}
                 pos.update(f)
+                pos["d"] = rows[i]["d"]
         else:
             if rows[i]["l"] <= pos["stop"]:
                 trades.append(mk(pos, pos["stop"], "stop", i)); pos = None
@@ -228,27 +209,22 @@ def simulate(rows, pc, key):
     return trades
 
 def mk(pos, exitp, outcome, j):
-    t = {"ret": round((exitp / pos["entry"] - 1.0) * 100.0, 3), "outcome": outcome, "days": j - pos["i"]}
-    for k in ("obv20", "obv10", "pr20", "rv", "stk", "t100", "atrpct"):
+    t = {"ret": round((exitp / pos["entry"] - 1.0) * 100.0, 3), "outcome": outcome, "d": pos.get("d")}
+    for k in ("obv20", "pr20", "stk", "t100"):
         t[k] = pos.get(k)
     return t
 
 def metrics(trades):
     closed = [t for t in trades if t["outcome"] != "open"]
-    opens = len(trades) - len(closed)
     rets = [t["ret"] for t in closed]
     hits = sum(1 for t in closed if t["outcome"] == "hit")
     stops = sum(1 for t in closed if t["outcome"] == "stop")
-    d14 = sum(1 for t in closed if t["outcome"] == "d14")
     gains = sum(r for r in rets if r > 0)
     losses = abs(sum(r for r in rets if r < 0))
     srt = sorted(rets)
     med = srt[len(srt) // 2] if srt else None
     return {
-        "n": len(closed), "open": opens,
-        "hits": hits, "stops": stops, "timeout": d14,
-        "hit_rate": round(hits / len(closed) * 100, 1) if closed else None,
-        "stop_rate": round(stops / len(closed) * 100, 1) if closed else None,
+        "n": len(closed),
         "win_rate": round(sum(1 for r in rets if r > 0) / len(closed) * 100, 1) if closed else None,
         "avg_ret": round(sum(rets) / len(rets), 3) if rets else None,
         "med_ret": med,
@@ -261,19 +237,15 @@ def main():
         op = make_opener()
         all_trades = {v: [] for v in VARIANTS}
         syms_ok = []
-        syms_novol = []
         span = [None, None]
         for s in SYMS:
             rows = fetch(s, op)
             time.sleep(1.5)
             if len(rows) < MINI + HORIZON + 5:
-                L(s + ": بيانات غير كافية (" + str(len(rows)) + ")")
                 continue
             lastw = rows[-250:]
             volc = sum(1 for r in lastw if r["v"] > 0) / float(len(lastw))
             if volc < 0.8:
-                syms_novol.append(s)
-                L(s + ": حجم التداول ناقص من المصدر (" + str(round(volc * 100)) + "%) — خارج العينة")
                 continue
             pc = precompute(rows)
             for v in VARIANTS:
@@ -282,49 +254,52 @@ def main():
                     t["sym"] = s
                     all_trades[v].append(t)
             syms_ok.append(s)
-            L(s + ": شموع " + str(len(rows)))
             if rows[0]["d"] and (span[0] is None or rows[0]["d"] < span[0]): span[0] = rows[0]["d"]
             if rows[-1]["d"] and (span[1] is None or rows[-1]["d"] > span[1]): span[1] = rows[-1]["d"]
-        base = [t for t in all_trades["A"] if t["outcome"] != "open"]
-        ma = metrics(all_trades["A"])
-        sel = {}
-        conds = {
-            "obv20": lambda t: t["obv20"] is not None and t["obv20"] > 0,
-            "pressure": lambda t: t["pr20"] is not None and t["pr20"] >= 1.0,
-            "stoch80": lambda t: t["stk"] is not None and t["stk"] < 80,
-            "sma100": lambda t: t["t100"] is True,
-            "relvol": lambda t: t["rv"] is not None and t["rv"] >= 0.8,
-            "atrpct5": lambda t: t["atrpct"] is not None and t["atrpct"] <= 5.0,
-        }
-        for name, fn in conds.items():
-            gp = [t for t in base if fn(t)]
-            gf = [t for t in base if not fn(t)]
-            sel[name] = {"pass": metrics(gp), "fail": metrics(gf)}
-        labels = {"A": "المحرك الحالي", "B": "فلتر OBV20", "C": "فلتر ضغط الشراء", "D": "وزن OBV", "E": "ب+ج", "F": "فلتر Stochastic<80", "G": "فلتر OBV10", "H": "فلتر فوق SMA100", "I": "فلتر كمية>=0.8x", "J": "فلتر تقلب<=5%", "K": "ب+و", "L": "ب+ح"}
+        # ── المقاييس: كاملة + نص/نص زمني ──
         variants = {}
         for v in VARIANTS:
-            m = metrics(all_trades[v])
-            m["label"] = labels[v]
-            if v != "A" and ma["win_rate"] is not None and m["win_rate"] is not None:
-                m["d_win"] = round(m["win_rate"] - ma["win_rate"], 1)
-                m["d_avg"] = round((m["avg_ret"] or 0) - (ma["avg_ret"] or 0), 3)
-                m["d_med"] = round((m["med_ret"] or 0) - (ma["med_ret"] or 0), 3)
-            variants[v] = m
+            tr = all_trades[v]
+            early = [t for t in tr if t["d"] is not None and t["d"] < SPLIT and t["outcome"] != "open"]
+            late = [t for t in tr if t["d"] is not None and t["d"] >= SPLIT and t["outcome"] != "open"]
+            variants[v] = {"all": metrics(tr), "early": metrics(early), "late": metrics(late)}
+        # ── تحليل شرطي: جوه عالم OBV (متغير ب) ──
+        bu = [t for t in all_trades["B"] if t["outcome"] != "open"]
+        cond_sel = {}
+        for name, fn in {
+            "stoch80": lambda t: t["stk"] is not None and t["stk"] < 80,
+            "sma100": lambda t: t["t100"] is True,
+        }.items():
+            gp = [t for t in bu if fn(t)]
+            gf = [t for t in bu if not fn(t)]
+            cond_sel[name] = {"pass": metrics(gp), "fail": metrics(gf)}
+        # ── ك ضد ب على مستوى السهم ──
+        per_symbol = {}
+        for s in syms_ok:
+            tb = [t for t in all_trades["B"] if t["sym"] == s and t["outcome"] != "open"]
+            tk = [t for t in all_trades["K"] if t["sym"] == s and t["outcome"] != "open"]
+            if len(tb) >= 5 and len(tk) >= 5:
+                per_symbol[s] = {"winB": metrics(tb)["win_rate"], "winK": metrics(tk)["win_rate"], "nK": len(tk)}
+        improved = sum(1 for x in per_symbol.values() if x["winK"] is not None and x["winB"] is not None and x["winK"] > x["winB"])
+        worsened = sum(1 for x in per_symbol.values() if x["winK"] is not None and x["winB"] is not None and x["winK"] < x["winB"])
         out = {
             "t": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            "version": 2,
+            "version": 3,
+            "split": SPLIT,
             "span": span,
             "symbols_ok": syms_ok,
-            "symbols_no_volume": syms_novol,
             "variants": variants,
-            "selectivity": sel,
-            "log_tail": LOG[-25:],
+            "cond_sel_within_obv": cond_sel,
+            "per_symbol_K_vs_B": {"improved": improved, "worsened": worsened, "detail": per_symbol},
+            "log_tail": LOG[-20:],
         }
         with open("volume_bt.json", "w", encoding="utf-8") as fh:
             json.dump(out, fh, ensure_ascii=False)
-        L("==== النتائج (v2) ====")
+        L("==== النتائج (v3 — القرار النهائي) ====")
         for v in VARIANTS:
-            L(v + " " + labels[v] + ": " + json.dumps(variants[v], ensure_ascii=False))
+            L(v + ": " + json.dumps(variants[v]["all"], ensure_ascii=False) + " | مبكر " + json.dumps(variants[v]["early"]["win_rate"]) + " | متأخر " + json.dumps(variants[v]["late"]["win_rate"]))
+        L("شرطي جوه OBV: " + json.dumps(cond_sel, ensure_ascii=False))
+        L("ك ضد ب على مستوى السهم: تحسن " + str(improved) + " / تدهور " + str(worsened))
     except Exception:
         L("ERROR: " + traceback.format_exc())
     finally:
