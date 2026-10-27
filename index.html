@@ -3592,7 +3592,8 @@ init();
 /* ═══ إضافة v2 (2026-10-26) — مؤشرات حجم التداول + فلتر OBV لجودة التوصيات
    تحديث v3 (2026-10-27) — ترقية الفلتر لـ OBV + Stochastic<80 + فوق SMA100 بقرار باك تست v3 الحاسم:
    تحسن في النص الزمني الأول (56.5% ضد 54.3%) وفي الثاني (51.1% ضد 50.8%) — الفائز الوحيد المتناسق
-   تحديث v3.1 (2026-10-27) — 📡 NAV تلقائي للصناديق من مباشر (فرع fundnav المحدث يوميًا من GitHub Actions — طلب واحد/6 ساعات كحد أقصى من المتصفح) ═══
+   تحديث v3.1 (2026-10-27) — 📡 NAV تلقائي للصناديق من مباشر (فرع fundnav المحدث يوميًا من GitHub Actions — طلب واحد/6 ساعات كحد أقصى من المتصفح)
+   تحديث v3.2 (2026-10-27) — إخفاء قسم «صناديق الاستثمار (تتبع يدوي)» المكرر: الصناديق بتظهر مدمجة في جدول المحفظة مع الأسهم في قسم واحد ═══
    قراءة من الكاش المحلي (WATCH_CACHE) فقط — صفر استدعاءات API جديدة.
    كتلة مستقلة: لا تعدّل ولا تعيد تعريف أي كود قائم.
    حذفها = حذف الكتلة كلها، بدون أي أثر على باقي التطبيق. ═══ */
@@ -3822,7 +3823,7 @@ init();
         box.className="scroll-x egx-fundrow";
         box.style.cssText="margin-top:10px";
         box.innerHTML='<table><thead><tr><th>الصندوق</th><th>الوحدات</th><th>متوسط الشراء</th><th>آخر NAV</th><th>ربح/خسارة</th><th>%</th><th>المصدر</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'+
-          '<p class="small muted" style="margin-top:6px">صناديقك بتظهر مع الأسهم هنا — الإضافة والتعديل من قسم 🏦 الصناديق.</p>';
+          '<p class="small muted" style="margin-top:6px">صناديقك بتظهر مع الأسهم في نفس الجدول — الإضافة من زرار «＋ إضافة سهم أو صندوق».</p>';
         hw.appendChild(box);
       }
     }catch(e){}
@@ -3832,8 +3833,8 @@ init();
       var fw=document.getElementById("funds-wrap");
       if(!fw)return;
       var card=fw.closest(".card");
-      var hw=document.getElementById("holdings-table-wrap");
-      if(card&&hw&&card.previousElementSibling!==hw){hw.parentNode.insertBefore(card,hw.nextSibling)}
+      /* القسم الأصلي «صناديق الاستثمار (تتبع يدوي)» بيتخبى — الصناديق بتظهر مدمجة في جدول المحفظة مع الأسهم (صفوف egx-fundrow)، والإضافة/الحذف من نفس الجدول وزرار الإضافة الموحد. */
+      if(card)card.classList.add("hide");
     }catch(e){}
   }
   if(typeof window.renderPortfolioMini==="function"){
@@ -3933,6 +3934,7 @@ init();
 </script>
 </body>
 </html>
+
 
 
 
