@@ -3796,6 +3796,46 @@ init();
       if(hs)hs.insertAdjacentHTML("beforeend",box);
     }catch(e){}
   }
+  window.egxPfFundDel=function(i){
+    try{if(typeof window.delFund==="function")window.delFund(i)}catch(e){}
+    if(typeof renderPortfolio==="function")renderPortfolio();
+  };
+  function egxPfFundRows(){
+    try{
+      document.querySelectorAll(".egx-fundrow").forEach(function(n){n.remove()});
+      var hw=document.getElementById("holdings-table-wrap");
+      if(!hw||typeof FUNDS==="undefined"||!FUNDS.length)return;
+      var rows="";
+      FUNDS.forEach(function(f,i){
+        var u=parseFloat(f.units)||0,avg=parseFloat(f.avg)||0,nav=parseFloat(f.nav)||0;
+        var c=u*nav,c0=u*avg,pl=c-c0,plP=c0?pl/c0*100:0;
+        rows+='<tr class="egx-fundrow"><td><b>🏦 '+f.name+'</b> <span class="tag">'+(f.type||"صندوق")+'</span></td>'+
+          '<td class="num">'+NF(u)+'</td><td class="num">'+NF(avg,4)+'</td><td class="num">'+(nav?NF(nav,4):"—")+'</td>'+
+          '<td class="num '+(pl>=0?"up":"down")+'">'+NF(pl)+'</td><td class="num '+(pl>=0?"up":"down")+'">'+PCT(plP)+'</td>'+
+          '<td>'+(f.navSrc==="مباشر"?'<span class="badge b-neu">📡 مباشر</span>':'<span class="badge b-hold">✍️ يدوي</span>')+'</td>'+
+          '<td><button class="btn mini danger" onclick="egxPfFundDel('+i+')">حذف</button></td></tr>';
+      });
+      var tbl=hw.querySelector("table tbody");
+      if(tbl){tbl.insertAdjacentHTML("beforeend",rows)}
+      else{
+        var box=document.createElement("div");
+        box.className="scroll-x egx-fundrow";
+        box.style.cssText="margin-top:10px";
+        box.innerHTML='<table><thead><tr><th>الصندوق</th><th>الوحدات</th><th>متوسط الشراء</th><th>آخر NAV</th><th>ربح/خسارة</th><th>%</th><th>المصدر</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'+
+          '<p class="small muted" style="margin-top:6px">صناديقك بتظهر مع الأسهم هنا — الإضافة والتعديل من قسم 🏦 الصناديق.</p>';
+        hw.appendChild(box);
+      }
+    }catch(e){}
+  }
+  function egxPfFundsUp(){
+    try{
+      var fw=document.getElementById("funds-wrap");
+      if(!fw)return;
+      var card=fw.closest(".card");
+      var hw=document.getElementById("holdings-table-wrap");
+      if(card&&hw&&card.previousElementSibling!==hw){hw.parentNode.insertBefore(card,hw.nextSibling)}
+    }catch(e){}
+  }
   if(typeof window.renderPortfolioMini==="function"){
     var egxMiniOrig=window.renderPortfolioMini;
     window.renderPortfolioMini=function(){
@@ -3808,7 +3848,7 @@ init();
     var egxPfOrig=window.renderPortfolio;
     window.renderPortfolio=function(){
       var p=egxPfOrig.apply(this,arguments);
-      try{Promise.resolve(p).then(function(){egxPfComboInject()}).catch(function(){})}catch(e){}
+      try{Promise.resolve(p).then(function(){egxPfComboInject();egxPfFundRows();egxPfFundsUp()}).catch(function(){})}catch(e){}
       return p;
     };
   }
@@ -3824,6 +3864,7 @@ init();
 </script>
 </body>
 </html>
+
 
 
 
