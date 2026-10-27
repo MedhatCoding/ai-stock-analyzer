@@ -1,0 +1,1294 @@
+{
+ "t": "2026-10-27T07:10:19.957100+00:00",
+ "version": 2,
+ "source": "mubasher",
+ "split": "2024-01-01",
+ "target": "+5%",
+ "stop": "-3%",
+ "horizon": "30 جلسة",
+ "funds_ok": 162,
+ "span": [
+  "1994-09-03",
+  "2026-10-24"
+ ],
+ "variants": {
+  "base": {
+   "all": {
+    "n": 841,
+    "win_rate": 42.6,
+    "avg_ret": 1.39,
+    "med_ret": 2.31
+   },
+   "early": {
+    "n": 702,
+    "win_rate": 42.3,
+    "avg_ret": 1.1,
+    "med_ret": 1.69
+   },
+   "late": {
+    "n": 139,
+    "win_rate": 43.9,
+    "avg_ret": 2.86,
+    "med_ret": 3.05
+   }
+  },
+  "stoch": {
+   "all": {
+    "n": 308,
+    "win_rate": 42.5,
+    "avg_ret": 0.8,
+    "med_ret": 1.01
+   },
+   "early": {
+    "n": 275,
+    "win_rate": 41.8,
+    "avg_ret": 0.56,
+    "med_ret": 0.01
+   },
+   "late": {
+    "n": 33,
+    "win_rate": 48.5,
+    "avg_ret": 2.84,
+    "med_ret": 3.05
+   }
+  },
+  "sma100": {
+   "all": {
+    "n": 516,
+    "win_rate": 40.9,
+    "avg_ret": 1.55,
+    "med_ret": 2.15
+   },
+   "early": {
+    "n": 416,
+    "win_rate": 40.1,
+    "avg_ret": 1.21,
+    "med_ret": 1.55
+   },
+   "late": {
+    "n": 100,
+    "win_rate": 44.0,
+    "avg_ret": 2.97,
+    "med_ret": 3.15
+   }
+  },
+  "both": {
+   "all": {
+    "n": 104,
+    "win_rate": 37.5,
+    "avg_ret": 0.77,
+    "med_ret": 0.67
+   },
+   "early": {
+    "n": 86,
+    "win_rate": 34.9,
+    "avg_ret": 0.29,
+    "med_ret": -0.82
+   },
+   "late": {
+    "n": 18,
+    "win_rate": 50.0,
+    "avg_ret": 3.09,
+    "med_ret": 3.89
+   }
+  }
+ },
+ "per_fund_both": [
+  {
+   "name": "Commercial International Bank Balanced Fund Takamol",
+   "base_n": 19,
+   "both_n": 1,
+   "both_win": 100.0
+  },
+  {
+   "name": "Pharos Investment Fund 1",
+   "base_n": 6,
+   "both_n": 1,
+   "both_win": 100.0
+  },
+  {
+   "name": "Arab Investment Bank 2 Helal",
+   "base_n": 14,
+   "both_n": 1,
+   "both_win": 100.0
+  },
+  {
+   "name": "Traded Equity Fund Insight",
+   "base_n": 14,
+   "both_n": 2,
+   "both_win": 100.0
+  },
+  {
+   "name": "MIDBank Mutual fund 1 Equality Fund",
+   "base_n": 8,
+   "both_n": 1,
+   "both_win": 100.0
+  },
+  {
+   "name": "Misr Al Mostakbal Fund",
+   "base_n": 7,
+   "both_n": 3,
+   "both_win": 100.0
+  },
+  {
+   "name": "Suez Canal Bank Fund 1",
+   "base_n": 10,
+   "both_n": 1,
+   "both_win": 100.0
+  },
+  {
+   "name": "National Bank of Kuwait Egypt Balanced Fund Al Mizan",
+   "base_n": 8,
+   "both_n": 1,
+   "both_win": 100.0
+  },
+  {
+   "name": "Societe Arabe International De Banque 2",
+   "base_n": 9,
+   "both_n": 1,
+   "both_win": 100.0
+  },
+  {
+   "name": "Menthum Grow Fund EGX30 Capped",
+   "base_n": 2,
+   "both_n": 1,
+   "both_win": 100.0
+  },
+  {
+   "name": "ABC Bank Egypt Fund",
+   "base_n": 6,
+   "both_n": 1,
+   "both_win": 100.0
+  },
+  {
+   "name": "Commercial International Bank Mutual Fund 2 Istithmar",
+   "base_n": 22,
+   "both_n": 4,
+   "both_win": 75.0
+  },
+  {
+   "name": "Banque Du Caire Mutual Fund 1",
+   "base_n": 15,
+   "both_n": 3,
+   "both_win": 66.7
+  },
+  {
+   "name": "Faisal Islamic Bank of Egypt and Commercial International Bank Mutual Fund Al Aman",
+   "base_n": 29,
+   "both_n": 7,
+   "both_win": 57.1
+  },
+  {
+   "name": "Banque Misr Mutual Fund 4 Sharia Compliant Al Hessen",
+   "base_n": 24,
+   "both_n": 2,
+   "both_win": 50.0
+  }
+ ],
+ "latest_nav": {
+  "Arab African International Bank Fixed Income Fund Gozoor": {
+   "id": 2662,
+   "nav": 57.43985,
+   "date": "24 October 2026"
+  },
+  "Cairo Capital Fixed Income Fund Stream": {
+   "id": 6401,
+   "nav": 1.27,
+   "date": "21 October 2026"
+  },
+  "Azimut Target Maturity Fund Target 2029 USD": {
+   "id": 6146,
+   "nav": 10.28483,
+   "date": "21 October 2026"
+  },
+  "Beltone IPO Fund": {
+   "id": 6499,
+   "nav": 0.9927,
+   "date": "21 October 2026"
+  },
+  "Mubasher Capital Daily Cumulative Return Fund Cash Mubasher": {
+   "id": 2665,
+   "nav": 24.69,
+   "date": "21 October 2026"
+  },
+  "Weladna Charitable Investment Fund": {
+   "id": 6038,
+   "nav": 16.35748,
+   "date": "21 October 2026"
+  },
+  "Azimut Target Maturity Fund Target 2027 USD": {
+   "id": 5809,
+   "nav": 10.43779,
+   "date": "21 October 2026"
+  },
+  "CI Asset Management EGX33 Misr Index Sharia Equity Fund": {
+   "id": 6144,
+   "nav": 21.51,
+   "date": "20 October 2026"
+  },
+  "Mubasher Evolve Gold Fund Dahab Mubasher": {
+   "id": 6400,
+   "nav": 12.39,
+   "date": "20 October 2026"
+  },
+  "Mubasher Misr Equity Fund Mubasher Equity": {
+   "id": 6145,
+   "nav": 1.94234,
+   "date": "20 October 2026"
+  },
+  "Prime Holding 1st Equity Fund Prime Growth": {
+   "id": 6402,
+   "nav": 12.4789,
+   "date": "20 October 2026"
+  },
+  "Beltone EGX100 Fund Issuance 2 Meya Meya": {
+   "id": 6148,
+   "nav": 2.23258,
+   "date": "20 October 2026"
+  },
+  "Beltone EGX33 Shariah Issuance 1 Wafra": {
+   "id": 6149,
+   "nav": 2.08429,
+   "date": "20 October 2026"
+  },
+  "Cairo Capital Cumulative Fund Momentum": {
+   "id": 6410,
+   "nav": 13.84353,
+   "date": "20 October 2026"
+  },
+  "Granite Fixed Income Fund Issuance 1 EGP": {
+   "id": 6411,
+   "nav": 1.20112,
+   "date": "20 October 2026"
+  },
+  "PFI Money Market Fund Issuance 1 PFI Cashi": {
+   "id": 6412,
+   "nav": 11.9222,
+   "date": "20 October 2026"
+  },
+  "Misr Insurance Fund Hesn El Aman": {
+   "id": 4877,
+   "nav": 48.51768,
+   "date": "20 October 2026"
+  },
+  "Misr Insurance Capital Protection Fund Istsmar w Aman": {
+   "id": 5901,
+   "nav": 228.1001,
+   "date": "20 October 2026"
+  },
+  "CI Asset Management Equity Misr Equity": {
+   "id": 5903,
+   "nav": 36.51059,
+   "date": "20 October 2026"
+  },
+  "FAB Misr Al Awal Liquidity Fund": {
+   "id": 4114,
+   "nav": 556.2403,
+   "date": "20 October 2026"
+  },
+  "Horus Money Market Fund Horus": {
+   "id": 5906,
+   "nav": 21.49344,
+   "date": "20 October 2026"
+  },
+  "NI Capital Egypt Equity Fund Sahmy": {
+   "id": 5907,
+   "nav": 38.9657,
+   "date": "20 October 2026"
+  },
+  "GIG Egypt Takaful Shariah Money Market Fund Makaseb 1": {
+   "id": 5911,
+   "nav": 21.18467,
+   "date": "20 October 2026"
+  },
+  "GIG Egypt Takaful Shariah Money Market Fund Makaseb 2": {
+   "id": 5912,
+   "nav": 21.14638,
+   "date": "20 October 2026"
+  },
+  "Beltone B Alph Fund": {
+   "id": 6424,
+   "nav": 1.46387,
+   "date": "20 October 2026"
+  },
+  "Beltone B 35 EGX35 LV Fund": {
+   "id": 6426,
+   "nav": 1.3404,
+   "date": "20 October 2026"
+  },
+  "CIAM Gold Islamic Fund Gold Masr": {
+   "id": 6427,
+   "nav": 1.08497,
+   "date": "20 October 2026"
+  },
+  "Al Baraka Capital Islamic Manasek Fund": {
+   "id": 6428,
+   "nav": 111.62349,
+   "date": "20 October 2026"
+  },
+  "Gosour Equity Fund": {
+   "id": 6442,
+   "nav": 11.03,
+   "date": "20 October 2026"
+  },
+  "EFG Hermes Gold Fund": {
+   "id": 6443,
+   "nav": 91.08827,
+   "date": "20 October 2026"
+  },
+  "Al Baraka Bank Egypt Money Market Fund Al Barakat Certificate": {
+   "id": 5679,
+   "nav": 268.58,
+   "date": "20 October 2026"
+  },
+  "EFG Hermes Equity Fund Issuance 2 Index Sharia EGX33": {
+   "id": 6448,
+   "nav": 127.77,
+   "date": "20 October 2026"
+  },
+  "Maksab OZ Fixed Income Fund 2 EURO": {
+   "id": 6193,
+   "nav": 1.08558,
+   "date": "20 October 2026"
+  },
+  "EFG Hermes Fixed Income Fund Issuance 1 Money Market EGP": {
+   "id": 6450,
+   "nav": 114.581,
+   "date": "20 October 2026"
+  },
+  "CI Asset Management CI ctor Speciaized Funds Issuance 6 CI The Quant": {
+   "id": 6451,
+   "nav": 11.68449,
+   "date": "20 October 2026"
+  },
+  "CI Asset Management CI ctor Specialized Funds Issuance 1 Building": {
+   "id": 6197,
+   "nav": 19.57719,
+   "date": "20 October 2026"
+  },
+  "CI Asset Management CI ctor Specialized Funds Issuance 8 CI IPO": {
+   "id": 6453,
+   "nav": 11.72974,
+   "date": "20 October 2026"
+  },
+  "CI Asset Management CI ctor Specialized Funds Issuance 2 Technology": {
+   "id": 6198,
+   "nav": 18.70974,
+   "date": "20 October 2026"
+  },
+  "CI Asset Management CI ctor Speciaized Funds Issuance 7 CI 20HD": {
+   "id": 6454,
+   "nav": 11.33486,
+   "date": "20 October 2026"
+  },
+  "CI Asset Management CI ctor Specialized Funds Issuance 3 Export": {
+   "id": 6199,
+   "nav": 14.6893,
+   "date": "20 October 2026"
+  },
+  "Commercial International Bank Balanced Fund Takamol": {
+   "id": 5432,
+   "nav": 852.22,
+   "date": "20 October 2026"
+  },
+  "CI Asset Management CI ctor Specialized Funds Issuance 4 Consumption": {
+   "id": 6200,
+   "nav": 18.80934,
+   "date": "20 October 2026"
+  },
+  "CI Asset Management CI ctor Specialized Funds Issuance 5 E Payment": {
+   "id": 6201,
+   "nav": 21.14606,
+   "date": "20 October 2026"
+  },
+  "Arab African Investment Holding Bonds Fixed Income": {
+   "id": 6457,
+   "nav": 10.26013,
+   "date": "20 October 2026"
+  },
+  "Beltone Financial Fund Issuance 3": {
+   "id": 6202,
+   "nav": 1.67039,
+   "date": "20 October 2026"
+  },
+  "Beltone Real Estate Fund Issuance 4": {
+   "id": 6203,
+   "nav": 1.84681,
+   "date": "20 October 2026"
+  },
+  "Mubasher Fixed Income Fund Mubasher USD": {
+   "id": 6459,
+   "nav": 1.03262,
+   "date": "20 October 2026"
+  },
+  "Beltone Industrial Fund Issuance 5": {
+   "id": 6204,
+   "nav": 1.76763,
+   "date": "20 October 2026"
+  },
+  "Beltone Consumer Fund Issuance 6": {
+   "id": 6205,
+   "nav": 1.66729,
+   "date": "20 October 2026"
+  },
+  "Beltone Evolve Fadda Fund Fadda": {
+   "id": 6464,
+   "nav": 0.77164,
+   "date": "20 October 2026"
+  },
+  "Granite Fixed Income Fund Issuance 2 USD": {
+   "id": 6465,
+   "nav": 1.0234,
+   "date": "20 October 2026"
+  },
+  "Beltone EGX70 EWI Fund B 70": {
+   "id": 6466,
+   "nav": 1.38145,
+   "date": "20 October 2026"
+  },
+  "Azimut Fixed Income Fund Halan AZ": {
+   "id": 6211,
+   "nav": 1.85944,
+   "date": "20 October 2026"
+  },
+  "Bokra Precious Metals Investment Islamic Fund Issuance 1 El Shakmagya": {
+   "id": 6467,
+   "nav": 0.91526,
+   "date": "20 October 2026"
+  },
+  "Beltone Fixed Income Fund Issuance 1 USD": {
+   "id": 6212,
+   "nav": 1.18329,
+   "date": "20 October 2026"
+  },
+  "Mubasher Empire of Gold Fadda Fund Fadda Mubasher": {
+   "id": 6472,
+   "nav": 9.16325,
+   "date": "20 October 2026"
+  },
+  "Arab African Investment Holding AAIH Fund Issuance 3 Kenz EGX70 EWI": {
+   "id": 6479,
+   "nav": 93.83,
+   "date": "20 October 2026"
+  },
+  "Arab African Investment Holding AAIH Fund Issuance 4 Kenz EGX35 LV": {
+   "id": 6480,
+   "nav": 95.3,
+   "date": "20 October 2026"
+  },
+  "CI Asset Management Money Market Fund Misr Al Youmy": {
+   "id": 5976,
+   "nav": 19.91199,
+   "date": "20 October 2026"
+  },
+  "Target Second Fixed Income Fund USD": {
+   "id": 6488,
+   "nav": 101.17526,
+   "date": "20 October 2026"
+  },
+  "Arab African Investment Holding Bullion Precious Metals Fund Bullion": {
+   "id": 6489,
+   "nav": 10.09327,
+   "date": "20 October 2026"
+  },
+  "Azimut wilze Fixed Income Fund az wilzy": {
+   "id": 6491,
+   "nav": 1.01225,
+   "date": "20 October 2026"
+  },
+  "Suez Canal Bank Money Market Fund Al Suez Al youmi": {
+   "id": 5726,
+   "nav": 26.11199,
+   "date": "20 October 2026"
+  },
+  "Azimut Fixed Income Fund Idkhar AZ": {
+   "id": 5729,
+   "nav": 21.56219,
+   "date": "20 October 2026"
+  },
+  "El Ahly financial investments management and the Arab Contractors Pension Money Market fund Tamayoz": {
+   "id": 5988,
+   "nav": 17.29272,
+   "date": "20 October 2026"
+  },
+  "Arab African International Bank Money Market Fund Juman": {
+   "id": 2663,
+   "nav": 818.0606,
+   "date": "20 October 2026"
+  },
+  "NI Capital Money Market Fund Siula": {
+   "id": 5737,
+   "nav": 25.24678,
+   "date": "20 October 2026"
+  },
+  "Arab African Investment Holding AAIH Fund Issuance 2 Kenz EGX33 Shariah": {
+   "id": 6250,
+   "nav": 172.98,
+   "date": "20 October 2026"
+  },
+  "Arab African Investment Holding AAIH Fund Issuance 1 Kenz Foras Equity": {
+   "id": 6251,
+   "nav": 149.68,
+   "date": "20 October 2026"
+  },
+  "Banque Misr Money Market Fund Youm B Youm EUR": {
+   "id": 2675,
+   "nav": 11.97109,
+   "date": "20 October 2026"
+  },
+  "Banque Misr Money Market Fund Youm B Youm USD": {
+   "id": 2676,
+   "nav": 14.86302,
+   "date": "20 October 2026"
+  },
+  "Banque Misr Capital Guaranteed Fund Sandouk El Umr": {
+   "id": 2678,
+   "nav": 14.91,
+   "date": "20 October 2026"
+  },
+  "Afaaq Securities Investment Fund": {
+   "id": 5751,
+   "nav": 271.239,
+   "date": "20 October 2026"
+  },
+  "Faisal Islamic Bank of Egypt and Commercial International Bank Mutual Fund Al Aman": {
+   "id": 2680,
+   "nav": 525.76,
+   "date": "20 October 2026"
+  },
+  "Azimut Equity Opportunities Fund Opportunities AZ": {
+   "id": 5753,
+   "nav": 50.24222,
+   "date": "20 October 2026"
+  },
+  "Bank of Alexandria Fixed Income Fund": {
+   "id": 2688,
+   "nav": 62.67154,
+   "date": "20 October 2026"
+  },
+  "BANK NXT Money Market Fund": {
+   "id": 2689,
+   "nav": 27.33207,
+   "date": "20 October 2026"
+  },
+  "Bank of Alexandria 2 Money Market Fund": {
+   "id": 2691,
+   "nav": 103.2782,
+   "date": "20 October 2026"
+  },
+  "First Abu Dhabi Bank Money Market Fund Modkharaty": {
+   "id": 2692,
+   "nav": 77.7774,
+   "date": "20 October 2026"
+  },
+  "Credit Agricole Egypt 3 Money Market Fund": {
+   "id": 2696,
+   "nav": 1160.38,
+   "date": "20 October 2026"
+  },
+  "QNB Al Ahli Mutual Fund 1 Themar": {
+   "id": 2704,
+   "nav": 999.846,
+   "date": "20 October 2026"
+  },
+  "Beltone Fixed Income Fund B Secure": {
+   "id": 6035,
+   "nav": 2.02863,
+   "date": "20 October 2026"
+  },
+  "MIDBank Mutual Fund 2 Money Market fund": {
+   "id": 2708,
+   "nav": 1057.07,
+   "date": "20 October 2026"
+  },
+  "Banque Misr Mutual Fund 3": {
+   "id": 2709,
+   "nav": 33.46,
+   "date": "20 October 2026"
+  },
+  "Iskan Insurance Money Market Fund Kol Youm": {
+   "id": 6037,
+   "nav": 20.30077,
+   "date": "20 October 2026"
+  },
+  "Banque Misr Mutual Fund 4 Sharia Compliant Al Hessen": {
+   "id": 2710,
+   "nav": 23.14,
+   "date": "20 October 2026"
+  },
+  "Arab Investment Bank 3 Balanced Fund Sanady": {
+   "id": 2712,
+   "nav": 27.50615,
+   "date": "20 October 2026"
+  },
+  "Wethaq Money Market Fund Cumulative and Periodic Income Fund Wethaq": {
+   "id": 5784,
+   "nav": 24.1175,
+   "date": "20 October 2026"
+  },
+  "Banque Misr Mutual Fund 1": {
+   "id": 2719,
+   "nav": 19.93,
+   "date": "20 October 2026"
+  },
+  "El Fanar Money Market fund": {
+   "id": 6047,
+   "nav": 180.22354,
+   "date": "20 October 2026"
+  },
+  "Banque Misr Mutual Fund 2": {
+   "id": 2720,
+   "nav": 22.67,
+   "date": "20 October 2026"
+  },
+  "National Bank of Kuwait Egypt Islamic Fund Al Hayah": {
+   "id": 2722,
+   "nav": 90.80175,
+   "date": "20 October 2026"
+  },
+  "National Bank of Kuwait Egypt Money Market Fund Ishraq": {
+   "id": 2723,
+   "nav": 71.85412,
+   "date": "20 October 2026"
+  },
+  "National Bank of Kuwait Egypt Namaa": {
+   "id": 2724,
+   "nav": 78.26389,
+   "date": "20 October 2026"
+  },
+  "Societe Arabe International De Banque Mutual Fund 3 Al Rabeh": {
+   "id": 3748,
+   "nav": 466.04453,
+   "date": "20 October 2026"
+  },
+  "CI Asset Management Fixed Income Fund Kol Shahr": {
+   "id": 5797,
+   "nav": 1.89613,
+   "date": "20 October 2026"
+  },
+  "Civil Aviation Finance Holding Company Money Market Fund Sarwaty": {
+   "id": 5798,
+   "nav": 228.54678,
+   "date": "20 October 2026"
+  },
+  "National Bank of Egypt Mutual Fund 9 Fixed Income El Wa ed": {
+   "id": 2727,
+   "nav": 2489.898,
+   "date": "20 October 2026"
+  },
+  "National Bank of Egypt Mutual Fund 4 Money Market": {
+   "id": 2730,
+   "nav": 303.79028,
+   "date": "20 October 2026"
+  },
+  "ABK Egypt Equity Fund": {
+   "id": 2732,
+   "nav": 405.16,
+   "date": "20 October 2026"
+  },
+  "ABK Egypt Money Market Fund": {
+   "id": 2733,
+   "nav": 74.78,
+   "date": "20 October 2026"
+  },
+  "Beltone Evolve Gold Fund Sabayek": {
+   "id": 6061,
+   "nav": 1.68538,
+   "date": "20 October 2026"
+  },
+  "Pharos Investment Fund 1": {
+   "id": 2734,
+   "nav": 788.48,
+   "date": "20 October 2026"
+  },
+  "Bareeq Fixed Income Fund": {
+   "id": 6062,
+   "nav": 217.87055,
+   "date": "20 October 2026"
+  },
+  "Charitable Investment Fund in Support of Sports Egyptian Sports Fund": {
+   "id": 6063,
+   "nav": 202.3303,
+   "date": "20 October 2026"
+  },
+  "Export Development Bank of Egypt 3 Konooz": {
+   "id": 2736,
+   "nav": 847.1073,
+   "date": "20 October 2026"
+  },
+  "Delta Life Assurance Fund": {
+   "id": 5808,
+   "nav": 210.01905,
+   "date": "20 October 2026"
+  },
+  "National Investment Charity Education Fund": {
+   "id": 6064,
+   "nav": 203.5639,
+   "date": "20 October 2026"
+  },
+  "Housing and Development Bank Money Market Fund Mawared": {
+   "id": 2739,
+   "nav": 73.369,
+   "date": "20 October 2026"
+  },
+  "Sanabel Equity Fund Islamic Sharia Compliant": {
+   "id": 2742,
+   "nav": 816.55827,
+   "date": "20 October 2026"
+  },
+  "Egyptian Gulf Bank Money Market Fund Tharaa": {
+   "id": 2744,
+   "nav": 46.638,
+   "date": "20 October 2026"
+  },
+  "National Bank of Egypt Mutual Fund 7 Multi Asset Fund AlAhly Qeema": {
+   "id": 2745,
+   "nav": 336.01,
+   "date": "20 October 2026"
+  },
+  "NI Capital Fixed Income Fund 15 30": {
+   "id": 5820,
+   "nav": 22.34883,
+   "date": "20 October 2026"
+  },
+  "GIG Insurance Money Market Fund": {
+   "id": 5822,
+   "nav": 19.4285,
+   "date": "20 October 2026"
+  },
+  "Misr Takaful Insurance Money Market Fund": {
+   "id": 5823,
+   "nav": 217.74965,
+   "date": "20 October 2026"
+  },
+  "Aman Money Market Fund": {
+   "id": 5844,
+   "nav": 1.90196,
+   "date": "20 October 2026"
+  },
+  "Odin Money Market Fund Odin 4": {
+   "id": 6375,
+   "nav": 1.28734,
+   "date": "20 October 2026"
+  },
+  "El Ahly Financial Investment Management Evolve Investment Holding Fund Dahab": {
+   "id": 6120,
+   "nav": 179.69518,
+   "date": "20 October 2026"
+  },
+  "Odin Equity Fund Trend": {
+   "id": 6376,
+   "nav": 1.24429,
+   "date": "20 October 2026"
+  },
+  "Maksab OZ Fixed Income Fund 1 USD": {
+   "id": 6121,
+   "nav": 1.19147,
+   "date": "20 October 2026"
+  },
+  "NI Capital Egypt Equity Fund Sahmy 70": {
+   "id": 6387,
+   "nav": 19.0511,
+   "date": "20 October 2026"
+  },
+  "Target First Fixed Income Fund TFFIF": {
+   "id": 6391,
+   "nav": 12.10082,
+   "date": "20 October 2026"
+  },
+  "Zaldi Money Market Fund Zaldi Star": {
+   "id": 6392,
+   "nav": 112.63525,
+   "date": "20 October 2026"
+  },
+  "Diamond Money Market Fund": {
+   "id": 5882,
+   "nav": 220.01257,
+   "date": "20 October 2026"
+  },
+  "Azimut Fixed Income Sharia Compliant Thndr AZ": {
+   "id": 6403,
+   "nav": 1.34706,
+   "date": "19 October 2026"
+  },
+  "Allianz Life Insurance Money Market Fund Liquidity": {
+   "id": 5902,
+   "nav": 21.25085,
+   "date": "19 October 2026"
+  },
+  "The United Bank Money Market Fund Rakhaa": {
+   "id": 3889,
+   "nav": 152.33,
+   "date": "19 October 2026"
+  },
+  "Nasser Social Bank and Azimut Egypt Islamic Money Market fund": {
+   "id": 5958,
+   "nav": 18.63935,
+   "date": "19 October 2026"
+  },
+  "Azimut Fixed Income Fund AZ ValU": {
+   "id": 5959,
+   "nav": 1.82927,
+   "date": "19 October 2026"
+  },
+  "Azimut Gold Islamic 1 fund Gold AZ": {
+   "id": 5989,
+   "nav": 24.02858,
+   "date": "19 October 2026"
+  },
+  "Ataa Charitable Investment Fund": {
+   "id": 5750,
+   "nav": 15.80509,
+   "date": "18 October 2026"
+  },
+  "Faisal Islamic Bank of Egypt Mutual Fund": {
+   "id": 2701,
+   "nav": 557.74,
+   "date": "18 October 2026"
+  },
+  "Azimut Equity opportunities Fund Opportunities Shariah AZ": {
+   "id": 6122,
+   "nav": 1.8991,
+   "date": "18 October 2026"
+  },
+  "Azimut Fixed Income Fund Maashy AZ": {
+   "id": 6429,
+   "nav": 3018.92,
+   "date": "17 October 2026"
+  },
+  "Basata Money Market Fund": {
+   "id": 6435,
+   "nav": 1.18946,
+   "date": "17 October 2026"
+  },
+  "Zaldi El Masry Accumulative and Periodic Return Parental Investment Fund": {
+   "id": 6456,
+   "nav": 12.79,
+   "date": "17 October 2026"
+  },
+  "Aspire Capital Holding for Financial Investments Money Market Fund Rawajj": {
+   "id": 6473,
+   "nav": 112.67269,
+   "date": "17 October 2026"
+  },
+  "Beltone Fixed Income Fund Issuance 3 B Yawmy": {
+   "id": 6483,
+   "nav": 1.04679,
+   "date": "17 October 2026"
+  },
+  "Arab African International Bank Mutual Fund Shield": {
+   "id": 2664,
+   "nav": 832.09,
+   "date": "17 October 2026"
+  },
+  "ABC Bank Money Market Fund Mazaya": {
+   "id": 2671,
+   "nav": 76.66665,
+   "date": "17 October 2026"
+  },
+  "Arab Investment Bank 2 Helal": {
+   "id": 2677,
+   "nav": 385.44417,
+   "date": "17 October 2026"
+  },
+  "Arope Money Market Fund": {
+   "id": 5239,
+   "nav": 465.07,
+   "date": "17 October 2026"
+  },
+  "ABC Bank Egypt Money Market Fund": {
+   "id": 2681,
+   "nav": 755.7,
+   "date": "17 October 2026"
+  },
+  "Misr Life Insurance Money Market Fund": {
+   "id": 5762,
+   "nav": 23.76503,
+   "date": "17 October 2026"
+  },
+  "Sarwa Life Insurance Money Market Fund": {
+   "id": 5765,
+   "nav": 2.43656,
+   "date": "17 October 2026"
+  },
+  "QNB Al Ahli Fund 3 Tadawol": {
+   "id": 2715,
+   "nav": 1017.44124,
+   "date": "17 October 2026"
+  },
+  "Agricultural Bank of Egypt Fund 2 Al Hasad Al Yaumy": {
+   "id": 2718,
+   "nav": 75.28471,
+   "date": "17 October 2026"
+  },
+  "Attijariwafa Bank Money Market Fund Raseedy El Youm": {
+   "id": 5547,
+   "nav": 4060.58,
+   "date": "17 October 2026"
+  },
+  "FAB Capital Preservation Fund Etm nan": {
+   "id": 5556,
+   "nav": 350.17389,
+   "date": "17 October 2026"
+  },
+  "Societe Arabe Internationale De Banque Money Market Fund Youmy": {
+   "id": 4533,
+   "nav": 49.87467,
+   "date": "17 October 2026"
+  },
+  "Housing and Development Bank Fund Al Tameer": {
+   "id": 2743,
+   "nav": 916.21,
+   "date": "17 October 2026"
+  },
+  "FAB Misr Balanced Fund Ezdhar": {
+   "id": 4537,
+   "nav": 479.6919,
+   "date": "17 October 2026"
+  },
+  "Banque Du Caire Fixed Income Fund Al Thabet": {
+   "id": 4049,
+   "nav": 528.54,
+   "date": "17 October 2026"
+  },
+  "CIAM Fixed Income Fund Misr Al Yomy USD": {
+   "id": 6378,
+   "nav": 10.7074,
+   "date": "17 October 2026"
+  },
+  "KFH Sharia Compliant Equity Fund Alpha": {
+   "id": 4086,
+   "nav": 127.52668,
+   "date": "17 October 2026"
+  },
+  "Egyptian Arab Land Bank Fund Al Masry": {
+   "id": 4087,
+   "nav": 480.727,
+   "date": "17 October 2026"
+  },
+  "Aspire Capital Holding for Financial Investments Equity Fund Issuance 1 Wafra Plus": {
+   "id": 6474,
+   "nav": 11.09,
+   "date": "15 October 2026"
+  },
+  "Beltone Fixed Income Fund Issuance 2 B Cobonat": {
+   "id": 6482,
+   "nav": 1.05044,
+   "date": "15 October 2026"
+  },
+  "Pioneers Fund 1 Al Raeed": {
+   "id": 2666,
+   "nav": 281.25,
+   "date": "15 October 2026"
+  },
+  "Traded Equity Fund Insight": {
+   "id": 2670,
+   "nav": 11.6874,
+   "date": "15 October 2026"
+  },
+  "Bank of Alexandria Mutual Fund 1": {
+   "id": 2690,
+   "nav": 1788.77,
+   "date": "15 October 2026"
+  },
+  "Al Baraka Bank Egypt fund Al Baraka Certificate": {
+   "id": 2693,
+   "nav": 630.46,
+   "date": "15 October 2026"
+  },
+  "Credit Agricole Egypt Mutual Fund 1": {
+   "id": 2694,
+   "nav": 1932.36,
+   "date": "15 October 2026"
+  },
+  "Credit Agricole Egypt Mutual Fund 2": {
+   "id": 2695,
+   "nav": 832.03,
+   "date": "15 October 2026"
+  },
+  "Banque Du Caire Mutual Fund 1": {
+   "id": 2697,
+   "nav": 46.64,
+   "date": "15 October 2026"
+  },
+  "Egyptian Gulf Bank Mutual Fund": {
+   "id": 2698,
+   "nav": 1373.84,
+   "date": "15 October 2026"
+  },
+  "Egyptian Agricultural Bank Fund 1 Al Massy": {
+   "id": 2703,
+   "nav": 76.63,
+   "date": "15 October 2026"
+  },
+  "Export Development Bank of Egypt Fund 1 Al Khabir": {
+   "id": 2706,
+   "nav": 660.72,
+   "date": "15 October 2026"
+  },
+  "MIDBank Mutual fund 1 Equality Fund": {
+   "id": 2707,
+   "nav": 222.03,
+   "date": "15 October 2026"
+  },
+  "Misr Al Mostakbal Fund": {
+   "id": 2711,
+   "nav": 84.85,
+   "date": "15 October 2026"
+  },
+  "National Bank of Egypt Mutual Fund 3": {
+   "id": 2713,
+   "nav": 616.22,
+   "date": "15 October 2026"
+  },
+  "Suez Canal Bank Fund 1": {
+   "id": 2714,
+   "nav": 1963.74,
+   "date": "15 October 2026"
+  },
+  "Credit Agricole Egypt Fund 4 Balanced Fund Al Thiqa": {
+   "id": 2716,
+   "nav": 889.63,
+   "date": "15 October 2026"
+  },
+  "Agricultural Bank of Egypt and Banque du Caire Fund Al Wefak": {
+   "id": 2717,
+   "nav": 46.47672,
+   "date": "15 October 2026"
+  },
+  "Naeem Misr Islamic Fund": {
+   "id": 2721,
+   "nav": 48.33,
+   "date": "15 October 2026"
+  },
+  "National Bank of Kuwait Egypt Balanced Fund Al Mizan": {
+   "id": 2725,
+   "nav": 12.5725,
+   "date": "15 October 2026"
+  },
+  "National Bank of Egypt Mutual Fund 6 and Al Baraka Bank Egypt fund Bashayer": {
+   "id": 2726,
+   "nav": 391.12,
+   "date": "15 October 2026"
+  },
+  "National Bank of Egypt Mutual Fund 1": {
+   "id": 2728,
+   "nav": 167.36,
+   "date": "15 October 2026"
+  },
+  "National Bank of Egypt Mutual Fund 2": {
+   "id": 2729,
+   "nav": 302.75,
+   "date": "15 October 2026"
+  },
+  "National Bank of Egypt Mutual Fund 5": {
+   "id": 2731,
+   "nav": 54.24,
+   "date": "15 October 2026"
+  },
+  "National Bank of Egypt and Misr for Life Insurance Al Ahly Hayah": {
+   "id": 5807,
+   "nav": 353.25,
+   "date": "15 October 2026"
+  },
+  "GIG Insurance Egypt Equity Fund": {
+   "id": 2737,
+   "nav": 1369.81,
+   "date": "15 October 2026"
+  },
+  "Societe Arabe International De Banque 2": {
+   "id": 2741,
+   "nav": 662.65626,
+   "date": "15 October 2026"
+  },
+  "Al Baraka Bank Investment Fund Balanced": {
+   "id": 2747,
+   "nav": 303.75,
+   "date": "15 October 2026"
+  },
+  "Fawry Money Market Liquidity Fund": {
+   "id": 5819,
+   "nav": 2.2002,
+   "date": "15 October 2026"
+  },
+  "Menthum Money Market Fund": {
+   "id": 5843,
+   "nav": 1.9498,
+   "date": "15 October 2026"
+  },
+  "CIAM invest stocks index S P EGX ESG Misr Green Sustainability Fund": {
+   "id": 6379,
+   "nav": 13.98686,
+   "date": "15 October 2026"
+  },
+  "Menthum Grow Fund EGX30 Capped": {
+   "id": 6384,
+   "nav": 1.61502,
+   "date": "15 October 2026"
+  },
+  "Azimut Target Maturity Fund Target 2030 USD": {
+   "id": 6404,
+   "nav": 10.17334,
+   "date": "12 October 2026"
+  },
+  "Menthum Fixed Income Fund USD": {
+   "id": 6157,
+   "nav": 1.1069,
+   "date": "12 October 2026"
+  },
+  "Azimut Target Maturity Fund Target 2033 USD": {
+   "id": 6452,
+   "nav": 10.29584,
+   "date": "12 October 2026"
+  },
+  "ABC Bank Egypt Fund": {
+   "id": 2738,
+   "nav": 558.94,
+   "date": "05 October 2026"
+  },
+  "Commercial International Bank Fund 4 Hemaya": {
+   "id": 2682,
+   "nav": 816.28,
+   "date": "30 September 2026"
+  },
+  "Arab Bank Egypt Money Market Fund Yomaty": {
+   "id": 2667,
+   "nav": 75.02431,
+   "date": "26 September 2026"
+  },
+  "HSBC Money Market Fund Kol Youm": {
+   "id": 2669,
+   "nav": 787.52291,
+   "date": "23 September 2026"
+  },
+  "Suez Canal Bank 2 Equity Fund Al Agial": {
+   "id": 2672,
+   "nav": 74.42227,
+   "date": "23 September 2026"
+  },
+  "Banque Misr Money Market Fund Youm B Youm EGP": {
+   "id": 2674,
+   "nav": 115.84231,
+   "date": "23 September 2026"
+  },
+  "KFH Sharia Compliant Money Market Fund Tharwa": {
+   "id": 2679,
+   "nav": 635.875,
+   "date": "23 September 2026"
+  },
+  "QNB Al Ahli 2 Balanced Fund Tawazon": {
+   "id": 2673,
+   "nav": 853.5973,
+   "date": "20 September 2026"
+  },
+  "Emirates NBD Money Market Fund Mazid": {
+   "id": 5635,
+   "nav": 1500.76,
+   "date": "19 September 2026"
+  },
+  "Banque Du Caire 2 Money Market Fund El Kahera El Yawmi": {
+   "id": 2668,
+   "nav": 74.99909,
+   "date": "19 September 2026"
+  },
+  "Commercial International Bank Money Market Fund 1 Osoul": {
+   "id": 2684,
+   "nav": 1117.6,
+   "date": "19 September 2026"
+  },
+  "Commercial International Bank Fixed Income Fund Thabat": {
+   "id": 2685,
+   "nav": 613.69,
+   "date": "19 September 2026"
+  },
+  "Export Development Bank of Egypt 2 Money Market Fund": {
+   "id": 2687,
+   "nav": 961.2309,
+   "date": "19 September 2026"
+  },
+  "Arab African International Bank Fund Guard": {
+   "id": 5555,
+   "nav": 37.78839,
+   "date": "19 September 2026"
+  },
+  "ADIB Egypt Money Market Fund El Naharda": {
+   "id": 5423,
+   "nav": 422.9489,
+   "date": "17 September 2026"
+  },
+  "Commercial International Bank Mutual Fund 2 Istithmar": {
+   "id": 2683,
+   "nav": 1092.05,
+   "date": "17 September 2026"
+  },
+  "Azimut Equity Opportunities Fund Az LV": {
+   "id": 6422,
+   "nav": 1.47982,
+   "date": "15 September 2026"
+  },
+  "ABC Bank Equity Fund 1": {
+   "id": 2686,
+   "nav": 699.17,
+   "date": "03 September 2026"
+  },
+  "Azimut Target Maturity Fund Target 2025 EGP": {
+   "id": 5810,
+   "nav": 14.68549,
+   "date": "02 November 2025"
+  },
+  "Azimut Target Maturity Fund Target 2025 USD": {
+   "id": 5975,
+   "nav": 11.45725,
+   "date": "14 October 2025"
+  },
+  "MIDBank Mutual Fund 3 Wafi Fund of Funds": {
+   "id": 2746,
+   "nav": 16.092,
+   "date": "22 December 2024"
+  },
+  "Arab Land Direct Investment Fund": {
+   "id": 2735,
+   "nav": 1645.52,
+   "date": "21 January 2023"
+  },
+  "Societe Arab International De Banque 1": {
+   "id": 2740,
+   "nav": 190.33,
+   "date": "21 February 2021"
+  },
+  "Orient Trust Capital growth Fund 1": {
+   "id": 2705,
+   "nav": 1143.62,
+   "date": "03 January 2013"
+  },
+  "HSBC Egypt Mutual Fund Isteqrar": {
+   "id": 2702,
+   "nav": 102.68,
+   "date": "14 March 2011"
+  },
+  "Acumen Iqtinas Equities Fixed Income Fund": {
+   "id": 6496,
+   "nav": 0,
+   "date": ""
+  },
+  "Naeem Real Estate Fund": {
+   "id": 6036,
+   "nav": 0,
+   "date": ""
+  }
+ },
+ "log_tail": [
+  "funds listed: 218",
+  "candidates by keywords: 216",
+  "fetched 20/216",
+  "fetched 40/216",
+  "fetched 80/216",
+  "fetched 100/216",
+  "fetched 120/216",
+  "fetched 140/216",
+  "fetched 160/216",
+  "fetched 180/216",
+  "fetched 200/216",
+  "funds with history: 162"
+ ]
+}
