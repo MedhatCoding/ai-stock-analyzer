@@ -1,0 +1,51 @@
+# 🏦 مختبر الصناديق: باك تست واحد على تاريخ NAV من مباشر — هل فلاتر السعر (ستوكاستيك + SMA100) بتحسن إشارات دخول الصناديق؟
+# بيشتغل مرة واحدة عند تعديل fund_lab.py نفسه (أو يدويًا من Actions) — مش جدول متكرر، صفر استهلاك إضافي على أي API
+name: 🏦 Fund Lab — باك تست صناديق الاستثمار من مباشر
+on:
+  push:
+    branches: [main]
+    paths: ["fund_lab.py"]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: fund-lab
+  cancel-in-progress: true
+jobs:
+  lab:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 🏦 تشغيل باك تست الصناديق
+        continue-on-error: true
+        shell: bash
+        run: |
+          {
+            python3 fund_lab.py
+          } > /tmp/lab.log 2>&1
+      - name: 🖨️ عرض اللوج
+        if: always()
+        shell: bash
+        run: cat /tmp/lab.log 2>/dev/null || echo "مفيش لوج"
+      - name: 📤 نشر النتائج على فرع fundbt
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/pub
+          if [ -f fund_bt.json ]; then
+            cp fund_bt.json /tmp/pub/fund_bt.json
+            MSG="chore: 🏦 نتائج باك تست الصناديق [skip ci]"
+          else
+            cp /tmp/lab.log /tmp/pub/lab-debug.txt 2>/dev/null || echo "مفيش لوج" > /tmp/pub/lab-debug.txt
+            MSG="chore: 🏦 تشخيص فشل مختبر الصناديق [skip ci]"
+          fi
+          cd /tmp/pub
+          git init -q -b fundbt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -qm "$MSG"
+          git push -qf "https://x-access-token:${GH_TOKEN}@github.com/MedhatCoding/mistral-Mi.git" fundbt
+          echo "✅ اتنشر على فرع fundbt"
