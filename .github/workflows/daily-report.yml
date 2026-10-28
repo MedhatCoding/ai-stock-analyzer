@@ -7,7 +7,7 @@
 name: التقرير اليومي على تليجرام
 on:
   schedule:
-    - cron: "0 8,9 * * 0-4" # 8 و9 صباحًا UTC — بوابة القاهرة 11:00 بتشيل فرق الصيف والشتاء
+    - cron: "20 7,9,11,13 * * 0-4" # 4 محاولات يوميًا (بتوقيت UTC) — مع قفل "مرة واحدة في اليوم" تحت
   push:
     branches: [main]
     paths: [".github/workflows/daily-report.yml"]
@@ -15,6 +15,7 @@ on:
 
 permissions:
   contents: read
+  actions: write
 concurrency:
   group: daily-report
   cancel-in-progress: false
@@ -24,18 +25,27 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: بوابة توقيت القاهرة
+      - name: قفل الإرسال اليومي (مرة واحدة في اليوم مهني التأخير)
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          CH="$(TZ=Africa/Cairo date +%H)"
           EVENT="${{ github.event_name }}"
-          FORCE="false"
-          if [ "$EVENT" != "schedule" ]; then FORCE="true"; fi
-          echo "ساعة القاهرة: $CH · نوع التشغيل: $EVENT · وضع الاختبار الفوري: $FORCE"
-          SKIP="true"
-          if [ "$CH" = "11" ] || [ "$FORCE" = "true" ]; then SKIP="false"; fi
-          echo "SKIP=$SKIP" >> "$GITHUB_ENV"
+          TODAY="$(TZ=Africa/Cairo date +%F)"
+          if [ "$EVENT" != "schedule" ]; then
+            echo "تشغيل يدوي/تجريبي ($EVENT) — إرسال مباشر بدون قفل"
+            echo "SKIP=false" >> "$GITHUB_ENV"; exit 0
+          fi
+          LAST="$(gh api "repos/${{ github.repository }}/actions/variables/LAST_REPORT_DATE" --jq .value 2>/dev/null || echo "")"
+          echo "اليوم: $TODAY · آخر يوم اتبعت فيه: ${LAST:-مفيش}"
+          if [ "$LAST" = "$TODAY" ]; then
+            echo "ℹ️ التقرير اتبعت خلاص النهاردة ($TODAY) — تخطي"
+            echo "SKIP=true" >> "$GITHUB_ENV"
+          else
+            echo "لسه مبعتناش النهاردة — هيتم الإرسال"
+            echo "SKIP=false" >> "$GITHUB_ENV"
+          fi
 
       - name: تحميل الكود
         if: env.SKIP == 'false'
@@ -263,3 +273,19 @@ jobs:
           set -euo pipefail
           echo "🧠 شغّل المحرك على $(ls -1 hist.json >/dev/null 2>&1 && echo 'تاريخ كامل' || echo 'بدون تاريخ')..."
           node report.js
+
+      - name: تحديث علامة اليوم (منع تكرار الإرسال)
+        if: env.SKIP == 'false' && github.event_name == 'schedule'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TODAY="$(TZ=Africa/Cairo date +%F)"
+          if gh api -X PATCH "repos/${{ github.repository }}/actions/variables/LAST_REPORT_DATE" -f value="$TODAY" 2>/dev/null; then
+            echo "✅ علامة اليوم اتحدثت: $TODAY"
+          elif gh api "repos/${{ github.repository }}/actions/variables/LAST_REPORT_DATE" >/dev/null 2>&1; then
+            echo "⚠️ تعذر تحديث العلامة"
+          else
+            gh api "repos/${{ github.repository }}/actions/variables" -f name=LAST_REPORT_DATE -f value="$TODAY" >/dev/null && echo "✅ اتعملت علامة جديدة: $TODAY"
+          fi
