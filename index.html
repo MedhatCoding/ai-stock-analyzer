@@ -3270,37 +3270,31 @@ $("gh-restore").onclick=async function(){
     o.innerHTML='<span class="spin"></span>جارٍ تنزيل النسخة المتزامنة...';
     /* 3 مصادر بالتتابع: GitHub API (بالتوكن — مضمون ومتجدد فورًا) ← jsDelivr (CDN مش بيتحجب) ← raw
        (ساعات بيتحجب في مصر ويرجّع صفحة HTML — عشان كده بنتحقق إن المحتوى base64 قبل فك التشفير) */
-    /* v3.15: الملف بيتخزن تاريخيًا بايتات خام (ترميز مزدوج قديم) — بنقراه arrayBuffer ونتعامل مع الاتنين */
+    /* v3.16: الصيغتان (خام تاريخيًا / base64 نص) + إصلاحان: header التوكن بيتنبعت بس لمصدر
+       الـ API (jsDelivr بيكسر الـ CORS مع Authorization)، ومصدر الـ API بيتفك ترميزه مرتين */
     const pat=store.get("egx_ghpat","");
     const srcs=[
-      {u:"https://cdn.jsdelivr.net/gh/MedhatCoding/mistral-Mi@main/portfolio.dat",api:false},
-      {u:"https://raw.githubusercontent.com/MedhatCoding/mistral-Mi/main/portfolio.dat",api:false},
+      {u:"https://cdn.jsdelivr.net/gh/MedhatCoding/mistral-Mi@main/portfolio.dat"},
+      {u:"https://raw.githubusercontent.com/MedhatCoding/mistral-Mi/main/portfolio.dat"},
       {u:"https://api.github.com/repos/MedhatCoding/mistral-Mi/contents/portfolio.dat",api:true}
     ];
+    const b64ToBytes=function(s){const bin=atob(String(s).replace(/\s/g,""));const a=new Uint8Array(bin.length);for(let q=0;q<bin.length;q++)a[q]=bin.charCodeAt(q);return a};
+    const looksB64=function(a){for(let q=0;q<a.length;q++){const b=a[q];if(!((b>=65&&b<=90)||(b>=97&&b<=122)||(b>=48&&b<=57)||b===43||b===47||b===61||b===10||b===13))return false}return true};
     let bytes=null,lastErr=null;
     for(let i=0;i<srcs.length;i++){
       try{
         const hh={cache:"no-store"};
-        if(pat)hh.headers={Authorization:"Bearer "+pat,Accept:"application/vnd.github+json"};
+        if(pat&&srcs[i].api)hh.headers={Authorization:"Bearer "+pat,Accept:"application/vnd.github+json"};
         const r=await fetch(srcs[i].u+(srcs[i].api?"":"?cb="+Date.now()),hh);
         if(!r.ok){lastErr=(r.status===404?"مفيش نسخة متزامنة على GitHub بعد":"HTTP "+r.status);continue}
         if(srcs[i].api){
           const j=JSON.parse(await r.text());
-          const bin=atob(String(j.content||"").replace(/\s/g,""));
-          const a=new Uint8Array(bin.length);
-          for(let q=0;q<bin.length;q++)a[q]=bin.charCodeAt(q);
-          bytes=a;
+          const fb=b64ToBytes(j.content||"");
+          bytes=looksB64(fb)?b64ToBytes(new TextDecoder().decode(fb)):fb;
         }else{
           const raw=new Uint8Array(await r.arrayBuffer());
           if(raw.length<29)throw new Error("النسخة صغيرة زيادة عن اللزوم");
-          let isB64=true;
-          for(let q=0;q<raw.length;q++){const b=raw[q];if(!((b>=65&&b<=90)||(b>=97&&b<=122)||(b>=48&&b<=57)||b===43||b===47||b===61||b===10||b===13)){isB64=false;break}}
-          if(isB64){
-            const bin=atob(new TextDecoder().decode(raw).replace(/\s/g,""));
-            const a=new Uint8Array(bin.length);
-            for(let q=0;q<bin.length;q++)a[q]=bin.charCodeAt(q);
-            bytes=a;
-          }else bytes=raw;
+          bytes=looksB64(raw)?b64ToBytes(new TextDecoder().decode(raw)):raw;
         }
         break;
       }catch(e){lastErr=e.message}
@@ -3708,6 +3702,7 @@ init();
    تحديث v3.13 (2026-10-28) — 💾 حفظ تلقائي فوري لكل التوكنات (تليجرام/GitHub/oanor) مع كل كتابة من غير زرار + زرار 👁 كشف القيمة + تنبيه لو المتصفح بيمسح بيانات الموقع
    تحديث v3.14 (2026-10-28) — 🧯 حماية النسخة الاحتياطية من المسح بنسخة فاضية + المزامنة بقت تشمل كل الإعدادات والتوكنات (AI/GitHub/oanor/تليجرام) مشفرة + استيراد المحفظة من نص (تليجرام) + حفظ تلقائي لحقول الذكاء الاصطناعي
    تحديث v3.15 (2026-10-28) — 🔧 إصلاح جذري: رفع المزامنة كان بيعمل ترميز مزدوج (الملف بيتبعت بايتات خام بدل base64) ففك التشفير فاشل في التطبيق والتقرير اليومي — اتصلح الرفع والاستعادة تقرا الصيغتين (خام أو base64)
+   تحديث v3.16 (2026-10-28) — 🔧 إصلاح استعادة: header التوكن بيتنبعت لمصدر GitHub API بس (كان بيكسر CORS مع jsDelivr) + فك الترميز المزدوج لمصدر الـ API
    قراءة من الكاش المحلي (WATCH_CACHE) فقط — صفر استدعاءات API جديدة.
    كتلة مستقلة: لا تعدّل ولا تعيد تعريف أي كود قائم.
    حذفها = حذف الكتلة كلها، بدون أي أثر على باقي التطبيق. ═══ */
