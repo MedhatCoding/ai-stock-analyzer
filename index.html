@@ -3595,6 +3595,7 @@ init();
    تحديث v3.4 (2026-10-27) — كروت أجمل للعربي: الاسم رأس الكارت بخط كبير والرمز صغير جنبه + خطوط أكبر للقيم + دمج الإضافات المتكررة (سهم/صندوق موجود = تجميع بالمتوسط المرجح)
    تحديث v3.5 (2026-10-27) — 🧹 شيل قسم الصناديق المكرر نهائيًا + إصلاح علامة إغلاق كانت بتكسر الكتلة + 💡 إشارة المركز الحالي (الكمية والمتوسط الموجودين) جوه مودال الإضافة زي تطبيقات الاستثمار
    تحديث v3.6 (2026-10-27) — 🏦 قسم «صناديقي» العصري جنب الأسهم: كل صندوق كارت فيه الوحدات والمتوسط وآخر NAV والربح والمصدر + واجهة موبايل أكبر (ناف بار ضخم + خطوط وأزرار زي تطبيقات الهاتف)
+   تحديث v3.7 (2026-10-28) — 🏦 قسم الصناديق مباشرة تحت جدول الأسهم + باند «الإجمالي الشامل» العصري فوق المحفظة (هيرو كبير + ربح الأسهم والصناديق وإجمالي الربح) + إدخال الصناديق في كل تحليلات المحفظة (الأشعة/قرارات AI/المختبر الكمي) كقيمة ونسبة وربح مع شريط توزيع
    قراءة من الكاش المحلي (WATCH_CACHE) فقط — صفر استدعاءات API جديدة.
    كتلة مستقلة: لا تعدّل ولا تعيد تعريف أي كود قائم.
    حذفها = حذف الكتلة كلها، بدون أي أثر على باقي التطبيق. ═══ */
@@ -3776,7 +3777,8 @@ init();
       return r;
     };
   }
-  /* 💼 الإجمالي الشامل: دمج قيمة الصناديق مع الأسهم في ملخص المحفظة وتبويبها (إضافة DOM فقط — صفر تعديل على الكود الأصلي). */
+  /* 💼 الإجمالي الشامل (v3.7): باند عصري فوق المحفظة — هيرو كبير فيه الإجمالي الشامل، وتحته ربح الأسهم وربح الصناديق وإجمالي الربح.
+     calcTotals بيتحسب مرة واحدة بس (بدل 3 مرات). */
   function egxPfComboInject(){
     try{
       document.querySelectorAll(".egx-combo").forEach(function(n){n.remove()});
@@ -3784,18 +3786,22 @@ init();
       var fVal=0,fCost=0;
       FUNDS.forEach(function(f){var u=parseFloat(f.units)||0;if(!u)return;fVal+=u*(parseFloat(f.nav)||0);fCost+=u*(parseFloat(f.avg)||0)});
       if(!(fVal>0))return;
-      var sVal=0;
-      if(typeof calcTotals==="function"){var t=calcTotals();if(t&&t.val)sVal=t.val}
-      var combo=sVal+fVal,fPl=fVal-fCost;
-      var box='<div class="grid3 egx-combo" style="margin-top:10px">'+
-        '<div class="metric" style="border-color:var(--border2)"><div class="lbl">💼 الإجمالي الشامل (أسهم + صناديق)</div><div class="val" style="font-size:19px">'+NF(combo)+' ج.م</div><div class="lbl" style="margin-top:3px">أسهم '+NF(sVal)+' + صناديق '+NF(fVal)+'</div></div>'+
-        '<div class="metric"><div class="lbl">📊 ربح/خسارة الأسهم</div><div class="val '+((typeof calcTotals==="function"&&calcTotals().pl>=0)?"up":"down")+'">'+((typeof calcTotals==="function"&&calcTotals().pl)?NF(calcTotals().pl):"—")+' ج.م</div></div>'+
-        '<div class="metric"><div class="lbl">🏦 ربح/خسارة الصناديق ('+FUNDS.length+')</div><div class="val '+(fPl>=0?"up":"down")+'">'+NF(fPl)+' ج.م</div><div class="lbl" style="margin-top:3px">'+(fCost?PCT(fPl/fCost*100):"—")+' من تكلفة الصناديق</div></div>'+
-        '</div>';
+      var t=(typeof calcTotals==="function")?calcTotals():{};
+      var sVal=(t&&t.val)||0,sPl=(t&&t.pl)||0;
+      var combo=sVal+fVal,fPl=fVal-fCost,totPl=sPl+fPl;
+      var box='<div class="egx-combo">'+
+        '<div class="egx-hero"><div class="lbl">💼 الإجمالي الشامل — أسهم + صناديق</div>'+
+        '<div class="val">'+NF(combo)+' <span class="egx-cur">ج.م</span></div>'+
+        '<div class="egx-sub">أسهم '+NF(sVal)+' + صناديق '+NF(fVal)+'</div></div>'+
+        '<div class="egx-combo-sub">'+
+          '<div class="egx-cs"><div class="lbl">📊 ربح/خسارة الأسهم</div><div class="val '+(sPl>=0?"up":"down")+'">'+NF(sPl)+' ج.م</div></div>'+
+          '<div class="egx-cs"><div class="lbl">🏦 ربح/خسارة الصناديق ('+FUNDS.length+')</div><div class="val '+(fPl>=0?"up":"down")+'">'+NF(fPl)+' ج.م</div></div>'+
+          '<div class="egx-cs"><div class="lbl">💰 إجمالي الربح/الخسارة</div><div class="val '+(totPl>=0?"up":"down")+'">'+NF(totPl)+' ج.م</div></div>'+
+        '</div></div>';
+      var hw=document.getElementById("holdings-table-wrap");
+      if(hw)hw.insertAdjacentHTML("beforebegin",box);
       var tgt=document.getElementById("portfolio-mini");
       if(tgt)tgt.insertAdjacentHTML("afterbegin",box);
-      var hs=document.getElementById("holdings-summary");
-      if(hs)hs.insertAdjacentHTML("afterbegin",box);
     }catch(e){}
   }
   window.egxPfFundDel=function(i){
@@ -3810,7 +3816,7 @@ init();
       var oldSec=document.getElementById("egx-funds-sec");
       if(oldSec)oldSec.remove();
       if(typeof FUNDS==="undefined"||!FUNDS.length)return;
-      var hs=document.getElementById("holdings-summary");
+      var hs=document.getElementById("holdings-table-wrap");
       if(!hs)return;
       var fVal=0,fCost=0;
       var cards=FUNDS.map(function(f,i){
@@ -3926,7 +3932,7 @@ init();
     if(document.getElementById("egx-mob-style"))return;
     var st=document.createElement("style");
     st.id="egx-mob-style";
-    st.textContent='.egx-sec-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:18px;font-weight:700;margin:20px 0 10px;padding-top:14px;border-top:2px solid var(--border2)}'+'.egx-sec-head .pill{font-size:13px}'+'.egx-fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}'+'.egx-fcard{background:linear-gradient(150deg,#122240,#0d1830);border:1px solid var(--border);border-radius:16px;padding:14px;transition:.18s}'+'.egx-fcard:hover{border-color:var(--accent)}'+'.egx-fc-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}'+'.egx-fc-head b{font-size:16px;line-height:1.6}'+'.egx-fc-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}'+'.egx-fc-grid>div{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:9px 10px}'+'.egx-fc-grid span{display:block;font-size:12.5px;color:var(--muted);margin-bottom:3px}'+'.egx-fc-grid b{font-size:15.5px}'+'.egx-fc-pl{margin-top:10px;font-size:17px;font-weight:700}'+'.egx-fc-foot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px}'+'@media (max-width:760px){'+'table.egx-mob{border-collapse:separate;border-spacing:0}'+'table.egx-mob thead{display:none}'+'table.egx-mob tbody tr{display:block;background:var(--card2);border:1px solid var(--border);border-radius:16px;margin:0 0 12px;padding:6px}'+'table.egx-mob tbody td{display:flex;justify-content:space-between;align-items:center;gap:14px;border-bottom:1px dashed var(--border);padding:12px 14px;white-space:normal;font-size:16px;line-height:1.8}'+'table.egx-mob tbody td::before{content:attr(data-l);color:var(--muted);font-size:14.5px;font-weight:600;flex:0 0 auto}'+'table.egx-mob tbody td:not([data-l])::before{content:none}'+'table.egx-mob tbody td.num,table.egx-mob tbody td .num{white-space:normal;font-size:16.5px;font-weight:700}'+'table.egx-mob tbody td:last-child{justify-content:center;border-bottom:none;padding-top:13px}'+'table.egx-mob tbody tr:last-child td:last-child{border-bottom:none}'+'table.egx-mob tbody td:first-child{display:block;border-bottom:2px solid var(--border2);padding:13px 14px 10px;font-size:18px}'+'table.egx-mob tbody td:first-child::before{content:none}'+'table.egx-mob tbody td:first-child b{font-size:18.5px;line-height:1.6}'+'table.egx-mob tbody td:first-child .sect-tag{font-size:13px;margin-inline-start:8px;vertical-align:middle}'+'table.egx-mob tbody td:first-child .tag{font-size:13px;margin-inline-start:8px;vertical-align:middle}'+'body{font-size:18px;line-height:1.8}'+'nav{padding:11px 6px calc(11px + env(safe-area-inset-bottom,0px))}'+'.tab{font-size:14px}.tab .ico{font-size:35px}'+'.btn{font-size:18px;padding:17px 24px;border-radius:14px}'+'.btn.mini{font-size:16.5px;padding:14px 20px}'+'.card h3{font-size:21px}'+'.metric .val{font-size:23px}'+'.wrap{padding:14px 12px 205px}'+'.egx-fgrid{grid-template-columns:1fr}'+'.egx-fcard{padding:16px 14px}'+'.egx-fc-grid b{font-size:17px}'+'.egx-sec-head{font-size:20px}'+'}';
+    st.textContent='.egx-sec-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:18px;font-weight:700;margin:20px 0 10px;padding-top:14px;border-top:2px solid var(--border2)}'+'.egx-sec-head .pill{font-size:13px}'+'.egx-fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}'+'.egx-fcard{background:linear-gradient(150deg,#122240,#0d1830);border:1px solid var(--border);border-radius:16px;padding:14px;transition:.18s}'+'.egx-fcard:hover{border-color:var(--accent)}'+'.egx-fc-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}'+'.egx-fc-head b{font-size:16px;line-height:1.6}'+'.egx-fc-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}'+'.egx-fc-grid>div{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:9px 10px}'+'.egx-fc-grid span{display:block;font-size:12.5px;color:var(--muted);margin-bottom:3px}'+'.egx-fc-grid b{font-size:15.5px}'+'.egx-fc-pl{margin-top:10px;font-size:17px;font-weight:700}'+'.egx-fc-foot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px}'+'.egx-combo{margin:2px 0 14px}'+'.egx-hero{background:linear-gradient(135deg,#1b3565,#24488a);border:1px solid var(--border2);border-radius:18px;padding:18px 16px;position:relative;overflow:hidden}'+'.egx-hero::after{content:"";position:absolute;inset-inline-start:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#4f8cff,#22d3a5)}'+'.egx-hero .lbl{font-size:14px;color:#bcd4ff}'+'.egx-hero .val{font-size:27px;font-weight:800;direction:ltr;text-align:right;color:#fff}'+'.egx-hero .egx-cur{font-size:15px;font-weight:600}'+'.egx-hero .egx-sub{font-size:13.5px;color:#bcd4ff;margin-top:5px}'+'.egx-combo-sub{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}'+'.egx-cs{background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:12px 13px}'+'.egx-cs .lbl{font-size:13px;color:var(--muted);margin-bottom:5px}'+'.egx-cs .val{font-size:19px;font-weight:700;direction:ltr;text-align:right}'+'.egx-distbar{display:flex;height:28px;border-radius:9px;overflow:hidden;border:1px solid var(--border)}'+'.egx-distbar span{display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:600;white-space:nowrap}'+'.egx-distbar span:first-child{background:linear-gradient(135deg,#2f6bd8,#4f8cff);color:#fff}'+'.egx-distbar span:last-child{background:rgba(157,123,255,.28);color:var(--text)}'+'@media (max-width:760px){'+'table.egx-mob{border-collapse:separate;border-spacing:0}'+'table.egx-mob thead{display:none}'+'table.egx-mob tbody tr{display:block;background:var(--card2);border:1px solid var(--border);border-radius:16px;margin:0 0 12px;padding:6px}'+'table.egx-mob tbody td{display:flex;justify-content:space-between;align-items:center;gap:14px;border-bottom:1px dashed var(--border);padding:12px 14px;white-space:normal;font-size:16px;line-height:1.8}'+'table.egx-mob tbody td::before{content:attr(data-l);color:var(--muted);font-size:14.5px;font-weight:600;flex:0 0 auto}'+'table.egx-mob tbody td:not([data-l])::before{content:none}'+'table.egx-mob tbody td.num,table.egx-mob tbody td .num{white-space:normal;font-size:16.5px;font-weight:700}'+'table.egx-mob tbody td:last-child{justify-content:center;border-bottom:none;padding-top:13px}'+'table.egx-mob tbody tr:last-child td:last-child{border-bottom:none}'+'table.egx-mob tbody td:first-child{display:block;border-bottom:2px solid var(--border2);padding:13px 14px 10px;font-size:18px}'+'table.egx-mob tbody td:first-child::before{content:none}'+'table.egx-mob tbody td:first-child b{font-size:18.5px;line-height:1.6}'+'table.egx-mob tbody td:first-child .sect-tag{font-size:13px;margin-inline-start:8px;vertical-align:middle}'+'table.egx-mob tbody td:first-child .tag{font-size:13px;margin-inline-start:8px;vertical-align:middle}'+'body{font-size:18px;line-height:1.8}'+'nav{padding:11px 6px calc(11px + env(safe-area-inset-bottom,0px))}'+'.tab{font-size:14px}.tab .ico{font-size:35px}'+'.btn{font-size:18px;padding:17px 24px;border-radius:14px}'+'.btn.mini{font-size:16.5px;padding:14px 20px}'+'.card h3{font-size:21px}'+'.metric .val{font-size:23px}'+'.wrap{padding:14px 12px 205px}'+'.egx-fgrid{grid-template-columns:1fr}'+'.egx-fcard{padding:16px 14px}'+'.egx-fc-grid b{font-size:17px}'+'.egx-sec-head{font-size:20px}'+'.egx-hero .val{font-size:30px}'.egx-hero{padding:20px 16px}'.egx-combo-sub{grid-template-columns:1fr 1fr}'.egx-cs:last-child{grid-column:1/-1}'+'}';
     document.head.appendChild(st);
   }
   function egxMobLabel(){
@@ -3941,7 +3947,35 @@ init();
     });
   }
   var egxMobT=null;
-  function egxMobKick(){if(egxMobT)return;egxMobT=setTimeout(function(){egxMobT=null;try{egxMobLabel()}catch(e){}},150)}
+  /* 🧪 الصناديق في كل التحليلات (v3.7): بعد أي رندر للأشعة أو قرارات AI أو المختبر الكمي، بنضيف قسم «الصناديق ضمن تحليلات محفظتك»
+     فيه قيمة الصناديق ونسبتها من الإجمالي الشامل وربحها وشريط توزيع المحفظة وجدول لكل صندوق — إضافة DOM من غير أي تعديل على دوال التحليل الأصلية. */
+  function egxFundsAnalytics(){
+    try{
+      if(typeof FUNDS==="undefined"||!FUNDS.length)return;
+      var t=(typeof calcTotals==="function")?calcTotals():{};
+      var sVal=(t&&t.val)||0,sPl=(t&&t.pl)||0;
+      var fVal=0,fCost=0;
+      FUNDS.forEach(function(f){var u=parseFloat(f.units)||0;if(!u)return;fVal+=u*(parseFloat(f.nav)||0);fCost+=u*(parseFloat(f.avg)||0)});
+      var combo=sVal+fVal,fPl=fVal-fCost;
+      if(!(combo>0))return;
+      var fPct=fVal/combo*100,sPct=100-fPct;
+      var rows=FUNDS.map(function(f){
+        var u=parseFloat(f.units)||0,c=u*(parseFloat(f.nav)||0),c0=u*(parseFloat(f.avg)||0),pl=c-c0;
+        return '<tr><td><b>🏦 '+f.name+'</b></td><td class="num">'+NF(c)+'</td><td class="num '+(pl>=0?"up":"down")+'">'+NF(pl)+'</td><td class="num">'+(c/combo*100).toFixed(1)+'%</td></tr>';
+      }).join("");
+      var card='<div class="egx-xray-funds"><h3 class="small" style="margin:14px 0 8px">🏦 الصناديق ضمن تحليلات محفظتك</h3>'+
+        '<div class="egx-distbar"><span style="width:'+sPct.toFixed(1)+'%">'+sPct.toFixed(0)+'% أسهم</span><span style="width:'+fPct.toFixed(1)+'%">'+fPct.toFixed(0)+'% صناديق</span></div>'+
+        '<div class="small muted" style="margin:8px 0;line-height:1.8">قيمة الصناديق <b>'+NF(fVal)+'</b> ج.م من إجمالي شامل <b>'+NF(combo)+'</b> ج.م · ربح الصناديق <b class="'+(fPl>=0?"up":"down")+'">'+NF(fPl)+'</b> ج.م ('+(fCost?(fPl/fCost*100).toFixed(1):0)+'%)</div>'+
+        '<div class="scroll-x"><table><thead><tr><th>الصندوق</th><th>القيمة الحالية</th><th>ربح/خسارة</th><th>من المحفظة</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+        '<p class="small muted" style="margin-top:6px;line-height:1.8">ℹ️ مونت كارلو والبيتا والتقلب واختبار الضغط محسوبة على تاريخ أسعار الأسهم اللحظي — الصناديق مضمونة هنا كقيمة ونسبة وربح ضمن الصورة الكاملة (NAV الصناديق يومي).</p></div>';
+      ["xray-body","holdings-ai","quant-lab"].forEach(function(id){
+        var el=document.getElementById(id);
+        if(!el||!el.innerHTML.trim()||el.querySelector(".egx-xray-funds"))return;
+        el.insertAdjacentHTML("beforeend",card);
+      });
+    }catch(e){}
+  }
+  function egxMobKick(){if(egxMobT)return;egxMobT=setTimeout(function(){egxMobT=null;try{egxMobLabel()}catch(e){}try{egxFundsAnalytics()}catch(e){}},150)}
   try{
     egxMobStyle();
     egxMobLabel();
@@ -4048,6 +4082,7 @@ init();
 </script>
 </body>
 </html>
+
 
 
 
