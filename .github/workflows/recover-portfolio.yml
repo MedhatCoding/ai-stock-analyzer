@@ -1,0 +1,85 @@
+name: استعادة المحفظة من تاريخ Git
+# 🧯 حماية: لو portfolio.dat اترفع فاضي بالغلط، الورك ده بيرجع آخر نسخة من التاريخ فيها أسهم فعلًا
+# وبيبعتها كمان على تليجرام (نص JSON جاهز للصق في «استيراد المحفظة من نص» في الإعدادات)
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [".github/workflows/recover-portfolio.yml"]
+permissions:
+  contents: write
+concurrency: recover-pf
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: البحث عن آخر نسخة فيها أسهم
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+        run: |
+          cat > recover.js <<'EOF'
+          const {execSync}=require('child_process');
+          const crypto=require('crypto');
+          const fs=require('fs');
+          function dec(b64,key){
+            const bin=Buffer.from(String(b64).replace(/s/g,''),'base64');
+            const iv=bin.slice(0,12),rest=bin.slice(12);
+            const tag=rest.slice(rest.length-16),ct=rest.slice(0,rest.length-16);
+            const d=crypto.createDecipheriv('aes-256-gcm',key,iv);
+            d.setAuthTag(tag);
+            return JSON.parse(Buffer.concat([d.update(ct),d.final()]).toString('utf8'));
+          }
+          const tok=(process.env.TG_BOT_TOKEN||'').trim();
+          const keys=[];
+          if(tok)keys.push(crypto.createHash('sha256').update(tok).digest());
+          keys.push(crypto.createHash('sha256').update('mistral-Mi').digest());
+          let commits=[];
+          try{commits=execSync('git log --all --format=%H -- portfolio.dat').toString().trim().split('
+').filter(Boolean)}catch(e){}
+          try{commits.push(execSync('git rev-parse HEAD').toString().trim())}catch(e){}
+          const seen=new Set();let found=null,foundB64=null;
+          for(const c of commits){
+            if(seen.has(c))continue;seen.add(c);
+            let b64;
+            try{b64=execSync('git show '+c+':portfolio.dat',{maxBuffer:10*1024*1024}).toString().trim()}catch(e){continue}
+            for(const k of keys){
+              try{
+                const obj=dec(b64,k);
+                if(obj&&Array.isArray(obj.holdings)&&obj.holdings.length>0){found=obj;foundB64=b64;break}
+              }catch(e){}
+            }
+            if(found)break;
+          }
+          if(!found){console.log('NO_BACKUP_FOUND: مفيش نسخة في التاريخ فيها أسهم');process.exit(0)}
+          console.log('FOUND: '+found.holdings.length+' سهم بتاريخ '+(found.t?new Date(found.t).toISOString().slice(0,10):'غير معروف'));
+          fs.writeFileSync('portfolio.dat',foundB64+'
+');
+          const payload=JSON.stringify({holdings:found.holdings,funds:found.funds||[]});
+          fs.writeFileSync('pf_recovered.json',payload);
+          const chat=(process.env.TG_CHAT_ID||'').trim();
+          if(tok&&chat){
+            const list=found.holdings.map(h=>'• '+h.t+' × '+h.qty+' (متوسط '+h.avg+')').join('
+');
+            const msg='♻️ اتلقت نسخة محفظتك الأصلية من تاريخ Git ('+found.holdings.length+' سهم):
+'+list+'
+
+📥 لترجيعها في التطبيق انسخ السطر ده وبتلزقه في «استيراد المحفظة من نص» في الإعدادات:
+'+payload;
+            fetch('https://api.telegram.org/bot'+tok+'/sendMessage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:chat,text:msg})}).catch(function(){});
+          }
+          EOF
+          node recover.js
+          if [ -f portfolio.dat ]; then
+            git config user.name "mistral-Mi bot"
+            git config user.email "actions@users.noreply.github.com"
+            git add portfolio.dat
+            git diff --cached --quiet || (git commit -m "♻️ استعادة النسخة الأصلية للمحظة من تاريخ Git (حماية من الاستبدال بنسخة فاضية)" && git push)
+            echo "DONE"
+          fi
