@@ -549,8 +549,10 @@
       <div class="row">
         <button class="btn primary" id="gh-save">💾 حفظ</button>
         <button class="btn" id="gh-test">🔄 جرّب المزامنة</button>
+        <button class="btn ok" id="gh-restore">⬆️ استعادة المحفظة من GitHub</button>
         <span id="gh-out" class="small"></span>
       </div>
+      <div id="gh-restore-out" class="small" style="margin-top:8px;line-height:1.9"></div>
       <div class="small muted" style="margin-top:10px;line-height:1.9">بعد الحفظ: محفظتك هتتزامن لوحدها مع كل تعديل + مرة كل يوم لما تفتح التطبيق، والتقرير اليومي الساعة 11:00 هيقراها ويبعتلك توصياتها.</div>
     </div>
     <div class="card">
@@ -3221,7 +3223,7 @@ async function pfSync(force){
   if(!force&&Date.now()-last<30*60*1000)return false;
   store.set("egx_pfsync_ts",Date.now());
   try{
-    const enc=await pfEncrypt({t:Date.now(),holdings:HOLDINGS.map(h=>({t:h.t,qty:h.qty,avg:h.avg}))});
+    const enc=await pfEncrypt({t:Date.now(),holdings:HOLDINGS.map(h=>({t:h.t,qty:h.qty,avg:h.avg})),funds:(typeof FUNDS!=="undefined"?FUNDS.map(f=>({name:f.name,units:f.units,avg:f.avg,nav:f.nav})):[])});
     await ghPut(PF_FILE,enc,"🔄 مزامنة المحفظة — mistral-Mi");
     store.set("egx_pfsync_ok",Date.now());
     return true;
@@ -3238,6 +3240,52 @@ $("gh-test").onclick=async function(){
   const ok=await pfSync(true);
   if(ok)o.innerHTML='<span class="up">✅ اتزامنت — محفظتك المشفرة اترفعت على GitHub والتقرير اليومي هيشوفها</span>';
   else o.innerHTML='<span class="down">❌ فشلت المزامنة — تأكد من التوكن (Contents: Read and write على mistral-Mi بس) وإن إعدادات تليجرام محفوظة</span>';
+};
+/* ⬆️ استعادة المحفظة من GitHub (v3.11): بتنزّل portfolio.dat المشفرة وتفكها بمفتاح توكن تليجرام
+   وترجّع الأسهم (والصناديق في النسخ الجديدة) لجهازك — للحالات اللي التخزين المحلي بيت مسح فيها
+   (إعادة تثبيت التطبيق/متصفح جديد). الاستعادة بتدمج مع الموجود: أي سهم موجود بيتحدث بقيم النسخة المتزامنة. */
+async function pfDecrypt(b64){
+  const key=await pfKey();
+  const k=await crypto.subtle.importKey("raw",key,"AES-GCM",false,["decrypt"]);
+  const bin=atob(String(b64).replace(/\s/g,""));
+  const bytes=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);
+  const iv=bytes.slice(0,12),ct=bytes.slice(12);
+  const pt=await crypto.subtle.decrypt({name:"AES-GCM",iv:iv},k,ct);
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+$("gh-restore").onclick=async function(){
+  const o=$("gh-restore-out");if(!o)return;
+  try{
+    o.innerHTML='<span class="spin"></span>جارٍ تنزيل النسخة المتزامنة...';
+    const r=await fetch("https://raw.githubusercontent.com/MedhatCoding/mistral-Mi/main/portfolio.dat?cb="+Date.now(),{cache:"no-store"});
+    if(!r.ok)throw new Error(r.status===404?"مفيش نسخة متزامنة على GitHub بعد — لازم تكون ضفت محفظة ومفعل المزامنة قبل كده":"HTTP "+r.status);
+    const d=await pfDecrypt((await r.text()).trim());
+    if(!d||!Array.isArray(d.holdings))throw new Error("الصيغة مش مفهومة");
+    let added=0;
+    d.holdings.forEach(function(h){
+      if(!h||!h.t||!(h.qty>0)||!(h.avg>0))return;
+      const i=HOLDINGS.findIndex(function(x){return x.t===h.t});
+      if(i>-1)HOLDINGS[i]={t:h.t,qty:h.qty,avg:h.avg};else HOLDINGS.push({t:h.t,qty:h.qty,avg:h.avg});
+      added++;
+    });
+    store.set("egx_holdings",HOLDINGS);renderPortfolio();
+    let fadd=0;
+    if(typeof FUNDS!=="undefined"&&Array.isArray(d.funds)){
+      d.funds.forEach(function(f){
+        if(!f||!f.name||!(f.units>0))return;
+        const i=FUNDS.findIndex(function(x){return x.name===f.name});
+        if(i>-1)FUNDS[i]={name:f.name,units:f.units,avg:f.avg,nav:f.nav};else FUNDS.push({name:f.name,units:f.units,avg:f.avg,nav:f.nav});
+        fadd++;
+      });
+      if(fadd){store.set("egx_funds",FUNDS);renderFunds();}
+    }
+    o.innerHTML='<span class="up">✅ اترجعت '+added+' سهم'+(fadd?(" و"+fadd+" صندوق"):"")+' من النسخة المتزامنة على GitHub — شوف تبويب 💼 محفظتي</span>';
+    safe("مزامنة بعد الاستعادة",function(){pfSync(true)});
+  }catch(e){
+    const m=String(e.message||e).indexOf("0")===0?"فك التشفير فشل":String(e.message||e);
+    o.innerHTML='<span class="down">❌ فشلت الاستعادة: '+m+(String(e.message||e).length<60?' — لو فك التشفير هو المشكلة: اتأكد إن توكن بوت تليجرام محفوظ نفس القديم في الإعدادات (هو مفتاح فك التشفير)':"")+'</span>';
+  }
 };
 
 /* ═════════════════════════ 12.19) 🗺️ خريطة حرارية للقطاعات ═════════════════════════ */
@@ -3600,6 +3648,7 @@ init();
    تحديث v3.8 (2026-10-28) — 🔄 ترتيب المحفظة النهائي: الأسهم الأول ثم الصناديق ثم باند الإجمالي والربح/الخسارة (الهيرو بقى فوق ملخصات المحفظة تحت الصناديق) ثم التحليلات تحت بعضها
    تحديث v3.9 (2026-10-28) — 🏦 تقييم محسوب لكل صندوق جوه قرارات الذكاء الاصطناعي والأشعة (مراقبة/حياد/احتفاظ/أداء قوي) + ترتيب عملي لكروت صفحة المحفظة (أسهمي ← قرارات AI ← الأشعة ← التوزيعات ← التنبيهات ← سجل القرارات ← الحاسبة) + ترتيب الأكثر ارتفاعًا/انخفاضًا مع رقم الترتيب #1..#6
    تحديث v3.10 (2026-10-28) — 🎯 توصيات الشراء بقت «أقوى 3 بس بعلامة ≥2» بقرار باك تست Stock Lab v2 (PF 1.85 / متوسط +2.28% مقابل 1.66%/+1.78% لأعلى 5) — جودة قبل عدد. توصيات البيع زي ما هي.
+   تحديث v3.11 (2026-10-28) — ⬆️ زرار «استعادة المحفظة من GitHub» في الإعدادات: بيرجّع أسهمك من النسخة المشفرة portfolio.dat لو التخزين المحلي اتمسح (إعادة تثبيت/متصفح جديد) + المزامنة بقت تشمل الصناديق كمان
    قراءة من الكاش المحلي (WATCH_CACHE) فقط — صفر استدعاءات API جديدة.
    كتلة مستقلة: لا تعدّل ولا تعيد تعريف أي كود قائم.
    حذفها = حذف الكتلة كلها، بدون أي أثر على باقي التطبيق. ═══ */
@@ -4116,6 +4165,7 @@ init();
 </script>
 </body>
 </html>
+
 
 
 
