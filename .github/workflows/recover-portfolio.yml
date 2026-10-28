@@ -1,6 +1,6 @@
 name: استعادة المحفظة من تاريخ Git
-# 🧯 v2: بيدور في تاريخ Git على آخر نسخة مشفرة فيها أسهم، يرجعها، ويبعتها على تليجرام.
-# بيعمل دايمًا تقرير تشخيصي recover-log.txt عشان نعرف بالظبط حصل إيه (لقى/ملقش وبأي مفتاح).
+# 🧯 v3: بيدور في تاريخ portfolio.dat بكل الصيغ الممكنة (AES-GCM بتشفير التطبيق، JSON نص صريح، base64-JSON)
+# ويرجع آخر نسخة فيها أسهم فعلًا + يبعتها على تليجرام + تقرير تشخيصي recover-log.txt دايمًا.
 on:
   workflow_dispatch:
   push:
@@ -29,7 +29,7 @@ jobs:
           const crypto=require('crypto');
           const fs=require('fs');
           const lines=[];
-          function dec(b64,key){
+          function aesDec(b64,key){
             const bin=Buffer.from(String(b64).replace(/\s/g,''),'base64');
             if(bin.length<29)throw new Error('too short');
             const iv=bin.slice(0,12),rest=bin.slice(12);
@@ -38,48 +38,70 @@ jobs:
             d.setAuthTag(tag);
             return JSON.parse(Buffer.concat([d.update(ct),d.final()]).toString('utf8'));
           }
+          function holdingsOf(obj){
+            if(!obj)return 0;
+            if(Array.isArray(obj.holdings))return obj.holdings.length;
+            if(Array.isArray(obj))return obj.length;
+            if(obj.h&&Array.isArray(obj.h))return obj.h.length;
+            return 0;
+          }
+          function extract(obj){
+            if(!obj)return null;
+            if(Array.isArray(obj.holdings))return obj;
+            if(Array.isArray(obj))return {holdings:obj};
+            if(Array.isArray(obj.h))return {holdings:obj.h,funds:obj.f||[]};
+            if(obj.portfolio&&Array.isArray(obj.portfolio.holdings))return obj.portfolio;
+            return null;
+          }
           const tok=(process.env.TG_BOT_TOKEN||'').trim();
-          lines.push('سر TG_BOT_TOKEN: '+(tok?('موجود (طوله '+tok.length+')'):'ناقص'));
           const chat=(process.env.TG_CHAT_ID||'').trim();
-          lines.push('سر TG_CHAT_ID: '+(chat?'موجود':'ناقص'));
           const keys=[];
           if(tok)keys.push({n:'TG_BOT_TOKEN',k:crypto.createHash('sha256').update(tok).digest()});
           keys.push({n:'fallback-mistral-Mi',k:crypto.createHash('sha256').update('mistral-Mi').digest()});
           let commits=[];
           try{commits=execSync('git log --all --format=%H -- portfolio.dat').toString().trim().split('\n').filter(Boolean)}catch(e){}
           try{commits.push(execSync('git rev-parse HEAD').toString().trim())}catch(e){}
-          lines.push('نسخ portfolio.dat في التاريخ: '+commits.length);
-          const seen=new Set();let found=null,foundB64=null,foundKey=null;
+          lines.push('نسخ في التاريخ: '+commits.length);
+          const seen=new Set();let found=null,foundRaw=null,foundHow=null;
           for(const c of commits){
             if(seen.has(c))continue;seen.add(c);
-            let b64;
-            try{b64=execSync('git show '+c+':portfolio.dat',{maxBuffer:10*1024*1024}).toString().trim()}catch(e){lines.push(c.slice(0,8)+': مفيش ملف في النسخة دي');continue}
-            for(const kk of keys){
-              try{
-                const obj=dec(b64,kk.k);
-                const n=(obj&&Array.isArray(obj.holdings))?obj.holdings.length:0;
-                lines.push(c.slice(0,8)+': فك التشفير نجح بمفتاح '+kk.n+' — عدد الأسهم: '+n);
-                if(n>0&&!found){found=obj;foundB64=b64;foundKey=kk.n}
-              }catch(e){lines.push(c.slice(0,8)+': فشل بمفتاح '+kk.n+' ('+String(e.message).split('\n')[0]+')')}
+            let raw;
+            try{raw=execSync('git show '+c+':portfolio.dat',{maxBuffer:10*1024*1024}).toString().trim()}catch(e){continue}
+            if(c===commits[commits.length-1]||lines.length<3)lines.push(c.slice(0,8)+' محتواه (أول 100 حرف): '+raw.slice(0,100));
+            let obj=null,how='';
+            try{obj=JSON.parse(raw);how='JSON نص صريح'}catch(e){}
+            if(!obj){
+              try{obj=JSON.parse(Buffer.from(String(raw).replace(/\s/g,''),'base64').toString('utf8'));how='base64-JSON'}catch(e){}
+            }
+            if(!obj){
+              for(const kk of keys){
+                try{obj=aesDec(raw,kk.k);how='AES بمفتاح '+kk.n;break}catch(e){}
+              }
+            }
+            if(obj){
+              const ex=extract(obj);
+              const n=ex?holdingsOf(ex):0;
+              lines.push(c.slice(0,8)+': '+how+' — عدد الأسهم: '+n);
+              if(n>0&&!found){found=ex;foundRaw=raw;foundHow=how}
+            }else{
+              lines.push(c.slice(0,8)+': صيغة غير مفهومة (طول النص '+raw.length+')');
             }
           }
           let msg;
           if(found){
-            lines.push('النتيجة: اتلقت نسخة فيها '+found.holdings.length+' سهم بمفتاح '+foundKey);
-            fs.writeFileSync('portfolio.dat',foundB64);
+            lines.push('النتيجة: اتلقت نسخة فيها '+found.holdings.length+' سهم بصيغة: '+foundHow);
+            fs.writeFileSync('portfolio.dat',foundRaw);
             const payload=JSON.stringify({holdings:found.holdings,funds:found.funds||[]});
             fs.writeFileSync('pf_recovered.json',payload);
             const list=found.holdings.map(h=>'- '+h.t+' x '+h.qty+' (متوسط '+h.avg+')').join(' | ');
             msg='♻️ اتلقت نسخة محفظتك الأصلية ('+found.holdings.length+' سهم): '+list+'  ||  لترجيعها في التطبيق: انسخ السطر ده وحطه في (استيراد المحفظة من نص) في الإعدادات: '+payload;
           }else{
-            lines.push('النتيجة: مفيش نسخة في التاريخ بتتفك بأي مفتاح متاح');
-            msg='❌ فشل استعادة محفظتك من التاريخ: فك تشفير كل النسخ فشل. السبب الأرجح: سر TG_BOT_TOKEN في المستودع مختلف عن توكن البوت اللي التطبيق كان معمول بيه التشفير وقتها. لو التوكن القديم اتلغى من BotFather — النسخة القديمة مش قابلة للاسترجاع، ودخل أسهمك يدوي واعمل تنزيل نسخة احتياطية من الإعدادات للمستقبل.';
+            lines.push('النتيجة: مفيش نسخة فيها أسهم ب أي صيغة');
+            msg='❌ فشل استعادة محفظتك من تاريخ Git بكل الصيغ. راجع recover-log.txt في المستودع.';
           }
           if(tok&&chat){
             fetch('https://api.telegram.org/bot'+tok+'/sendMessage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:chat,text:msg})}).catch(function(){});
             lines.push('اتبعتت رسالة تليجرام');
-          }else{
-            lines.push('تحذير: مفيش رسالة تليجرام - أسرار ناقصة');
           }
           fs.writeFileSync('recover-log.txt',lines.join('\n')+'\n');
           console.log(lines.join('\n'));
@@ -88,4 +110,4 @@ jobs:
           git config user.name "mistral-Mi bot"
           git config user.email "actions@users.noreply.github.com"
           git add recover-log.txt portfolio.dat 2>/dev/null || git add recover-log.txt
-          git diff --cached --quiet || (git commit -m "🧯 تقرير استعادة المحفظة من التاريخ - تفاصيل في recover-log.txt" && git push)
+          git diff --cached --quiet || (git commit -m "🧯 استعادة v3: فحص كل الصيغ (AES/JSON/base64) - تقرير في recover-log.txt" && git push)
