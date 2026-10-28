@@ -1,6 +1,6 @@
 # 📊 mistral-Mi — التقرير اليومي على تليجرام (محرك التطبيق نفسه على GitHub Actions)
 # المدة: كل يوم من الأحد للخميس الساعة 11:00 ص بتوقيت القاهرة (ساعة بعد الافتتاح)
-# محتوى: EGX30 + أفضل 4 فرص شراء للأسهم المتوافقة مع الشريعة فقط (EGX33 + متوافق خارج المؤشر) + تحذيرات بيع + توصيات محفظتي
+# محتوى: ملخص السوق بالذكاء الاصطناعي + التوصيات + التوصيات المنقحة بعد الأسعار اللحظية + قرارات الذكاء الاصطناعي للمحفظة + إجمالي الربح/الخسارة (فرص الشريعة فقط ☪️ EGX33 + متوافق خارج المؤشر)
 # المحفظة: بتتزامن تلقائيًا من التطبيق (portfolio.dat مشفر AES) — وfallback: سر PORTFOLIO_JSON
 # الأسرار: TG_BOT_TOKEN + TG_CHAT_ID (نفس بوت التطبيق) — المزامنة محتاجة نفس TG_BOT_TOKEN لفك التشفير
 
@@ -98,6 +98,158 @@ jobs:
         run: |
           set -euo pipefail
           cat > report_body.js <<'SAHMY_EOF'
+/* 📊 مولّد التقرير اليومي — نفس محرك التطبيق بالظبط (v3.17)
+   الهيكل: ملخص السوق بالذكاء الاصطناعي → التوصيات (إغلاق آخر جلسة) → التوصيات المنقحة بعد الأسعار اللحظية → قرارات الذكاء الاصطناعي للمحفظة + الإجمالي */
+const fs=require('fs');
+function readJSON(p,dflt){try{return JSON.parse(fs.readFileSync(p,'utf8'))}catch(e){console.log('⚠️ تعذر قراءة '+p+' — '+e.message);return dflt}}
+const live=readJSON('live.json',null);
+const hist=readJSON('hist.json',null);
+if(!hist||!hist.stocks){console.log('❌ hist.json مش موجود أو تالف — شغّل ريليه التاريخ الأول');process.exit(1)}
+const TOK=(process.env.TG_BOT_TOKEN||'').trim(),CHAT=(process.env.TG_CHAT_ID||'').trim();
+if(!TOK||!CHAT){console.log('❌ أضف الأسرار TG_BOT_TOKEN وTG_CHAT_ID من Settings ← Secrets and variables ← Actions');process.exit(1)}
+const NOW=new Date();
+const fmtD=new Intl.DateTimeFormat('ar-EG',{timeZone:'Africa/Cairo',weekday:'long',day:'numeric',month:'long'});
+const fmtT=new Intl.DateTimeFormat('en-GB',{timeZone:'Africa/Cairo',hour:'2-digit',minute:'2-digit',hour12:false});
+const dayTxt=fmtD.format(NOW),timeTxt=fmtT.format(NOW);
+/* علامة اتجاه اليسار: بتصلّح عرض الأرقام والسالب في نص عربي RTL */
+const LRM='\u200E';
+const NB=function(x,d){return LRM+NF(x,(d==null?2:d))};
+const sign=function(x){return (x>=0?'+':'')+LRM+NF(x,2)};
+/* أسعار لحظية من لقطة الريليه */
+const Q={};let snapAge=null;
+if(live&&live.t&&Array.isArray(live.quotes)){
+  snapAge=Math.max(0,Math.round((Date.now()-live.t)/60000));
+  live.quotes.forEach(function(q){if(q&&q.ticker&&q.price!=null)Q[q.ticker]={price:q.price,chg:(q.change_percent!=null?q.change_percent:(q.open&&q.change!=null?q.change/q.open*100:0)),vol:(q.volume!=null?q.volume:null)}});
+}
+const IDX=(live&&live.idx&&live.idx.data)?live.idx.data:null;
+/* تحليل كل سهم مرتين: v0 على إغلاق آخر جلسة (التوصيات الأصلية) + v بعد دمج شمعة النهاردة اللحظية (التوصيات المنقحة) — الشريعة فقط ☪️ */
+const res=[];
+Object.keys(hist.stocks).forEach(function(sym){
+  const raw=hist.stocks[sym]||[];
+  const arr=raw.filter(function(c){return c&&c.c>0}).map(function(c){return {d:(c.d||null),o:(c.o!=null?c.o:c.c),h:(c.h!=null?c.h:c.c),l:(c.l!=null?c.l:c.c),c:c.c,v:(c.v||0)}});
+  if(arr.length<60)return;
+  let v0=analyze(arr);if(!v0)return;
+  const p0=arr[arr.length-1].c;
+  const c0=arr.length>1?(arr[arr.length-1].c-arr[arr.length-2].c)/arr[arr.length-2].c*100:0;
+  let vol=arr[arr.length-1].v||0;
+  let v=v0,price=p0,prev=arr.length>1?arr[arr.length-2].c:p0,chg=c0;
+  const q=Q[sym];
+  if(q&&q.price>0){
+    const base=p0;
+    if(Math.abs(q.price-base)/base>0.001){
+      const arrL=arr.concat([{d:NOW.toISOString().slice(0,10),o:base,h:Math.max(base,q.price),l:Math.min(base,q.price),c:q.price,v:(q.vol||0)}]);
+      const nv=analyze(arrL);if(nv)v=nv;
+    }
+    price=q.price;prev=base;chg=(q.chg!=null?q.chg:(price-prev)/prev*100);if(q.vol)vol=q.vol;
+  }
+  res.push({sym:sym,name:(NAMES[sym]||sym),price:price,prev:prev,chg:chg,vol:vol,p0:p0,c0:c0,v0:v0,v:v,sh:SHARIA.includes(sym)});
+});
+/* فلتر سيولة: آخر حجم × السعر ≥ مليون جنيه (حجم غير معروف = بيتجاوز الفلتر) */
+const liq=res.filter(function(r){return r.vol==null||r.price*r.vol>=1000000});
+/* نفس محرك التطبيق (v3.10): الشريعة فقط · sc>=2 · أفضل 3 — جودة مش عدد */
+const baseBuys=liq.filter(function(r){return r.sh&&r.v0.sc>=2}).sort(function(a,b){return b.v0.sc-a.v0.sc}).slice(0,3);
+const buys=liq.filter(function(r){return r.sh&&r.v.sc>=2}).sort(function(a,b){return b.v.sc-a.v.sc}).slice(0,3);
+const warns=liq.filter(function(r){return r.sh&&r.v.sc<=-1.5}).sort(function(a,b){return a.v.sc-b.v.sc}).slice(0,2);
+function stockLines(r,v,price,chg){
+  const pos=(v.rs||[]).filter(function(x){return x[0]==='✅'});
+  const top=(pos.length?pos:(v.rs||[])).slice(0,2);
+  const L=[];
+  L.push(v.em+' '+r.sym+' — '+r.name);
+  L.push('التوصية: '+v.rec+' '+'⭐'.repeat(v.stars)+' (ثقة '+v.conf+'٪) · السعر '+NB(price)+' ج.م ('+sign(chg)+'٪)');
+  L.push('🛑 وقف '+NB(v.stop)+' · 🎯 هدف '+NB(v.t1)+' · مخاطرة '+v.risk);
+  top.forEach(function(x){L.push(x[0]+' '+x[1])});
+  return L.join('\n');
+}
+/* 🤖 ملخص السوق بالذكاء الاصطناعي */
+let idxChg=null;
+if(IDX&&IDX.value!=null)idxChg=(IDX.change_percent!=null?IDX.change_percent:(IDX.open?(IDX.value-IDX.open)/IDX.open*100:0));
+const n=res.length,up=res.filter(function(r){return r.chg>0}).length,down=res.filter(function(r){return r.chg<0}).length,flat=n-up-down;
+const shs=res.filter(function(r){return r.sh}),shUp=shs.filter(function(r){return r.chg>0}).length;
+const avgChg=n?res.reduce(function(s,r){return s+r.chg},0)/n:0;
+const mktChg=(idxChg!=null?idxChg:avgChg);
+const mkt=mktChg>0.4?'صاعد 📈':(mktChg<-0.4?'هابط 📉':'محايد ⚖️');
+const top3=res.slice().sort(function(a,b){return b.chg-a.chg}).slice(0,3);
+const bot3=res.slice().sort(function(a,b){return a.chg-b.chg}).slice(0,3);
+let msg='📊 mistral-Mi — التقرير اليومي ☪️ فرص الشريعة فقط — '+dayTxt+' · '+timeTxt+' توقيت القاهرة\n';
+if(snapAge!=null)msg+='\n⏱️ لقطة الأسعار عمرها ~'+snapAge+' دقيقة';
+msg+='\n\n🤖 ملخص السوق بالذكاء الاصطناعي:\n';
+if(idxChg!=null)msg+='• 🇪🇬 EGX30: '+NB(IDX.value,1)+' ج.م ('+sign(idxChg)+'٪)\n';
+msg+='• قراءة السوق النهاردة: '+mkt+' · متوسط تغير الأسهم '+sign(avgChg)+'٪\n';
+msg+='• عرض السوق: '+LRM+up+' صاعد · '+LRM+down+' هابط · '+LRM+flat+' ثابت (من '+LRM+n+' سهم)\n';
+if(shs.length)msg+='• أسهم الشريعة: '+LRM+shUp+' صاعد من '+LRM+shs.length+'\n';
+if(top3.length)msg+='• الأقوى: '+top3.map(function(r){return r.sym+' '+sign(r.chg)+'٪'}).join(' · ')+'\n';
+if(bot3.length)msg+='• الأضعف: '+bot3.map(function(r){return r.sym+' '+sign(r.chg)+'٪'}).join(' · ');
+/* 🚀 التوصيات من إغلاق آخر جلسة */
+msg+='\n\n🚀 التوصيات (من إغلاق آخر جلسة):\n\n';
+if(baseBuys.length){baseBuys.forEach(function(r,i){msg+=(i+1)+')\n'+stockLines(r,r.v0,r.p0,r.c0)+'\n\n'})}
+else msg+='😐 مفيش إشارات شراء واضحة من إغلاق آخر جلسة.\n\n';
+/* 🔄 التوصيات المنقحة بعد الأسعار اللحظية */
+msg+='🔄 التوصيات المنقحة بعد مراجعة الأسعار اللحظية (بعد فتح البورصة):\n\n';
+if(buys.length){buys.forEach(function(r,i){msg+=(i+1)+')\n'+stockLines(r,r.v,r.price,r.chg)+'\n\n'})}
+else msg+='😐 بعد مراجعة الأسعار اللحظية مفيش فرص شراء واضحة — الأفضل انتظار إشارات أوضح.\n\n';
+const dropped=baseBuys.filter(function(r){return !buys.some(function(b){return b.sym===r.sym})});
+const added=buys.filter(function(r){return !baseBuys.some(function(b){return b.sym===r.sym})});
+if(dropped.length)msg+='⚠️ سقطت من القايمة بعد تحرك السعر: '+dropped.map(function(r){return r.sym}).join('، ')+'\n\n';
+if(added.length)msg+='🆕 طلعت بعد المراجعة اللحظية: '+added.map(function(r){return r.sym}).join('، ')+'\n\n';
+if(warns.length){msg+='⚠️ تحذيرات بيع:\n\n';warns.forEach(function(r){msg+=stockLines(r,r.v,r.price,r.chg)+'\n\n'})}
+/* 💼 قرارات الذكاء الاصطناعي لأسهم في محفظتي — أولوية: مزامنة التطبيق (pf.json) ← سر PORTFOLIO_JSON */
+let pf=null;
+try{pf=JSON.parse(fs.readFileSync('pf.json','utf8'))}catch(e){pf=null}
+if(!pf){try{pf=JSON.parse(process.env.PORTFOLIO_JSON||'')}catch(e){pf=null}}
+if(pf&&Object.keys(pf).length){
+  msg+='💼 قرارات الذكاء الاصطناعي لأسهم في محفظتي:\n\n';
+  const bysym={};res.forEach(function(r){bysym[r.sym]=r});
+  let cost=0,val=0;
+  Object.keys(pf).forEach(function(sym){
+    const h=pf[sym]||{},q=h.q||h.qty||0,avg=h.avg||0;
+    const r=bysym[sym];
+    if(!r){msg+='• '+sym+': مفيش بيانات كافية للتحليل — راجعه في التطبيق.\n';return}
+    const pl=(q&&avg)?(r.price-avg)*q:0;
+    const plp=(avg?(r.price-avg)/avg*100:0);
+    cost+=q*avg;val+=q*r.price;
+    /* نفس منطق قرارات المحرك في التطبيق بالظبط */
+    let em,dec;
+    if(r.v.sc>=1.5&&plp>=10){em='🚀';dec='احتفاظ / زيادة تدريجية عند التصحيحات'}
+    else if(r.v.sc>=1.5){em='📈';dec='زيادة بحذر (تدرّج)'}
+    else if(r.v.sc>-1.5){em='⚖️';dec='احتفظ ومراقبة'}
+    else if(plp>=15){em='💰';dec='جني أرباح جزئي (50–70%)'}
+    else if(plp>=0){em='📉';dec='تخفيف / حماية الأرباح'}
+    else{em='🛑';dec='بيع أو وقف خسارة — الترند انقلب ضدك'}
+    const reasons=(r.v.rs||[]).slice(0,2).map(function(x){return x[0]+' '+x[1]});
+    msg+='• '+em+' '+r.sym+' — '+r.name+'\n';
+    msg+='  السعر '+NB(r.price)+' ج.م ('+sign(r.chg)+'٪) · '+(pl>=0?'📈 ربح ':'📉 خسارة ')+NB(Math.abs(pl),0)+' ج.م ('+sign(plp)+'٪)\n';
+    msg+='  القرار: '+dec+(reasons.length?(' — '+reasons.join(' × ')):'')+'\n';
+    msg+='  🛑 وقف '+NB(r.v.stop)+' ج.م · 🎯 هدف '+NB(r.v.t1)+' ج.م\n';
+  });
+  if(cost>0&&val>0){
+    const tpl=val-cost,tplp=cost?(val-cost)/cost*100:0;
+    msg+='\n———— إجمالي المحفظة ————\n';
+    msg+='💰 التكلفة: '+NB(cost,0)+' ج.م\n';
+    msg+='📊 القيمة الحالية: '+NB(val,0)+' ج.م\n';
+    msg+=(tpl>=0?'📈 إجمالي الربح: ':'📉 إجمالي الخسارة: ')+NB(Math.abs(tpl),0)+' ج.م ('+sign(tplp)+'٪)\n';
+  }
+  msg+='\n';
+}
+msg+='— التحليل الكامل بالرسومات وسجل التوصيات والتعلم الآلي في التطبيق:\nmedhatcoding.github.io/mistral-Mi';
+/* إرسال تليجرام — تقسيم تلقائي لو عدّى 3800 حرف */
+async function main(){
+  const chunks=[];let cur='';
+  msg.split('\n').forEach(function(line){
+    if((cur?cur+'\n'+line:line).length>3800){chunks.push(cur);cur=line}
+    else cur=cur?cur+'\n'+line:line;
+  });
+  if(cur)chunks.push(cur);
+  for(const c of chunks){
+    const r=await fetch('https://api.telegram.org/bot'+TOK+'/sendMessage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:CHAT,text:c})});
+    const j=await r.json().catch(function(){return{}});
+    console.log('تلجرام HTTP '+r.status+(j.ok?' — تم الإرسال ✅':' — '+(j.description||'خطأ غير معروف')));
+    if(!r.ok)process.exit(1);
+  }
+  console.log('✅ التقرير اتبعت — '+chunks.length+' رسالة ('+msg.length+' حرف)');
+}
+main().catch(function(e){console.log('❌ فشل الإرسال: '+e.message);process.exit(1)});
+
+SAHMY_EOF'
           /* 📊 مولّد التقرير اليومي — نفس محرك التطبيق بالظبط (محرك مستخرج من index.html فوقه) */
           const fs=require('fs');
           function readJSON(p,dflt){try{return JSON.parse(fs.readFileSync(p,'utf8'))}catch(e){console.log('⚠️ تعذر قراءة '+p+' — '+e.message);return dflt}}

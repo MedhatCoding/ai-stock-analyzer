@@ -1560,7 +1560,7 @@ async function runScan(){
   if(arr.length)safe("سجل التوصيات",()=>{recLogPicks(outp);recEval();renderRecLog();});
   if(arr.length)safe("خريطة القطاعات والتنبيهات",()=>{renderSectors();alertsCheck();});
   if(arr.length)safe("شهادة المحرك",()=>{engineBT();renderEngineBT();});
-  if(arr.length)safe("التقرير الأسبوعي",()=>{pfSnap();weeklyReport();});
+  if(arr.length)safe("لقطة قيمة المحفظة",pfSnap);
   renderPicks(outp);
   $("scan-status").textContent=arr.length?("تم فحص "+arr.length+" سهمًا — "+new Date().toLocaleTimeString("ar-EG")):"⚠️ فشل جلب الأسعار المباشرة — جرّب إعادة الفحص";
   $("scan-bar-wrap").classList.add("hide");
@@ -2263,7 +2263,7 @@ function showLGB(box,m){
   box.innerHTML=h;
 }
 
-/* ═════════════════════════ 12.22) 📈 مسار الشهادة + 📨 التقرير الأسبوعي + 🩺 أشعة المحفظة + 💵 أجندة التوزيعات ═════════════════════════ */
+/* ═════════════════════════ 12.22) 📈 مسار الشهادة + 🩺 أشعة المحفظة + 💵 أجندة التوزيعات ═════════════════════════ */
 const EBT_HIST="egx_enginebt_hist";
 /* لقطة في سجل الشهادة: لو فيه لقطة من أقل من ٦ أيام بتتحدث مكانها عشان السجل يفضل أسبوعي منتظم */
 function ebtSnap(r){
@@ -2272,7 +2272,7 @@ function ebtSnap(r){
   if(H.length&&Date.now()-H[H.length-1].t<6*864e5)H[H.length-1]=e;else H.push(e);
   store.set(EBT_HIST,H.slice(-26));
 }
-/* لقطة يومية لقيمة المحفظة — أساس حساب التغير الأسبوعي في التقرير */
+/* لقطة يومية لقيمة المحفظة (سجل قيمة المحفظة) */
 function pfSnap(){
   if(!HOLDINGS.length)return;
   const t=calcTotals();if(!t.val)return;
@@ -2281,40 +2281,7 @@ function pfSnap(){
   if(H.length&&Date.now()-H[H.length-1].t<20*3600*1000)H[H.length-1]=e;else H.push(e);
   store.set("egx_pfval_hist",H.slice(-90));
 }
-/* 📨 التقرير الأسبوعي على تليجرام — مرة كل ٧ أيام لوحده: المقفول الأسبوع ده + تغير المحفظة + الشهادة + النموذج */
-function weeklyReport(){
-  const last=+store.get("egx_weekly_ts",0);
-  if(Date.now()-last<7*864e5)return;
-  const wk=rlGet().filter(r=>r.closed&&Date.now()-r.closed<7*864e5);
-  const hits=wk.filter(r=>r.status==="hit").length;
-  const stops=wk.filter(r=>r.status==="stop").length;
-  const d14=wk.filter(r=>r.status==="d14").length;
-  const cur=calcTotals();
-  const PH=store.get("egx_pfval_hist",[]);
-  let pfLine="";
-  if(cur.val&&PH.length){
-    const past=PH.filter(x=>x.t<=Date.now()-6*864e5).slice(-1)[0];
-    const chg=(past&&past.val)?(cur.val/past.val-1)*100:null;
-    pfLine="\n💼 المحفظة: "+NF(cur.val)+" ج.م"+(chg!=null?(" ("+(chg>=0?"+":"")+chg.toFixed(1)+"٪ عن الأسبوع اللي فات)"):"");
-  }else if(cur.val){
-    pfLine="\n💼 المحفظة: "+NF(cur.val)+" ج.م";
-  }
-  const eb=store.get(EBT_KEY,null);
-  let ebtLine="";
-  if(eb&&eb.r&&eb.r.winPct!=null){
-    ebtLine="\n🏛️ شهادة المحرك (سنة تاريخية): وصل الهدف "+eb.r.winPct.toFixed(0)+"٪ · تفوق على وسيط السوق "+(eb.r.beatPct!=null?eb.r.beatPct.toFixed(0)+"٪":"—");
-  }
-  let m=LGB;
-  if(!m){const c=store.get("egx_lgb_v1",null);if(c&&c.model)m=c.model}
-  const lgbLine=(m&&m.wf_auc)?("\n🌲 LightGBM: AUC زمني = "+m.wf_auc+(m.wf_auc<0.55?" — إشارة ضعيفة ومكتوبة زي ما هي":"")):"";
-  const msg="⚡ mistral-Mi — التقرير الأسبوعي 📅 "+new Date().toLocaleDateString("ar-EG")
-   +"\n📉 توصيات اتقفلت الأسبوع ده: "+wk.length+(wk.length?" (✅ "+hits+" هدف · ❌ "+stops+" وقف · ⏱️ "+d14+" مهلة)":"")
-   +pfLine+ebtLine+lgbLine
-   +"\n— الأرقام من غير تجميل، ولو مفيش توصيات اتقفلت ده معناه الأسبوع هادي.";
-  tgSend(msg).then(function(ok){
-    if(ok){store.set("egx_weekly_ts",Date.now());toast("📨 التقرير الأسبوعي اتبعت على تليجرام");}
-  });
-}
+/* (v3.17) التقرير الأسبوعي اتشال بناءً على طلبك — التقرير اليومي الساعة 11:00 هو الوحيد */
 /* 🩺 أشعة المحفظة: تركيز القطاعات + التقلب الموزون + البيتا مقابل EGX30 + اختبار الضغط */
 let XRAY_BUSY=false;
 async function renderXray(){
@@ -3661,7 +3628,7 @@ function init(){
   safe("ملخص المحفظة",renderPortfolioMini);
   /* التشغيل التلقائي: فحص السوق يشتغل من نفسه إذا كانت النتائج أقدم من 24 ساعة */
   if(CFG.prefs.auto!==false&&(!PICKS||!PICKS.buys||!PICKS.buys.length||Date.now()-PICKS.time>24*60*60*1000))safe("فحص السوق التلقائي",()=>runScan());
-  else{safe("التقرير الأسبوعي",weeklyReport);safe("مراجعة قبل التنفيذ",autoRevalidate);}
+  else{safe("مراجعة قبل التنفيذ",autoRevalidate);}
 }
 /* التكيف مع iframe ستيرمليت: الإطار بارتفاع الشاشة الظاهرة — التمرير جوه التطبيق فشريط التبويبات الثابت يفضل ظاهر دايمًا */
 (function(){
