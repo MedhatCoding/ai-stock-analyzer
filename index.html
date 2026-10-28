@@ -3218,7 +3218,7 @@ async function ghPut(path,contentB64,msg){
 }
 /* المزامنة: بترفع محفظتك المشفرة مع كل تعديل + كحد أقصى مرة كل 30 دقيقة */
 async function pfSync(force){
-  if(!store.get("egx_ghpat",""))return false;
+  if(!store.get("egx_ghpat","")){store.set("egx_pfsync_err","مفيش توكن GitHub محفوظ");return false}
   const last=+store.get("egx_pfsync_ts",0);
   if(!force&&Date.now()-last<30*60*1000)return false;
   store.set("egx_pfsync_ts",Date.now());
@@ -3239,7 +3239,7 @@ $("gh-test").onclick=async function(){
   store.set("egx_ghpat",$("gh-pat").value.trim());
   const ok=await pfSync(true);
   if(ok)o.innerHTML='<span class="up">✅ اتزامنت — محفظتك المشفرة اترفعت على GitHub والتقرير اليومي هيشوفها</span>';
-  else o.innerHTML='<span class="down">❌ فشلت المزامنة — تأكد من التوكن (Contents: Read and write على mistral-Mi بس) وإن إعدادات تليجرام محفوظة</span>';
+  else o.innerHTML='<span class="down">❌ فشلت المزامنة — آخر خطأ: '+(store.get("egx_pfsync_err","مش معروف"))+' — اتأكد من التوكن (Contents: Read and write على mistral-Mi بس) وإن إعدادات تليجرام محفوظة</span>';
 };
 /* ⬆️ استعادة المحفظة من GitHub (v3.11): بتنزّل portfolio.dat المشفرة وتفكها بمفتاح توكن تليجرام
    وترجّع الأسهم (والصناديق في النسخ الجديدة) لجهازك — للحالات اللي التخزين المحلي بيت مسح فيها
@@ -3258,9 +3258,30 @@ $("gh-restore").onclick=async function(){
   const o=$("gh-restore-out");if(!o)return;
   try{
     o.innerHTML='<span class="spin"></span>جارٍ تنزيل النسخة المتزامنة...';
-    const r=await fetch("https://raw.githubusercontent.com/MedhatCoding/mistral-Mi/main/portfolio.dat?cb="+Date.now(),{cache:"no-store"});
-    if(!r.ok)throw new Error(r.status===404?"مفيش نسخة متزامنة على GitHub بعد — لازم تكون ضفت محفظة ومفعل المزامنة قبل كده":"HTTP "+r.status);
-    const d=await pfDecrypt((await r.text()).trim());
+    /* 3 مصادر بالتتابع: GitHub API (بالتوكن — مضمون ومتجدد فورًا) ← jsDelivr (CDN مش بيتحجب) ← raw
+       (ساعات بيتحجب في مصر ويرجّع صفحة HTML — عشان كده بنتحقق إن المحتوى base64 قبل فك التشفير) */
+    const pat=store.get("egx_ghpat","");
+    const srcs=[
+      {u:"https://api.github.com/repos/MedhatCoding/mistral-Mi/contents/portfolio.dat",api:true},
+      {u:"https://cdn.jsdelivr.net/gh/MedhatCoding/mistral-Mi@main/portfolio.dat",api:false},
+      {u:"https://raw.githubusercontent.com/MedhatCoding/mistral-Mi/main/portfolio.dat",api:false}
+    ];
+    let b64=null,lastErr=null;
+    for(let i=0;i<srcs.length;i++){
+      try{
+        const hh={cache:"no-store"};
+        if(pat)hh.headers={Authorization:"Bearer "+pat,Accept:"application/vnd.github+json"};
+        const r=await fetch(srcs[i].u+(srcs[i].api?"":"?cb="+Date.now()),hh);
+        if(!r.ok){lastErr=(r.status===404?"مفيش نسخة متزامنة على GitHub بعد":"HTTP "+r.status);continue}
+        const t=(await r.text()).trim();
+        let b=srcs[i].api?((JSON.parse(t).content)||""):t;
+        b=String(b).replace(/\s/g,"");
+        if(!/^[A-Za-z0-9+/=]+$/.test(b)){lastErr="المصدر رقم "+(i+1)+" رجّع محتوى مش base64 (غالبًا محجوب)";continue}
+        b64=b;break;
+      }catch(e){lastErr=e.message}
+    }
+    if(!b64)throw new Error(lastErr||"فشل تنزيل النسخة من كل المصادر");
+    const d=await pfDecrypt(b64);
     if(!d||!Array.isArray(d.holdings))throw new Error("الصيغة مش مفهومة");
     let added=0;
     d.holdings.forEach(function(h){
@@ -3649,6 +3670,7 @@ init();
    تحديث v3.9 (2026-10-28) — 🏦 تقييم محسوب لكل صندوق جوه قرارات الذكاء الاصطناعي والأشعة (مراقبة/حياد/احتفاظ/أداء قوي) + ترتيب عملي لكروت صفحة المحفظة (أسهمي ← قرارات AI ← الأشعة ← التوزيعات ← التنبيهات ← سجل القرارات ← الحاسبة) + ترتيب الأكثر ارتفاعًا/انخفاضًا مع رقم الترتيب #1..#6
    تحديث v3.10 (2026-10-28) — 🎯 توصيات الشراء بقت «أقوى 3 بس بعلامة ≥2» بقرار باك تست Stock Lab v2 (PF 1.85 / متوسط +2.28% مقابل 1.66%/+1.78% لأعلى 5) — جودة قبل عدد. توصيات البيع زي ما هي.
    تحديث v3.11 (2026-10-28) — ⬆️ زرار «استعادة المحفظة من GitHub» في الإعدادات: بيرجّع أسهمك من النسخة المشفرة portfolio.dat لو التخزين المحلي اتمسح (إعادة تثبيت/متصفح جديد) + المزامنة بقت تشمل الصناديق كمان
+   تحديث v3.12 (2026-10-28) — 🛡️ استعادة المحفظة بقت بتجرب 3 مصادر (GitHub API ← jsDelivr ← raw) مع فحص base64 قبل فك التشفير (raw ساعات بيتحجب في مصر) + رسالة خطأ المزامنة بتوضح السبب الفعلي
    قراءة من الكاش المحلي (WATCH_CACHE) فقط — صفر استدعاءات API جديدة.
    كتلة مستقلة: لا تعدّل ولا تعيد تعريف أي كود قائم.
    حذفها = حذف الكتلة كلها، بدون أي أثر على باقي التطبيق. ═══ */
@@ -4165,6 +4187,7 @@ init();
 </script>
 </body>
 </html>
+
 
 
 
