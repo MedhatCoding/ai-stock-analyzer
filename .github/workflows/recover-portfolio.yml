@@ -1,6 +1,6 @@
 name: استعادة المحفظة من تاريخ Git
-# 🧯 v3: بيدور في تاريخ portfolio.dat بكل الصيغ الممكنة (AES-GCM بتشفير التطبيق، JSON نص صريح، base64-JSON)
-# ويرجع آخر نسخة فيها أسهم فعلًا + يبعتها على تليجرام + تقرير تشخيصي recover-log.txt دايمًا.
+# 🧯 v4: الملف تاريخيًا بيتخزن بايتات خام (ترميز مزدوج قديم) — بقرا البايتات مباشرة (Buffer من git show)
+# وبيجرب مفاتيح: TG_BOT_TOKEN ثم fallback. يرجع آخر نسخة فيها أسهم + يبعتها على تليجرام + تقرير recover-log.txt.
 on:
   workflow_dispatch:
   push:
@@ -29,29 +29,12 @@ jobs:
           const crypto=require('crypto');
           const fs=require('fs');
           const lines=[];
-          function aesDec(b64,key){
-            const bin=Buffer.from(String(b64).replace(/\s/g,''),'base64');
-            if(bin.length<29)throw new Error('too short');
-            const iv=bin.slice(0,12),rest=bin.slice(12);
-            const tag=rest.slice(rest.length-16),ct=rest.slice(0,rest.length-16);
+          function aesDec(buf,key){
+            if(buf.length<29)throw new Error('too short');
+            const iv=buf.slice(0,12),ct=buf.slice(12);
             const d=crypto.createDecipheriv('aes-256-gcm',key,iv);
-            d.setAuthTag(tag);
-            return JSON.parse(Buffer.concat([d.update(ct),d.final()]).toString('utf8'));
-          }
-          function holdingsOf(obj){
-            if(!obj)return 0;
-            if(Array.isArray(obj.holdings))return obj.holdings.length;
-            if(Array.isArray(obj))return obj.length;
-            if(obj.h&&Array.isArray(obj.h))return obj.h.length;
-            return 0;
-          }
-          function extract(obj){
-            if(!obj)return null;
-            if(Array.isArray(obj.holdings))return obj;
-            if(Array.isArray(obj))return {holdings:obj};
-            if(Array.isArray(obj.h))return {holdings:obj.h,funds:obj.f||[]};
-            if(obj.portfolio&&Array.isArray(obj.portfolio.holdings))return obj.portfolio;
-            return null;
+            d.setAuthTag(ct.slice(ct.length-16));
+            return JSON.parse(Buffer.concat([d.update(ct.slice(0,ct.length-16)),d.final()]).toString('utf8'));
           }
           const tok=(process.env.TG_BOT_TOKEN||'').trim();
           const chat=(process.env.TG_CHAT_ID||'').trim();
@@ -66,38 +49,35 @@ jobs:
           for(const c of commits){
             if(seen.has(c))continue;seen.add(c);
             let raw;
-            try{raw=execSync('git show '+c+':portfolio.dat',{maxBuffer:10*1024*1024}).toString().trim()}catch(e){continue}
-            if(c===commits[commits.length-1]||lines.length<3)lines.push(c.slice(0,8)+' محتواه (أول 100 حرف): '+raw.slice(0,100));
-            let obj=null,how='';
-            try{obj=JSON.parse(raw);how='JSON نص صريح'}catch(e){}
-            if(!obj){
-              try{obj=JSON.parse(Buffer.from(String(raw).replace(/\s/g,''),'base64').toString('utf8'));how='base64-JSON'}catch(e){}
-            }
-            if(!obj){
+            try{raw=execSync('git show '+c+':portfolio.dat',{maxBuffer:10*1024*1024})}catch(e){continue}
+            if(!(raw&&raw.length))continue;
+            /* الصيغتان: بايتات خام مباشرة، أو نص base64 للبايتات */
+            const cands=[{n:'خام',buf:raw}];
+            try{
+              const txt=raw.toString('latin1').replace(/\s/g,'');
+              if(/^[A-Za-z0-9+/=]+$/.test(txt)&&txt.length>28)cands.push({n:'base64نص',buf:Buffer.from(txt,'base64')});
+            }catch(e){}
+            for(const cd of cands){
               for(const kk of keys){
-                try{obj=aesDec(raw,kk.k);how='AES بمفتاح '+kk.n;break}catch(e){}
+                try{
+                  const obj=aesDec(cd.buf,kk.k);
+                  const n=(obj&&Array.isArray(obj.holdings))?obj.holdings.length:0;
+                  lines.push(c.slice(0,8)+': نجح فك التشفير ('+cd.n+' بمفتاح '+kk.n+') — عدد الأسهم: '+n);
+                  if(n>0&&!found){found=obj;foundRaw=raw;foundHow=cd.n+' بمفتاح '+kk.n}
+                }catch(e){}
               }
-            }
-            if(obj){
-              const ex=extract(obj);
-              const n=ex?holdingsOf(ex):0;
-              lines.push(c.slice(0,8)+': '+how+' — عدد الأسهم: '+n);
-              if(n>0&&!found){found=ex;foundRaw=raw;foundHow=how}
-            }else{
-              lines.push(c.slice(0,8)+': صيغة غير مفهومة (طول النص '+raw.length+')');
             }
           }
           let msg;
           if(found){
-            lines.push('النتيجة: اتلقت نسخة فيها '+found.holdings.length+' سهم بصيغة: '+foundHow);
-            fs.writeFileSync('portfolio.dat',foundRaw);
+            lines.push('النتيجة: اتلقت نسخة فيها '+found.holdings.length+' سهم — '+foundHow);
             const payload=JSON.stringify({holdings:found.holdings,funds:found.funds||[]});
             fs.writeFileSync('pf_recovered.json',payload);
             const list=found.holdings.map(h=>'- '+h.t+' x '+h.qty+' (متوسط '+h.avg+')').join(' | ');
             msg='♻️ اتلقت نسخة محفظتك الأصلية ('+found.holdings.length+' سهم): '+list+'  ||  لترجيعها في التطبيق: انسخ السطر ده وحطه في (استيراد المحفظة من نص) في الإعدادات: '+payload;
           }else{
-            lines.push('النتيجة: مفيش نسخة فيها أسهم ب أي صيغة');
-            msg='❌ فشل استعادة محفظتك من تاريخ Git بكل الصيغ. راجع recover-log.txt في المستودع.';
+            lines.push('النتيجة: مفيش نسخة بتتفك بأي مفتاح — المفاتيح المتاحة مفيش منها اللي اتشفرت بيه النسخ');
+            msg='❌ فشل استعادة محفظتك: فك تشفير كل نسخ التاريخ فشل. اللي اتحاول: البايتات الخام وbase64، بمفتاح سر TG_BOT_TOKEN ومفتاح الاحتياطي.';
           }
           if(tok&&chat){
             fetch('https://api.telegram.org/bot'+tok+'/sendMessage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:chat,text:msg})}).catch(function(){});
@@ -109,5 +89,5 @@ jobs:
           node recover.js
           git config user.name "mistral-Mi bot"
           git config user.email "actions@users.noreply.github.com"
-          git add recover-log.txt portfolio.dat 2>/dev/null || git add recover-log.txt
-          git diff --cached --quiet || (git commit -m "🧯 استعادة v3: فحص كل الصيغ (AES/JSON/base64) - تقرير في recover-log.txt" && git push)
+          git add recover-log.txt pf_recovered.json 2>/dev/null || git add recover-log.txt
+          git diff --cached --quiet || (git commit -m "🧯 استعادة v4: قراءة البايتات الخام مباشرة - تقرير recover-log.txt" && git push)
