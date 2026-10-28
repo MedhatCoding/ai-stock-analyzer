@@ -33,17 +33,20 @@ function runBT(opts){
       if(exit){trades.push({ret:ret,days:p.daysHeld,why:exit});delete pos[s];}
     });
     if(di>=days.length-1)continue;
+    if(Object.keys(pos).length>=(opts.maxPos||5))continue;
+    /* الجودة مش الكمية: نجمع كل الإشارات المؤهلة النهاردة ونختار الأقوى بس */
+    const cands=[];
     SYMS.forEach(s=>{
       if(pos[s])return;const i=idxOf[s][d];if(i==null||i<60)return;
-      if(Object.keys(pos).length>=5)return;
       const arr=bySym[s];if(!liqOK(arr,i))return;
       if(opts.regime&&parseFloat(breadth[d])<50)return;
-      const v=analyze(arr.slice(0,i+1));if(!v||v.sc<1.5)return;
-      let stop=v.stop;
-      if(opts.atr){const a=atr14(arr,i);if(a)stop=Math.min(v.stop,arr[i].c-2.2*a);}
-      if(stop>=arr[i].c)return;
-      pos[s]={entry:arr[i].c,stop:stop,t1:v.t1,daysHeld:0};
+      const v=analyze(arr.slice(0,i+1));if(!v||v.sc<(opts.minSc||1.5))return;
+      if(v.stop>=arr[i].c)return;
+      cands.push({sym:s,i:i,sc:v.sc,stop:v.stop,t1:v.t1});
     });
+    cands.sort((a,b)=>b.sc-a.sc);
+    const openSlots=(opts.maxPos||5)-Object.keys(pos).length;
+    cands.slice(0,Math.max(0,openSlots)).forEach(c=>{pos[c.sym]={entry:bySym[c.sym][c.i].c,stop:c.stop,t1:c.t1,daysHeld:0}});
   }
   const n=trades.length;if(!n)return{trades:0};
   const wins=trades.filter(t=>t.ret>0).length;
@@ -53,13 +56,17 @@ function runBT(opts){
   const why={};trades.forEach(t=>{why[t.why]=(why[t.why]||0)+1});
   return{trades:n,win:(wins/n*100).toFixed(1),pf:gl>0?(gp/gl).toFixed(2):'∞',avg:+avg.toFixed(2),avgDays:+(trades.reduce((a,t)=>a+t.days,0)/n).toFixed(1),why:why};
 }
-const res={base:runBT({}),regime:runBT({regime:true}),atr:runBT({atr:true}),combo:runBT({regime:true,atr:true})};
+const res={
+  base:runBT({}),
+  best5:runBT({maxPos:5}),
+  best3:runBT({maxPos:3}),
+  best1:runBT({maxPos:1}),
+  sc2:runBT({maxPos:5,minSc:2.0}),
+  sc2top3:runBT({maxPos:3,minSc:2.0})
+};
 const out={t:Date.now(),days:days.length,syms:SYMS.length,first:days[0],last:days[days.length-1],breadthLast:breadth[days[days.length-1]],res};
 fs.writeFileSync('stock_bt.json',JSON.stringify(out,null,1));
 const row=k=>{const r=res[k];return k.padEnd(8)+' صفقات:'+((''+r.trades).padStart(4))+' نجاح:'+((''+r.win).padStart(6))+'٪ PF:'+((''+r.pf).padStart(6))+' متوسط:'+((''+r.avg).padStart(7))+'٪ جلسات:'+(r.avgDays||'-')};
 console.log('🔬 باك تست الأسهم المتوافقة مع الشريعة — '+SYMS.length+' سهم · '+days.length+' جلسة ('+days[0]+' ← '+days[days.length-1]+')');
 console.log('اتساع السوق الحالي: '+breadth[days[days.length-1]]+'٪ فوق SMA50');
-console.log(row('base'));
-console.log(row('regime'));
-console.log(row('atr'));
-console.log(row('combo'));
+Object.keys(res).forEach(k=>console.log(row(k)));
