@@ -7,7 +7,7 @@
 name: التقرير اليومي على تليجرام
 on:
   schedule:
-    - cron: "20 7,9,11,13 * * 0-4" # 4 محاولات يوميًا (بتوقيت UTC) — مع قفل "مرة واحدة في اليوم" تحت
+    - cron: "20 8,9,10,12 * * 0-4" # محاولات على مدار اليوم — البوابة تحت بتمنع الإرسال قبل 11 صباحًا بتوقيت القاهرة
   push:
     branches: [main]
     paths: [".github/workflows/daily-report.yml"]
@@ -33,13 +33,18 @@ jobs:
           set -euo pipefail
           EVENT="${{ github.event_name }}"
           TODAY="$(TZ=Africa/Cairo date +%F)"
+          NOW_EPOCH="$(TZ=Africa/Cairo date +%s)"
+          OPEN_EPOCH="$(TZ=Africa/Cairo date -d "today 11:00" +%s)"
           if [ "$EVENT" != "schedule" ]; then
             echo "تشغيل يدوي/تجريبي ($EVENT) — إرسال مباشر بدون قفل"
             echo "SKIP=false" >> "$GITHUB_ENV"; exit 0
           fi
           LAST="$(gh api "repos/${{ github.repository }}/actions/variables/LAST_REPORT_DATE" --jq .value 2>/dev/null || echo "")"
-          echo "اليوم: $TODAY · آخر يوم اتبعت فيه: ${LAST:-مفيش}"
-          if [ "$LAST" = "$TODAY" ]; then
+          echo "اليوم: $TODAY · آخر يوم اتبعت فيه: ${LAST:-مفيش} · الساعة دلوقتي: $(TZ=Africa/Cairo date +%H:%M)"
+          if [ "$NOW_EPOCH" -lt "$OPEN_EPOCH" ]; then
+            echo "⏳ لسه قبل 11 صباحًا بتوقيت القاهرة — التقرير بيتبعت بعد فتح البورصة بساعة، تخطي"
+            echo "SKIP=true" >> "$GITHUB_ENV"
+          elif [ "$LAST" = "$TODAY" ]; then
             echo "ℹ️ التقرير اتبعت خلاص النهاردة ($TODAY) — تخطي"
             echo "SKIP=true" >> "$GITHUB_ENV"
           else
