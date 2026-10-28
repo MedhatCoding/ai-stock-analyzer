@@ -3,7 +3,7 @@
   "short_name": "mistral-Mi",
   "description": "تحليل فني وتوصيات ذكية لأسهم البورصة المصرية بالذكاء الاصطناعي",
   "start_url": "./",
-  "id": "mistral-mi/",,
+  "id": "mistral-mi/",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
