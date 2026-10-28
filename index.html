@@ -3596,6 +3596,7 @@ init();
    تحديث v3.5 (2026-10-27) — 🧹 شيل قسم الصناديق المكرر نهائيًا + إصلاح علامة إغلاق كانت بتكسر الكتلة + 💡 إشارة المركز الحالي (الكمية والمتوسط الموجودين) جوه مودال الإضافة زي تطبيقات الاستثمار
    تحديث v3.6 (2026-10-27) — 🏦 قسم «صناديقي» العصري جنب الأسهم: كل صندوق كارت فيه الوحدات والمتوسط وآخر NAV والربح والمصدر + واجهة موبايل أكبر (ناف بار ضخم + خطوط وأزرار زي تطبيقات الهاتف)
    تحديث v3.8 (2026-10-28) — 🔄 ترتيب المحفظة النهائي: الأسهم الأول ثم الصناديق ثم باند الإجمالي والربح/الخسارة (الهيرو بقى فوق ملخصات المحفظة تحت الصناديق) ثم التحليلات تحت بعضها
+   تحديث v3.9 (2026-10-28) — 🏦 تقييم محسوب لكل صندوق جوه قرارات الذكاء الاصطناعي والأشعة (مراقبة/حياد/احتفاظ/أداء قوي) + ترتيب عملي لكروت صفحة المحفظة (أسهمي ← قرارات AI ← الأشعة ← التوزيعات ← التنبيهات ← سجل القرارات ← الحاسبة) + ترتيب الأكثر ارتفاعًا/انخفاضًا مع رقم الترتيب #1..#6
    قراءة من الكاش المحلي (WATCH_CACHE) فقط — صفر استدعاءات API جديدة.
    كتلة مستقلة: لا تعدّل ولا تعيد تعريف أي كود قائم.
    حذفها = حذف الكتلة كلها، بدون أي أثر على باقي التطبيق. ═══ */
@@ -3961,12 +3962,14 @@ init();
       var fPct=fVal/combo*100,sPct=100-fPct;
       var rows=FUNDS.map(function(f){
         var u=parseFloat(f.units)||0,c=u*(parseFloat(f.nav)||0),c0=u*(parseFloat(f.avg)||0),pl=c-c0;
-        return '<tr><td><b>🏦 '+f.name+'</b></td><td class="num">'+NF(c)+'</td><td class="num '+(pl>=0?"up":"down")+'">'+NF(pl)+'</td><td class="num">'+(c/combo*100).toFixed(1)+'%</td></tr>';
+        var plP=c0?pl/c0*100:0;
+        var vd=plP<=-15?["b-sell","⛔ مراقبة — خسارة عميقة"]:(plP<0?["b-hold","⚖️ حياد — تحت التعادل"]:(plP<10?["b-neu","✅ احتفاظ — ربح طفيف"]:["b-buy","🚀 أداء قوي"]));
+        return '<tr><td><b>🏦 '+f.name+'</b></td><td class="num">'+NF(c)+'</td><td class="num '+(pl>=0?"up":"down")+'">'+NF(pl)+'</td><td class="num">'+(c/combo*100).toFixed(1)+'%</td><td><span class="badge '+vd[0]+'">'+vd[1]+'</span></td></tr>';
       }).join("");
       var card='<div class="egx-xray-funds"><h3 class="small" style="margin:14px 0 8px">🏦 الصناديق ضمن تحليلات محفظتك</h3>'+
         '<div class="egx-distbar"><span style="width:'+sPct.toFixed(1)+'%">'+sPct.toFixed(0)+'% أسهم</span><span style="width:'+fPct.toFixed(1)+'%">'+fPct.toFixed(0)+'% صناديق</span></div>'+
         '<div class="small muted" style="margin:8px 0;line-height:1.8">قيمة الصناديق <b>'+NF(fVal)+'</b> ج.م من إجمالي شامل <b>'+NF(combo)+'</b> ج.م · ربح الصناديق <b class="'+(fPl>=0?"up":"down")+'">'+NF(fPl)+'</b> ج.م ('+(fCost?(fPl/fCost*100).toFixed(1):0)+'%)</div>'+
-        '<div class="scroll-x"><table><thead><tr><th>الصندوق</th><th>القيمة الحالية</th><th>ربح/خسارة</th><th>من المحفظة</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+        '<div class="scroll-x"><table><thead><tr><th>الصندوق</th><th>القيمة الحالية</th><th>ربح/خسارة</th><th>من المحفظة</th><th>التقييم</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
         '<p class="small muted" style="margin-top:6px;line-height:1.8">ℹ️ مونت كارلو والبيتا والتقلب واختبار الضغط محسوبة على تاريخ أسعار الأسهم اللحظي — الصناديق مضمونة هنا كقيمة ونسبة وربح ضمن الصورة الكاملة (NAV الصناديق يومي).</p></div>';
       ["xray-body","holdings-ai","quant-lab"].forEach(function(id){
         var el=document.getElementById(id);
@@ -3975,7 +3978,35 @@ init();
       });
     }catch(e){}
   }
-  function egxMobKick(){if(egxMobT)return;egxMobT=setTimeout(function(){egxMobT=null;try{egxMobLabel()}catch(e){}try{egxFundsAnalytics()}catch(e){}},150)}
+  function egxPfOrder(){
+    try{
+      var sec=document.getElementById("tab-portfolio");
+      if(!sec||sec.getAttribute("data-egxord"))return;
+      var ids=["holdings-table-wrap","holdings-ai","xray-body","div-body","al-list","jr-list","nc-out"];
+      var cards=[];
+      ids.forEach(function(id){var el=document.getElementById(id);if(!el)return;var c=el.closest(".card");if(c&&cards.indexOf(c)<0)cards.push(c)});
+      if(cards.length>1){cards.forEach(function(c){sec.appendChild(c)});sec.setAttribute("data-egxord","1")}
+    }catch(e){}
+  }
+  function egxSortMovers(){
+    try{
+      [["top-gainers","g"],["top-losers","l"]].forEach(function(p){
+        var g=document.getElementById(p[0]);
+        if(!g||!g.children.length)return;
+        var arr=Array.prototype.slice.call(g.children);
+        var key=function(el){var b=el.querySelector(".badge");return parseFloat(((b&&b.textContent)||"").replace(/[^\d.\-]/g,""))||0};
+        arr.sort(function(a,b){return p[1]==="g"?key(b)-key(a):key(a)-key(b)});
+        if(arr.some(function(n,i){return n!==g.children[i]}))arr.forEach(function(n){g.appendChild(n)});
+        arr.forEach(function(n,i){
+          var r=n.querySelector(".egx-rank");
+          if(!r){r=document.createElement("span");r.className="egx-rank";n.style.position="relative";n.appendChild(r)}
+          r.textContent="#"+(i+1);
+          r.style.cssText="position:absolute;top:6px;left:8px;font-size:12px;font-weight:800;color:var(--muted)";
+        });
+      });
+    }catch(e){}
+  }
+  function egxMobKick(){if(egxMobT)return;egxMobT=setTimeout(function(){egxMobT=null;try{egxMobLabel()}catch(e){}try{egxFundsAnalytics()}catch(e){}try{egxPfOrder()}catch(e){}try{egxSortMovers()}catch(e){}},150)}
   try{
     egxMobStyle();
     egxMobLabel();
@@ -4082,6 +4113,7 @@ init();
 </script>
 </body>
 </html>
+
 
 
 
