@@ -69,17 +69,18 @@ jobs:
             && echo "✅ hist.json اتنزلت ($(wc -c < hist.json) بايت)" \
             || echo "❌ hist.json مش متاحة — التقرير مش هينفع"
 
-      - name: 🥇 جلب تاريخ الذهب والدولار (ياهو من سيرفر GitHub)
+      - name: 🥇 جلب تاريخ الذهب وعوامله (ياهو من سيرفر GitHub)
         if: env.SKIP == 'false'
         shell: bash
         run: |
           set -euo pipefail
           UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+          SYM="XAUUSD=X,USDEGP=X,DX-Y.NYB,%5ETNX,%5EVIX,GLD"
           GOK=0
           for HOST in query1 query2; do
-            CODE=$(curl -sS --max-time 40 -A "$UA" -H "Accept: application/json" -o gold_raw.json -w "%{http_code}" "https://$HOST.finance.yahoo.com/v8/finance/spark?symbols=XAUUSD=X,USDEGP=X&range=1y&interval=1d" || echo 000)
+            CODE=$(curl -sS --max-time 40 -A "$UA" -H "Accept: application/json" -o gold_raw.json -w "%{http_code}" "https://$HOST.finance.yahoo.com/v8/finance/spark?symbols=$SYM&range=1y&interval=1d" || echo 000)
             if [ "$CODE" = "200" ] && jq -e '.["XAUUSD=X"].close' gold_raw.json >/dev/null 2>&1; then
-              GOK=1; echo "✅ تاريخ الذهب والدولار اتسحب من $HOST ($(jq '.["XAUUSD=X"].close | length' gold_raw.json) شمعة)"; break
+              GOK=1; echo "✅ تاريخ الذهب وعوامله (DXY · عائد 10سن · VIX · GLD) اتسحب من $HOST"; break
             fi
             echo "⚠️ $HOST: HTTP $CODE — محاولة تانية"
           done
@@ -117,14 +118,14 @@ jobs:
           fi
           echo "✅ المحرك اتعمل: $(wc -l < engine.js) سطر محرك + $(wc -l < names.js) سطر أسماء"
 
-                  - name: بناء سكريبت التقرير
+      - name: بناء سكريبت التقرير
         if: env.SKIP == 'false'
         shell: bash
         run: |
           set -euo pipefail
           cat > report_body.js <<'SAHMY_EOF'
-          /* 📊 مولّد التقرير اليومي — نفس محرك التطبيق بالظبط (v3.18)
-             الهيكل: ملخص السوق → توصية مؤشر EGX33 → التوصيات → التوصيات المنقحة → توصيات الذهب → قرارات الذكاء الاصطناعي للمحفظة + الإجمالي */
+          /* 📊 مولّد التقرير اليومي — نفس محرك التطبيق بالظبط (v3.19)
+             الهيكل: ملخص السوق → توصية مؤشر EGX33 → التوصيات → التوصيات المنقحة → توصيات الذهب بالعوامل → قرارات الذكاء الاصطناعي للمحفظة + الإجمالي */
           const fs=require('fs');
           function readJSON(p,dflt){try{return JSON.parse(fs.readFileSync(p,'utf8'))}catch(e){console.log('⚠️ تعذر قراءة '+p+' — '+e.message);return dflt}}
           const live=readJSON('live.json',null);
@@ -235,12 +236,20 @@ jobs:
           if(dropped.length)msg+='⚠️ سقطت من القايمة بعد تحرك السعر: '+dropped.map(function(r){return r.sym}).join('، ')+'\n\n';
           if(added.length)msg+='🆕 طلعت بعد المراجعة اللحظية: '+added.map(function(r){return r.sym}).join('، ')+'\n\n';
           if(warns.length){msg+='⚠️ تحذيرات بيع:\n\n';warns.forEach(function(r){msg+=stockLines(r,r.v,r.price,r.chg)+'\n\n'})}
-          /* 🥇 توصيات الذهب — الأونصة العالمي بنفس المحرك + سعر الجرام في مصر */
+          /* 🥇 توصيات الذهب — محرك فني + كل العوامل المؤثرة في هبوط وصعود الذهب */
           let goldSec='';
           try{
             const graw=readJSON('gold_raw.json',null);
             const gnow=readJSON('gold_now.json',null);
-            let gArr=[],usdEgp=0;
+            /* آخر إغلاق + التغير على 20 جلسة لأي سلسلة من ياهو */
+            const sparkC=function(k){
+              const s=graw&&graw[k];
+              if(!s||!Array.isArray(s.close))return null;
+              const cl=s.close.map(function(x){return +x}).filter(function(x){return x>0});
+              if(cl.length<21)return null;
+              return {last:cl[cl.length-1],chg20:(cl[cl.length-1]/cl[cl.length-21]-1)*100};
+            };
+            let gArr=[];
             if(graw){
               const gk=graw['XAUUSD=X'];
               if(gk&&Array.isArray(gk.timestamp)&&Array.isArray(gk.close)){
@@ -251,30 +260,57 @@ jobs:
                   gArr.push({d:new Date(gk.timestamp[i]*1000).toISOString().slice(0,10),o:prev,h:Math.max(prev,c),l:Math.min(prev,c),c:c,v:0});
                 }
               }
-              const ek=graw['USDEGP=X'];
-              if(ek&&Array.isArray(ek.close)&&ek.close.length)usdEgp=+ek.close[ek.close.length-1]||0;
             }
             const gNow=(gnow&&+gnow.price>0)?+gnow.price:0;
+            const dxy=sparkC('DX-Y.NYB'),tnx=sparkC('\u005ETNX'),vix=sparkC('\u005EVIX'),gld=sparkC('GLD'),egp=sparkC('USDEGP=X'),mom=sparkC('XAUUSD=X');
             if(gArr.length>=60){
               const vg=analyze(gArr);
-              const gHist=gArr[gArr.length-1].c, gPrev=gArr.length>1?gArr[gArr.length-2].c:gHist;
+              const gHist=gArr[gArr.length-1].c,gPrev=gArr.length>1?gArr[gArr.length-2].c:gHist;
               const disp=(gNow>0?gNow:gHist);
               const gchg=gPrev?(disp-gPrev)/gPrev*100:0;
               goldSec='\n\n🥇 توصيات الذهب — الأونصة عالميًا:\n\n';
-              goldSec+='التوصية: '+vg.rec+' '+'⭐'.repeat(vg.stars)+' (ثقة '+vg.conf+'٪) · السعر '+NB(disp,1)+' دولار/أونصة ('+sign(gchg)+'٪)\n';
+              goldSec+='التوصية الفنية: '+vg.rec+' '+'⭐'.repeat(vg.stars)+' (ثقة '+vg.conf+'٪) · السعر '+NB(disp,1)+' دولار/أونصة ('+sign(gchg)+'٪)\n';
               goldSec+='🛑 وقف '+NB(vg.stop,1)+' · 🎯 هدف '+NB(vg.t1,1)+' دولار · مخاطرة '+vg.risk+'\n';
-              const gpos=(vg.rs||[]).filter(function(x){return x[0]==='✅'});
-              (gpos.length?gpos:vg.rs||[]).slice(0,2).forEach(function(x){goldSec+=x[0]+' '+x[1]+'\n'});
-              if(usdEgp>0){
-                const g24=disp/31.1035*usdEgp;
-                goldSec+='سعر الجرام في مصر (تقديري بسعر الدولار '+NB(usdEgp,2)+'):\n';
-                goldSec+='عيار 24: '+NB(g24,0)+' ج.م · عيار 21: '+NB(g24*21/24,0)+' ج.م · عيار 18: '+NB(g24*18/24,0)+' ج.م · جنيه الذهب: '+NB(g24*21/24*8,0)+' ج.م\n';
+              /* 🔬 العوامل المؤثرة في هبوط وصعود الذهب (تغير ~20 جلسة) */
+              goldSec+='\n🔬 العوامل المؤثرة في الذهب:\n';
+              const facs=[];
+              if(dxy){goldSec+='• مؤشر الدولار DXY ('+sign(dxy.chg20)+'٪): '+(dxy.chg20<0?'⬇️ نزول الدولار = دعم قوي للذهب':'⬆️ صعود الدولار = ضغط على الذهب')+'\n';facs.push(dxy.chg20<0?1:-1)}
+              if(tnx){goldSec+='• عائد سندات أمريكا 10 سن ('+NB(tnx.last,2)+'٪ · '+sign(tnx.chg20)+'٪): '+(tnx.chg20<0?'⬇️ هبوط العائد = دعم للذهب':'⬆️ صعود العائد = ضغط على الذهب')+'\n';facs.push(tnx.chg20<0?1:-1)}
+              if(vix){goldSec+='• مؤشر الخوف VIX ('+sign(vix.chg20)+'٪): '+(vix.chg20>0?'⬆️ توتر وطلب ملاذ آمن = دعم للذهب':'⬇️ هدوء وشهية مخاطرة = ضغط خفيف')+'\n';facs.push(vix.chg20>0?1:-1)}
+              if(gld){goldSec+='• تدفقات صناديق الذهب GLD ('+sign(gld.chg20)+'٪): '+(gld.chg20>0?'⬆️ تدفق داخل = دعم':'⬇️ تدفق خارج = ضغط')+'\n';facs.push(gld.chg20>0?1:-1)}
+              if(mom){goldSec+='• زخم الذهب نفسه ('+sign(mom.chg20)+'٪ آخر شهر)\n';facs.push(mom.chg20>0?1:-1)}
+              if(egp){
+                const g24=disp/31.1035*egp.last;
+                goldSec+='• الدولار/جنيه ('+NB(egp.last,2)+' · '+sign(egp.chg20)+'٪): '+(egp.chg20>0?'⬆️ ارتفاع الدولار بيدعم الذهب المحلي':'استقرار الدولار')+'\n';
+                goldSec+='سعر الجرام في مصر (تقديري): عيار 24: '+NB(g24,0)+' ج.م · عيار 21: '+NB(g24*21/24,0)+' ج.م · عيار 18: '+NB(g24*18/24,0)+' ج.م · جنيه الذهب: '+NB(g24*21/24*8,0)+' ج.م\n';
+              }
+              if(facs.length){
+                const score=facs.reduce(function(s,x){return s+x},0)/facs.length;
+                let fRec;
+                if(score>=0.4)fRec='إيجابية قوية للذهب 🚀';
+                else if(score>=0.2)fRec='مايلة للإيجاب 📈';
+                else if(score<=-0.4)fRec='سلبية قوية على الذهب 📉';
+                else if(score<=-0.2)fRec='مايلة للسلب ⚠️';
+                else fRec='متعارضة/حياد ⚖️';
+                const techBuy=(vg.rec||'').indexOf('شراء')>-1;
+                let finalDec;
+                if(score>=0.2&&techBuy)finalDec='اتفاق كامل — الفني والعوامل شايلين الذهب فوق: فرصة شراء أقوى 🚀';
+                else if(score>=0.2&&!techBuy)finalDec='العوامل داعمة رغم تحفظ المحرك الفني — شراء تدريجي بكميات صغيرة 📈';
+                else if(score<=-0.2&&techBuy)finalDec='تعارض: الفني إيجابي بس العوامل سلبية — كميات صغيرة جدًا ووقف خسارة صارم ⚠️';
+                else if(score<=-0.2&&!techBuy)finalDec='اتفاق على الحذر — انتظار أو تقليل الكمية 📉';
+                else finalDec='قرار متوازن — تدرّج ووقف دايم ⚖️';
+                goldSec+='⚖️ محصلة العوامل: '+fRec+'\n';
+                goldSec+='🧠 القرار النهائي للذهب: '+finalDec+'\n';
               }
             } else if(gNow>0){
-              goldSec='\n\n🥇 الذهب — السعر الحالي: '+NB(gNow,1)+' دولار/أونصة (التاريخ اللزم للتحليل الفني مش متاح)\n';
-              if(usdEgp>0){
-                const g24=gNow/31.1035*usdEgp;
-                goldSec+='عيار 24: '+NB(g24,0)+' ج.م · عيار 21: '+NB(g24*21/24,0)+' ج.م · عيار 18: '+NB(g24*18/24,0)+' ج.م (تقديري)\n';
+              goldSec='\n\n🥇 الذهب — السعر الحالي: '+NB(gNow,1)+' دولار/أونصة (التاريخ اللازم للتحليل والعوامل مش متاح)\n';
+              if(graw){
+                const ek=graw['USDEGP=X'];
+                if(ek&&Array.isArray(ek.close)&&ek.close.length){
+                  const usdEgp=+ek.close[ek.close.length-1];
+                  const g24=gNow/31.1035*usdEgp;
+                  goldSec+='عيار 24: '+NB(g24,0)+' ج.م · عيار 21: '+NB(g24*21/24,0)+' ج.م · عيار 18: '+NB(g24*18/24,0)+' ج.م (تقديري)\n';
+                }
               }
             }
           }catch(e){console.log('⚠️ قسم الذهب اتخطى — '+e.message)}
@@ -340,7 +376,7 @@ jobs:
           cat engine.js names.js sharia.js report_body.js > report.js
           echo "✅ report.js جاهز ($(wc -l < report.js) سطر)"
 
-- name: فحص الأسرار
+      - name: فحص الأسرار
         if: env.SKIP == 'false'
         shell: bash
         env:
@@ -407,6 +443,17 @@ jobs:
           set -euo pipefail
           echo "🧠 شغّل المحرك على $(ls -1 hist.json >/dev/null 2>&1 && echo 'تاريخ كامل' || echo 'بدون تاريخ')..."
           node report.js
+
+      - name: 🚨 إشعار فشل التقرير على تليجرام
+        if: failure()
+        shell: bash
+        env:
+          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+        run: |
+          set -euo pipefail
+          TXT="🚨 التقرير اليومي فشل — اللوج الكامل هنا: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          curl -sS -X POST "https://api.telegram.org/bot$TG_BOT_TOKEN/sendMessage" --data-urlencode chat_id="$TG_CHAT_ID" --data-urlencode text="$TXT" >/dev/null || true
 
       - name: تحديث علامة اليوم (منع تكرار الإرسال)
         if: env.SKIP == 'false' && github.event_name == 'schedule'
