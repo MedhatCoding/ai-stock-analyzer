@@ -129,6 +129,6 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git commit -qm "$MSG"
-          git push -qf "https://x-access-token:${GH_TOKEN}@github.com/MedhatCoding/ai-stock-analyzer.git" live
+          git push -qf "https://x-access-token:${GH_TOKEN}@github.com/MedhatCoding/mistral-Mi.git" live
           echo "✅ اتنشر على فرع live"
           if [ ! -f live.json ]; then exit 1; fi

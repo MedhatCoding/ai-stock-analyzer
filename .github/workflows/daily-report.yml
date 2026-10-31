@@ -1,6 +1,6 @@
 # 📊 mistral-Mi — التقرير اليومي على تليجرام (محرك التطبيق نفسه على GitHub Actions)
 # المدة: كل يوم من الأحد للخميس الساعة 11:00 ص بتوقيت القاهرة (ساعة بعد الافتتاح)
-# محتوى: ملخص السوق بالذكاء الاصطناعي + التوصيات + التوصيات المنقحة بعد الأسعار اللحظية + قرارات الذكاء الاصطناعي للمحفظة + إجمالي الربح/الخسارة (فرص الشريعة فقط ☪️ EGX33 + متوافق خارج المؤشر)
+# محتوى: ملخص السوق بالذكاء الاصطناعي + التوصيات + التوصيات المنقحة بعد الأسعار اللحظية + قرارات الذكاء الاصطناعي للمحفظة + إجمالي الربح/الخسارة (فرص الشريعة فقط ☪️) + توصية مؤشر EGX33 + توصيات الذهب بالجرام في مصر (v3.18)
 # المحفظة: بتتزامن تلقائيًا من التطبيق (portfolio.dat مشفر AES) — وfallback: سر PORTFOLIO_JSON
 # الأسرار: TG_BOT_TOKEN + TG_CHAT_ID (نفس بوت التطبيق) — المزامنة محتاجة نفس TG_BOT_TOKEN لفك التشفير
 
@@ -69,6 +69,31 @@ jobs:
             && echo "✅ hist.json اتنزلت ($(wc -c < hist.json) بايت)" \
             || echo "❌ hist.json مش متاحة — التقرير مش هينفع"
 
+      - name: 🥇 جلب تاريخ الذهب والدولار (ياهو من سيرفر GitHub)
+        if: env.SKIP == 'false'
+        shell: bash
+        run: |
+          set -euo pipefail
+          UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+          GOK=0
+          for HOST in query1 query2; do
+            CODE=$(curl -sS --max-time 40 -A "$UA" -H "Accept: application/json" -o gold_raw.json -w "%{http_code}" "https://$HOST.finance.yahoo.com/v8/finance/spark?symbols=XAUUSD=X,USDEGP=X&range=1y&interval=1d" || echo 000)
+            if [ "$CODE" = "200" ] && jq -e '.["XAUUSD=X"].close' gold_raw.json >/dev/null 2>&1; then
+              GOK=1; echo "✅ تاريخ الذهب والدولار اتسحب من $HOST ($(jq '.["XAUUSD=X"].close | length' gold_raw.json) شمعة)"; break
+            fi
+            echo "⚠️ $HOST: HTTP $CODE — محاولة تانية"
+          done
+          if [ "$GOK" != "1" ]; then
+            echo "⚠️ ياهو رفض — قسم الذهب هيشتغل بالسعر الحالي بس"
+            rm -f gold_raw.json
+          fi
+          curl -sS --max-time 20 -o gold_now.json "https://api.gold-api.com/price/XAU" || true
+          if jq -e '.price' gold_now.json >/dev/null 2>&1; then
+            echo "✅ سعر الذهب الحالي: $(jq -r '.price' gold_now.json) دولار/أونصة"
+          else
+            rm -f gold_now.json; echo "⚠️ مفيش سعر ذهب حالي — قسم الذهب هيتخطى لو مفيش تاريخ"
+          fi
+
       - name: استخراج محرك التحليل من index.html
         if: env.SKIP == 'false'
         shell: bash
@@ -92,14 +117,14 @@ jobs:
           fi
           echo "✅ المحرك اتعمل: $(wc -l < engine.js) سطر محرك + $(wc -l < names.js) سطر أسماء"
 
-            - name: بناء سكريبت التقرير
+                  - name: بناء سكريبت التقرير
         if: env.SKIP == 'false'
         shell: bash
         run: |
           set -euo pipefail
           cat > report_body.js <<'SAHMY_EOF'
-          /* 📊 مولّد التقرير اليومي — نفس محرك التطبيق بالظبط (v3.17)
-             الهيكل: ملخص السوق بالذكاء الاصطناعي → التوصيات (إغلاق آخر جلسة) → التوصيات المنقحة بعد الأسعار اللحظية → قرارات الذكاء الاصطناعي للمحفظة + الإجمالي */
+          /* 📊 مولّد التقرير اليومي — نفس محرك التطبيق بالظبط (v3.18)
+             الهيكل: ملخص السوق → توصية مؤشر EGX33 → التوصيات → التوصيات المنقحة → توصيات الذهب → قرارات الذكاء الاصطناعي للمحفظة + الإجمالي */
           const fs=require('fs');
           function readJSON(p,dflt){try{return JSON.parse(fs.readFileSync(p,'utf8'))}catch(e){console.log('⚠️ تعذر قراءة '+p+' — '+e.message);return dflt}}
           const live=readJSON('live.json',null);
@@ -179,6 +204,24 @@ jobs:
           if(shs.length)msg+='• أسهم الشريعة: '+LRM+shUp+' صاعد من '+LRM+shs.length+'\n';
           if(top3.length)msg+='• الأقوى: '+top3.map(function(r){return r.sym+' '+sign(r.chg)+'٪'}).join(' · ')+'\n';
           if(bot3.length)msg+='• الأضعف: '+bot3.map(function(r){return r.sym+' '+sign(r.chg)+'٪'}).join(' · ');
+          /* ☪️ توصية مؤشر EGX33 — من قراءة أسهم الشريعة (مكوّنات المؤشر) */
+          if(shs.length){
+            const shDown=shs.filter(function(r){return r.chg<0}).length, shFlat=shs.length-shUp-shDown;
+            const shAvg=shs.reduce(function(s,r){return s+r.chg},0)/shs.length;
+            const shSc=shs.reduce(function(s,r){return s+r.v.sc},0)/shs.length;
+            const breadth=shUp/shs.length;
+            let em33,rec33;
+            if(breadth>=0.6&&shSc>=0.5){em33='🚀';rec33='اتجاه إيجابي على المؤشر — شراء تدريجي عند التصحيحات'}
+            else if(breadth<=0.4&&shSc<=-0.5){em33='📉';rec33='اتجاه سلبي على المؤشر — جني أرباح جزئي وانتظار'}
+            else{em33='⚖️';rec33='حياد على المؤشر — انتظار إشارات أوضح قبل أي مركز جديد'}
+            const shTop=shs.slice().sort(function(a,b){return b.chg-a.chg})[0];
+            const shBot=shs.slice().sort(function(a,b){return a.chg-b.chg})[0];
+            msg+='\n\n☪️ توصية مؤشر EGX33 (أسهم الشريعة):\n';
+            msg+='• العرض: '+LRM+shUp+' صاعد · '+LRM+shDown+' هابط · '+LRM+shFlat+' ثابت (من '+LRM+shs.length+' سهم شريعة)\n';
+            msg+='• متوسط التغير '+sign(shAvg)+'٪ · متوسط قوة الإشارة '+sign(shSc)+'\n';
+            if(shTop)msg+='• الأقوى النهاردة: '+shTop.sym+' '+sign(shTop.chg)+'٪'+((shBot&&shBot.sym!==shTop.sym)?(' · الأضعف: '+shBot.sym+' '+sign(shBot.chg)+'٪'):'')+'\n';
+            msg+='• '+em33+' القرار على المؤشر: '+rec33;
+          }
           /* 🚀 التوصيات من إغلاق آخر جلسة */
           msg+='\n\n🚀 التوصيات (من إغلاق آخر جلسة):\n\n';
           if(baseBuys.length){baseBuys.forEach(function(r,i){msg+=(i+1)+')\n'+stockLines(r,r.v0,r.p0,r.c0)+'\n\n'})}
@@ -192,6 +235,50 @@ jobs:
           if(dropped.length)msg+='⚠️ سقطت من القايمة بعد تحرك السعر: '+dropped.map(function(r){return r.sym}).join('، ')+'\n\n';
           if(added.length)msg+='🆕 طلعت بعد المراجعة اللحظية: '+added.map(function(r){return r.sym}).join('، ')+'\n\n';
           if(warns.length){msg+='⚠️ تحذيرات بيع:\n\n';warns.forEach(function(r){msg+=stockLines(r,r.v,r.price,r.chg)+'\n\n'})}
+          /* 🥇 توصيات الذهب — الأونصة العالمي بنفس المحرك + سعر الجرام في مصر */
+          let goldSec='';
+          try{
+            const graw=readJSON('gold_raw.json',null);
+            const gnow=readJSON('gold_now.json',null);
+            let gArr=[],usdEgp=0;
+            if(graw){
+              const gk=graw['XAUUSD=X'];
+              if(gk&&Array.isArray(gk.timestamp)&&Array.isArray(gk.close)){
+                for(let i=0;i<gk.timestamp.length;i++){
+                  const c=+gk.close[i];
+                  if(!(c>0))continue;
+                  const prev=gArr.length?gArr[gArr.length-1].c:c;
+                  gArr.push({d:new Date(gk.timestamp[i]*1000).toISOString().slice(0,10),o:prev,h:Math.max(prev,c),l:Math.min(prev,c),c:c,v:0});
+                }
+              }
+              const ek=graw['USDEGP=X'];
+              if(ek&&Array.isArray(ek.close)&&ek.close.length)usdEgp=+ek.close[ek.close.length-1]||0;
+            }
+            const gNow=(gnow&&+gnow.price>0)?+gnow.price:0;
+            if(gArr.length>=60){
+              const vg=analyze(gArr);
+              const gHist=gArr[gArr.length-1].c, gPrev=gArr.length>1?gArr[gArr.length-2].c:gHist;
+              const disp=(gNow>0?gNow:gHist);
+              const gchg=gPrev?(disp-gPrev)/gPrev*100:0;
+              goldSec='\n\n🥇 توصيات الذهب — الأونصة عالميًا:\n\n';
+              goldSec+='التوصية: '+vg.rec+' '+'⭐'.repeat(vg.stars)+' (ثقة '+vg.conf+'٪) · السعر '+NB(disp,1)+' دولار/أونصة ('+sign(gchg)+'٪)\n';
+              goldSec+='🛑 وقف '+NB(vg.stop,1)+' · 🎯 هدف '+NB(vg.t1,1)+' دولار · مخاطرة '+vg.risk+'\n';
+              const gpos=(vg.rs||[]).filter(function(x){return x[0]==='✅'});
+              (gpos.length?gpos:vg.rs||[]).slice(0,2).forEach(function(x){goldSec+=x[0]+' '+x[1]+'\n'});
+              if(usdEgp>0){
+                const g24=disp/31.1035*usdEgp;
+                goldSec+='سعر الجرام في مصر (تقديري بسعر الدولار '+NB(usdEgp,2)+'):\n';
+                goldSec+='عيار 24: '+NB(g24,0)+' ج.م · عيار 21: '+NB(g24*21/24,0)+' ج.م · عيار 18: '+NB(g24*18/24,0)+' ج.م · جنيه الذهب: '+NB(g24*21/24*8,0)+' ج.م\n';
+              }
+            } else if(gNow>0){
+              goldSec='\n\n🥇 الذهب — السعر الحالي: '+NB(gNow,1)+' دولار/أونصة (التاريخ اللزم للتحليل الفني مش متاح)\n';
+              if(usdEgp>0){
+                const g24=gNow/31.1035*usdEgp;
+                goldSec+='عيار 24: '+NB(g24,0)+' ج.م · عيار 21: '+NB(g24*21/24,0)+' ج.م · عيار 18: '+NB(g24*18/24,0)+' ج.م (تقديري)\n';
+              }
+            }
+          }catch(e){console.log('⚠️ قسم الذهب اتخطى — '+e.message)}
+          msg+=goldSec;
           /* 💼 قرارات الذكاء الاصطناعي لأسهم في محفظتي — أولوية: مزامنة التطبيق (pf.json) ← سر PORTFOLIO_JSON */
           let pf=null;
           try{pf=JSON.parse(fs.readFileSync('pf.json','utf8'))}catch(e){pf=null}

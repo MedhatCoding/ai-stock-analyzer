@@ -38,7 +38,7 @@ jobs:
             SYMS="ABUK ACGC ADIB AMOC ARCC ATQA CIEB CIRA CLHO COMI EAST EFID EFIH EGAL EGAS EGCH EGTS ELKA EMFD ETEL ETRS FAIT FAITA FWRY GBCO GOUR HDBK HRHO ICFC IFAP ISPH JUFO LCSW MASR MBSC MCQE MFPC MNHD MPCI MPCO MTIE OCDI OLFI ORAS ORHD ORWE PHDC POUL RACC RMDA SAUD SKPC SWDY TAQA TMGH"
             IFS=' ' read -ra A <<< "$SYMS"
             echo "== تحميل الوضع الحالي =="
-            curl -sS --max-time 25 -o /tmp/hist.json "https://raw.githubusercontent.com/MedhatCoding/ai-stock-analyzer/hist/hist.json" || true
+            curl -sS --max-time 25 -o /tmp/hist.json "https://raw.githubusercontent.com/MedhatCoding/mistral-Mi/hist/hist.json" || true
             if ! jq -e '.stocks' /tmp/hist.json >/dev/null 2>&1; then
               echo '{"t":0,"stocks":{}}' > /tmp/hist.json
               echo "   (مفيش hist.json قديم — بنبدأ من الصفر)"
@@ -117,7 +117,7 @@ jobs:
             fi
 
             echo "== المرحلة 3: شمعة النهاردة من oanor (لقطة live.json) =="
-            curl -sS --max-time 25 -o /tmp/live.json "https://raw.githubusercontent.com/MedhatCoding/ai-stock-analyzer/live/live.json" || true
+            curl -sS --max-time 25 -o /tmp/live.json "https://raw.githubusercontent.com/MedhatCoding/mistral-Mi/live/live.json" || true
             if jq -e '.t' /tmp/live.json >/dev/null 2>&1; then
               LT=$(jq -r '.t' /tmp/live.json)
               LDATE=$(TZ=Africa/Cairo date -d "@$((LT/1000))" +%F 2>/dev/null || echo none)
@@ -173,6 +173,6 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git commit -qm "$MSG"
-          git push -qf "https://x-access-token:${GH_TOKEN}@github.com/MedhatCoding/ai-stock-analyzer.git" hist
+          git push -qf "https://x-access-token:${GH_TOKEN}@github.com/MedhatCoding/mistral-Mi.git" hist
           echo "✅ اتنشر على فرع hist"
           if [ ! -f /tmp/pub/hist.json ]; then exit 1; fi
